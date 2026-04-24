@@ -1,0 +1,65 @@
+{
+  "_comment_global": "게임 전체의 규칙과 블럭의 속성을 정의하는 데이터 파일입니다.",
+  "rule": {
+    "_comment": "사각형 탭매치 기본 룰 설정",
+    "ruleId": "TapMatch_Quadrangle",
+    "puzzleType": 3,
+    "_puzzleType_info": "1: ThreeMatch, 2: Link, 3: TapMatch",
+    "boardShape": 1,
+    "_boardShape_info": "1: Quadrangle, 2: Hexagon",
+    "timeLimit": 60,
+    "objectives": [
+      {
+        "_comment": "목표 점수 달성 조건",
+        "type": 0,
+        "_type_info": "0: Score, 1: CollectBlock",
+        "count": 1000
+      },
+      {
+        "_comment": "특정 블럭 수집 조건 (100-1 블럭 20개)",
+        "type": 1,
+        "targetId": "100-1",
+        "count": 20
+      }
+    ]
+  },
+  "blocks": [
+    {
+      "_comment": "기본 빨간색 블럭",
+      "blockId": "100-1",
+      "inputType": 4,
+      "_inputType_info": "Flags - 1: Swap, 4: Touch (5: Swap|Touch)",
+      "destroyType": 50,
+      "_destroyType_info": "2: Three_Match, 50: Splash",
+      "life": 1
+    },
+    {
+      "_comment": "기본 파란색 블럭",
+      "blockId": "100-2",
+      "inputType": 4,
+      "destroyType": 50,
+      "life": 1
+    },
+    {
+      "_comment": "기본 노란색 블럭",
+      "blockId": "100-3",
+      "inputType": 4,
+      "destroyType": 50,
+      "life": 1
+    },
+    {
+      "_comment": "기본 초록색 블럭",
+      "blockId": "100-4",
+      "inputType": 4,
+      "destroyType": 50,
+      "life": 1
+    },
+    {
+      "_comment": "기본 보라색 블럭",
+      "blockId": "100-5",
+      "inputType": 4,
+      "destroyType": 50,
+      "life": 1
+    }
+  ]
+}

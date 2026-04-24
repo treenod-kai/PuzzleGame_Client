@@ -1,0 +1,40 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -la C:/Users/jihwan/Documents/Game/PuzleBattleGame/*.md)",
+      "Bash(find C:/Users/jihwan/Documents/Game/PuzleBattleGame -name *.ttf -o -name *.otf)",
+      "Bash(git mv:*)",
+      "Bash(find C:UsersjihwanDocumentsGamePuzleBattleGameAssets03_Prefab -name *[Pp]opup*.prefab)",
+      "Bash(xargs grep:*)",
+      "Bash(find /c/Users/jihwan/Documents/Game/PuzleBattleGame/Assets/03_Prefab -type f -name *.prefab)",
+      "Bash(ls -la /c/Users/jihwan/Documents/Game/PuzleBattleGame/Assets/02_Scripts/Manager/*.cs)",
+      "Bash(ls:*)",
+      "Bash(xargs -I {} basename {})",
+      "Bash(grep -E \"\\\\.md$\")",
+      "Bash(grep -r \"DontDestroyOnLoad\" /c/Users/jihwan/Documents/Game/PuzleBattleGame/Assets/02_Scripts/Manager/*.cs)",
+      "Bash(python3 -c ':*)",
+      "Bash(dotnet --version)",
+      "Bash(mkdir \"C:\\\\tmp\\\\dll_inspect\")",
+      "Bash(dotnet new:*)",
+      "Bash(dotnet run:*)",
+      "Bash(mkdir -p \"C:/Users/jihwan/tmp/dll_inspect\")",
+      "Read(//c/Users/jihwan/tmp/**)",
+      "Bash(python3 -m json.tool)",
+      "Bash(python3:*)",
+      "Bash(grep \"_comment\" \"/c/Users/jihwan/Documents/Game/PuzleBattleGame/Assets/05_Table/Rule/\"*.json)",
+      "Bash(dotnet tool:*)",
+      "Bash(ilspycmd:*)",
+      "Bash(/c/Users/jihwan/.dotnet/tools/ilspycmd.exe:*)",
+      "Bash(dotnet ilspycmd:*)",
+      "Bash(cmd.exe:*)",
+      "Bash(powershell.exe:*)",
+      "Read(//c/Users/jihwan/.dotnet/tools/**)",
+      "Bash(chmod +x \"/c/Users/jihwan/.dotnet/tools/ilspycmd.exe\")",
+      "Bash(\"/c/Users/jihwan/.dotnet/tools/ilspycmd.exe\" \"C:/Users/jihwan/Documents/Game/PuzleBattleGame/Assets/Plugins/PuzleBattleShared.dll\")",
+      "Read(//c/tmp/dllinspect/**)",
+      "Bash(sed -i 's/net9.0/net10.0/' dllinspect.csproj)",
+      "Skill(update-config)",
+      "Bash(node *)"
+    ]
+  }
+}
