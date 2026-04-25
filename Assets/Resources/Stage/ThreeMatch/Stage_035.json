@@ -1,0 +1,514 @@
+{
+    "_comment": "스테이지의 물리적 구성(크기, 셀 위치, 초기 블럭 배치)을 정의하는 데이터 파일입니다.",
+    "_cell_type_info": "0: Close, 1: Normal, 3: Generator",
+    "stage_height":  8,
+    "stage_id":  35,
+    "stage_width":  8,
+    "cells":  [
+                  {
+                      "y":  0,
+                      "panel_id":  0,
+                      "block_id":  "100-1",
+                      "cell_type":  1,
+                      "x":  0
+                  },
+                  {
+                      "y":  0,
+                      "panel_id":  0,
+                      "block_id":  "100-1",
+                      "cell_type":  1,
+                      "x":  1
+                  },
+                  {
+                      "y":  0,
+                      "panel_id":  0,
+                      "block_id":  "100-5",
+                      "cell_type":  1,
+                      "x":  2
+                  },
+                  {
+                      "y":  0,
+                      "panel_id":  0,
+                      "block_id":  "100-1",
+                      "cell_type":  1,
+                      "x":  3
+                  },
+                  {
+                      "y":  0,
+                      "panel_id":  0,
+                      "block_id":  "100-3",
+                      "cell_type":  1,
+                      "x":  4
+                  },
+                  {
+                      "y":  0,
+                      "panel_id":  0,
+                      "block_id":  "100-2",
+                      "cell_type":  1,
+                      "x":  5
+                  },
+                  {
+                      "y":  0,
+                      "panel_id":  0,
+                      "block_id":  "100-5",
+                      "cell_type":  1,
+                      "x":  6
+                  },
+                  {
+                      "y":  0,
+                      "panel_id":  0,
+                      "block_id":  "100-3",
+                      "cell_type":  1,
+                      "x":  7
+                  },
+                  {
+                      "y":  1,
+                      "panel_id":  0,
+                      "block_id":  "100-2",
+                      "cell_type":  1,
+                      "x":  0
+                  },
+                  {
+                      "y":  1,
+                      "panel_id":  0,
+                      "block_id":  "100-4",
+                      "cell_type":  1,
+                      "x":  1
+                  },
+                  {
+                      "y":  1,
+                      "panel_id":  0,
+                      "block_id":  "100-3",
+                      "cell_type":  1,
+                      "x":  2
+                  },
+                  {
+                      "y":  1,
+                      "panel_id":  0,
+                      "block_id":  "100-4",
+                      "cell_type":  1,
+                      "x":  3
+                  },
+                  {
+                      "y":  1,
+                      "panel_id":  0,
+                      "block_id":  "100-5",
+                      "cell_type":  1,
+                      "x":  4
+                  },
+                  {
+                      "y":  1,
+                      "panel_id":  0,
+                      "block_id":  "100-3",
+                      "cell_type":  1,
+                      "x":  5
+                  },
+                  {
+                      "y":  1,
+                      "panel_id":  0,
+                      "block_id":  "100-4",
+                      "cell_type":  1,
+                      "x":  6
+                  },
+                  {
+                      "y":  1,
+                      "panel_id":  0,
+                      "block_id":  "100-3",
+                      "cell_type":  1,
+                      "x":  7
+                  },
+                  {
+                      "y":  2,
+                      "panel_id":  0,
+                      "block_id":  "100-4",
+                      "cell_type":  1,
+                      "x":  0
+                  },
+                  {
+                      "y":  2,
+                      "panel_id":  0,
+                      "block_id":  "100-5",
+                      "cell_type":  1,
+                      "x":  1
+                  },
+                  {
+                      "y":  2,
+                      "panel_id":  0,
+                      "block_id":  "100-5",
+                      "cell_type":  1,
+                      "x":  2
+                  },
+                  {
+                      "y":  2,
+                      "panel_id":  0,
+                      "block_id":  "100-3",
+                      "cell_type":  1,
+                      "x":  3
+                  },
+                  {
+                      "y":  2,
+                      "panel_id":  0,
+                      "block_id":  "100-3",
+                      "cell_type":  1,
+                      "x":  4
+                  },
+                  {
+                      "y":  2,
+                      "panel_id":  0,
+                      "block_id":  "100-5",
+                      "cell_type":  1,
+                      "x":  5
+                  },
+                  {
+                      "y":  2,
+                      "panel_id":  0,
+                      "block_id":  "100-4",
+                      "cell_type":  1,
+                      "x":  6
+                  },
+                  {
+                      "y":  2,
+                      "panel_id":  0,
+                      "block_id":  "100-5",
+                      "cell_type":  1,
+                      "x":  7
+                  },
+                  {
+                      "y":  3,
+                      "panel_id":  0,
+                      "block_id":  "100-3",
+                      "cell_type":  1,
+                      "x":  0
+                  },
+                  {
+                      "y":  3,
+                      "panel_id":  0,
+                      "block_id":  "100-2",
+                      "cell_type":  1,
+                      "x":  1
+                  },
+                  {
+                      "y":  3,
+                      "panel_id":  0,
+                      "block_id":  "100-5",
+                      "cell_type":  1,
+                      "x":  2
+                  },
+                  {
+                      "y":  3,
+                      "panel_id":  0,
+                      "block_id":  "100-3",
+                      "cell_type":  1,
+                      "x":  3
+                  },
+                  {
+                      "y":  3,
+                      "panel_id":  0,
+                      "block_id":  "100-3",
+                      "cell_type":  1,
+                      "x":  4
+                  },
+                  {
+                      "y":  3,
+                      "panel_id":  0,
+                      "block_id":  "100-2",
+                      "cell_type":  1,
+                      "x":  5
+                  },
+                  {
+                      "y":  3,
+                      "panel_id":  0,
+                      "block_id":  "100-4",
+                      "cell_type":  1,
+                      "x":  6
+                  },
+                  {
+                      "y":  3,
+                      "panel_id":  0,
+                      "block_id":  "100-2",
+                      "cell_type":  1,
+                      "x":  7
+                  },
+                  {
+                      "y":  4,
+                      "panel_id":  0,
+                      "block_id":  "100-1",
+                      "cell_type":  1,
+                      "x":  0
+                  },
+                  {
+                      "y":  4,
+                      "panel_id":  0,
+                      "block_id":  "100-2",
+                      "cell_type":  1,
+                      "x":  1
+                  },
+                  {
+                      "y":  4,
+                      "panel_id":  0,
+                      "block_id":  "100-2",
+                      "cell_type":  1,
+                      "x":  2
+                  },
+                  {
+                      "y":  4,
+                      "panel_id":  0,
+                      "block_id":  "100-3",
+                      "cell_type":  1,
+                      "x":  3
+                  },
+                  {
+                      "y":  4,
+                      "panel_id":  0,
+                      "block_id":  "100-4",
+                      "cell_type":  1,
+                      "x":  4
+                  },
+                  {
+                      "y":  4,
+                      "panel_id":  0,
+                      "block_id":  "100-1",
+                      "cell_type":  1,
+                      "x":  5
+                  },
+                  {
+                      "y":  4,
+                      "panel_id":  0,
+                      "block_id":  "100-3",
+                      "cell_type":  1,
+                      "x":  6
+                  },
+                  {
+                      "y":  4,
+                      "panel_id":  0,
+                      "block_id":  "100-2",
+                      "cell_type":  1,
+                      "x":  7
+                  },
+                  {
+                      "y":  5,
+                      "panel_id":  0,
+                      "block_id":  "100-5",
+                      "cell_type":  1,
+                      "x":  0
+                  },
+                  {
+                      "y":  5,
+                      "panel_id":  0,
+                      "block_id":  "100-5",
+                      "cell_type":  1,
+                      "x":  1
+                  },
+                  {
+                      "y":  5,
+                      "panel_id":  0,
+                      "block_id":  "100-3",
+                      "cell_type":  1,
+                      "x":  2
+                  },
+                  {
+                      "y":  5,
+                      "panel_id":  0,
+                      "block_id":  "100-1",
+                      "cell_type":  1,
+                      "x":  3
+                  },
+                  {
+                      "y":  5,
+                      "panel_id":  0,
+                      "block_id":  "100-4",
+                      "cell_type":  1,
+                      "x":  4
+                  },
+                  {
+                      "y":  5,
+                      "panel_id":  0,
+                      "block_id":  "100-4",
+                      "cell_type":  1,
+                      "x":  5
+                  },
+                  {
+                      "y":  5,
+                      "panel_id":  0,
+                      "block_id":  "100-3",
+                      "cell_type":  1,
+                      "x":  6
+                  },
+                  {
+                      "y":  5,
+                      "panel_id":  0,
+                      "block_id":  "100-4",
+                      "cell_type":  1,
+                      "x":  7
+                  },
+                  {
+                      "y":  6,
+                      "panel_id":  0,
+                      "block_id":  "100-4",
+                      "cell_type":  1,
+                      "x":  0
+                  },
+                  {
+                      "y":  6,
+                      "panel_id":  0,
+                      "block_id":  "100-1",
+                      "cell_type":  1,
+                      "x":  1
+                  },
+                  {
+                      "y":  6,
+                      "panel_id":  0,
+                      "block_id":  "100-2",
+                      "cell_type":  1,
+                      "x":  2
+                  },
+                  {
+                      "y":  6,
+                      "panel_id":  0,
+                      "block_id":  "100-1",
+                      "cell_type":  1,
+                      "x":  3
+                  },
+                  {
+                      "y":  6,
+                      "panel_id":  0,
+                      "block_id":  "100-1",
+                      "cell_type":  1,
+                      "x":  4
+                  },
+                  {
+                      "y":  6,
+                      "panel_id":  0,
+                      "block_id":  "100-5",
+                      "cell_type":  1,
+                      "x":  5
+                  },
+                  {
+                      "y":  6,
+                      "panel_id":  0,
+                      "block_id":  "100-3",
+                      "cell_type":  1,
+                      "x":  6
+                  },
+                  {
+                      "y":  6,
+                      "panel_id":  0,
+                      "block_id":  "100-2",
+                      "cell_type":  1,
+                      "x":  7
+                  },
+                  {
+                      "y":  7,
+                      "generator_block_ids":  [
+                                                  "100-1",
+                                                  "100-2",
+                                                  "100-3",
+                                                  "100-4",
+                                                  "100-5"
+                                              ],
+                      "x":  0,
+                      "panel_id":  0,
+                      "block_id":  "100-3",
+                      "cell_type":  3
+                  },
+                  {
+                      "y":  7,
+                      "generator_block_ids":  [
+                                                  "100-1",
+                                                  "100-2",
+                                                  "100-3",
+                                                  "100-4",
+                                                  "100-5"
+                                              ],
+                      "x":  1,
+                      "panel_id":  0,
+                      "block_id":  "100-4",
+                      "cell_type":  3
+                  },
+                  {
+                      "y":  7,
+                      "generator_block_ids":  [
+                                                  "100-1",
+                                                  "100-2",
+                                                  "100-3",
+                                                  "100-4",
+                                                  "100-5"
+                                              ],
+                      "x":  2,
+                      "panel_id":  0,
+                      "block_id":  "100-4",
+                      "cell_type":  3
+                  },
+                  {
+                      "y":  7,
+                      "generator_block_ids":  [
+                                                  "100-1",
+                                                  "100-2",
+                                                  "100-3",
+                                                  "100-4",
+                                                  "100-5"
+                                              ],
+                      "x":  3,
+                      "panel_id":  0,
+                      "block_id":  "100-4",
+                      "cell_type":  3
+                  },
+                  {
+                      "y":  7,
+                      "generator_block_ids":  [
+                                                  "100-1",
+                                                  "100-2",
+                                                  "100-3",
+                                                  "100-4",
+                                                  "100-5"
+                                              ],
+                      "x":  4,
+                      "panel_id":  0,
+                      "block_id":  "100-2",
+                      "cell_type":  3
+                  },
+                  {
+                      "y":  7,
+                      "generator_block_ids":  [
+                                                  "100-1",
+                                                  "100-2",
+                                                  "100-3",
+                                                  "100-4",
+                                                  "100-5"
+                                              ],
+                      "x":  5,
+                      "panel_id":  0,
+                      "block_id":  "100-5",
+                      "cell_type":  3
+                  },
+                  {
+                      "y":  7,
+                      "generator_block_ids":  [
+                                                  "100-1",
+                                                  "100-2",
+                                                  "100-3",
+                                                  "100-4",
+                                                  "100-5"
+                                              ],
+                      "x":  6,
+                      "panel_id":  0,
+                      "block_id":  "100-1",
+                      "cell_type":  3
+                  },
+                  {
+                      "y":  7,
+                      "generator_block_ids":  [
+                                                  "100-1",
+                                                  "100-2",
+                                                  "100-3",
+                                                  "100-4",
+                                                  "100-5"
+                                              ],
+                      "x":  7,
+                      "panel_id":  0,
+                      "block_id":  "100-3",
+                      "cell_type":  3
+                  }
+              ]
+}
+

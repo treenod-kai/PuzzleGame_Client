@@ -11,9 +11,13 @@
 | `AGENTS.md` | Codex 작업 원칙, 코딩 규칙, 주의사항(Known Pitfalls), 작업별 참고 링크 | 항상 (기본 규칙) |
 | `CLAUDE.md` | Claude Code 호환용 기존 가이드 | Claude Code 사용 시 |
 | `ARCHITECTURE.md` | MVC, 데이터 흐름, 리플레이, 게임 흐름, 폴더 구조 | 아키텍처 이해 시 |
+| `ARCHITECTURE_FLOW.md` | 메인 대전/사이드 콘텐츠 게임 흐름 상세 | 게임 흐름 상세 확인 시 |
 | `CONVENTIONS.md` | 코드 리뷰 체크리스트, 위반 예시, 수정 가이드 | 커밋 전 리뷰 시 필독 |
 | `INGAME.md` | 게임 루프, 보드 상태, 블럭, 매칭, 뷰 동기화, 애니메이션, 리플레이 | 인게임 퍼즐 작업 시 |
+| `INGAME_REPLAY.md` | 리플레이 기록/재생 흐름 상세 | 리플레이 작업 시 |
 | `DATA.md` | JSON 구조, GameSpec, Rule/Stage/Replay 데이터, 추가 방법 | 데이터/설정 작업 시 |
+| `DATA_SCHEMA.md` | GameSpec/ReplayData 상세 스키마 | 데이터 필드 상세 확인 시 |
+| `STAGE_MAP_TOOL.md` | 모드별 Resources 스테이지 로드 정책과 맵 툴 사양 | 스테이지 맵 툴 작업 시 |
 | `UI.md` | 도메인 시스템, 팝업/탭 생명주기, UIButton, 추가 방법 | UI 작업 시 |
 | `SCENE.md` | 씬 전환, SharedScene, 매니저, AssetManager, PoolManager | 인프라 작업 시 |
 | `SERVER.md` | 서버 통신, 공유 DLL, 네트워크 레이어, API 연동 | 서버 API 작업 시 |
@@ -42,6 +46,7 @@
 | 새 퍼즐 모드 추가 | `INGAME.md` → `DATA.md` |
 | 새 블럭 타입 추가 | `INGAME.md` → `DATA.md` |
 | 새 스테이지 추가 | `DATA.md` |
+| 스테이지 맵 툴 제작 | `STAGE_MAP_TOOL.md` → `DATA.md` → `INGAME.md` |
 | 매칭/점수 밸런싱 | `INGAME.md` → `DATA.md` |
 | 애니메이션 수정 | `INGAME.md` |
 | 보드 좌표/레이아웃 | `INGAME.md` |

@@ -6,8 +6,10 @@ JSON 규칙, 스테이지, GameSpec, 블럭 데이터 관련 작업 시 참고.
 
 ## 데이터 흐름
 
+### 메인 대전 퍼즐
+
 ```
-Rule JSON + Stage JSON
+Rule JSON + ReplayData의 Stage JSON 참조
   → AssetManager.LoadAsset<TextAsset>(address)
     → JsonUtility.FromJson<T>()
       → StageInjection.MakeGameSpec()
@@ -17,6 +19,20 @@ Rule JSON + Stage JSON
 ```
 
 **StageInjection**: 싱글톤. `MakeGameSpec(ruleAddress, stageAddress)`로 JSON 로드 후 `GetGameSpec()`으로 반환. 파싱 실패 시 `false` 반환 + `_gameSpec = null`.
+
+### 사이드 스테이지형 콘텐츠
+
+```
+Rule JSON + PuzzleType + stageId
+  → StageStorage.TryLoadStageJson(puzzleType, stageId)
+    → persistentDataPath/Stage/{Mode}/Stage_{000}.json 우선
+    → 없으면 Resources/Stage/{Mode}/Stage_{000}
+      → JsonUtility.FromJson<StageData>()
+        → StageInjection.MakeGameSpec(ruleAddress, puzzleType, stageId)
+          → GameSpec 주입
+```
+
+사이드 스테이지 로드 정책과 맵 툴 사양은 `STAGE_MAP_TOOL.md`를 따른다. 메인 대전의 리플레이 다운로드/랭킹 흐름과 직접 결합하지 않는다.
 
 ### 데이터 타입 주의 (struct vs class)
 | 타입 | 종류 | `== null` 가능 | 비고 |
@@ -36,37 +52,7 @@ Rule JSON + Stage JSON
 
 ## GameSpec 구조
 
-```
-GameSpec
-├─ StageData
-│   ├─ stage_id        (int) — 스테이지 번호
-│   ├─ stage_width     (int) — 보드 가로 크기
-│   ├─ stage_height    (int) — 보드 세로 크기
-│   └─ List<CellData>
-│       ├─ x, y                  (int) — 셀 좌표
-│       ├─ block_id              (string) — 초기 블럭 ID (null이면 비어있음)
-│       ├─ panel_id              (int) — 바닥 패널 종류
-│       ├─ cell_type             (int) — CellType 열거형 값
-│       └─ generator_block_ids   (List<string>) — Generator 셀의 생성 블럭 목록
-│
-├─ RuleData
-│   ├─ ruleId          (string) — 규칙 식별자
-│   ├─ puzzleType      (int) — 1:ThreeMatch, 2:Link, 3:TapMatch
-│   ├─ boardShape      (int) — 1:Quadrangle, 2:Hexagon
-│   ├─ timeLimit       (float) — 제한 시간 (초), 0이면 무제한
-│   └─ List<ObjectiveData>
-│       ├─ type         (int) — 0:Score, 1:CollectBlock, 2:ClearCell
-│       ├─ targetId     (string) — 대상 blockId (CollectBlock일 때)
-│       └─ count        (int) — 목표 값
-│
-├─ randomSeed        (int) — 결정론적 리플레이를 위한 난수 시드 (StageInjection에서 자동 생성)
-│
-└─ List<BlockData>
-    ├─ blockId         (string) — 블럭 식별자 (예: "100-1")
-    ├─ inputType       (int) — Flags: 1:Swap, 2:Link, 4:Touch (조합 가능, 예: 5=Swap+Touch)
-    ├─ destroyType     (int) — 파괴 방식
-    └─ life            (int) — 내구도
-```
+상세 필드 구조와 ReplayData 예시는 `DATA_SCHEMA.md` 참고.
 
 ---
 
@@ -125,7 +111,10 @@ GameSpec
 
 ## Stage JSON 구조
 
-파일 위치: `Assets/05_Table/Stage/Stage.json`
+파일 위치:
+- 기존/메인 호환: `Assets/05_Table/Stage/Stage.json`
+- 사이드 콘텐츠 기본 스테이지: `Assets/Resources/Stage/{Mode}/Stage_{000}.json`
+- 사이드 콘텐츠 다운로드 스테이지: `Application.persistentDataPath/Stage/{Mode}/Stage_{000}.json`
 
 ```json
 {
@@ -189,34 +178,4 @@ GameSpec
 
 ## ReplayData JSON 구조
 
-파일 위치:
-- **에디터**: `Assets/05_Table/Replay/replay_{timestamp}.json`
-- **빌드**: `Application.persistentDataPath/Replay/replay_{timestamp}.json`
-
-게임 종료 시 `ReplayStorage.Save()`에 의해 자동 생성됨.
-
-```json
-{
-    "ruleAddress": "LinkMatchRule",
-    "stageAddress": "Stage",
-    "randomSeed": 2095364872,
-    "inputs": [
-        { "frame": 67, "position": { "X": 3, "Y": 6 } },
-        { "frame": 90, "position": { "X": 3, "Y": 5 } }
-    ],
-    "inputEnds": [
-        { "frame": 115 },
-        { "frame": 240 }
-    ],
-    "recordedAt": "2026-04-01T20:37:34+09:00"
-}
-```
-
-| 필드 | 타입 | 설명 |
-|------|------|------|
-| `ruleAddress` | string | 규칙 JSON의 Addressable 에셋 주소 |
-| `stageAddress` | string | 스테이지 JSON의 Addressable 에셋 주소 |
-| `randomSeed` | int | 게임에 사용된 난수 시드 |
-| `inputs` | List | 유저 입력 기록 (프레임 + 그리드 좌표) |
-| `inputEnds` | List | 유저 입력 종료 기록 (프레임) |
-| `recordedAt` | string | 기록 일시 (ISO 8601) |
+파일 위치와 JSON 예시는 `DATA_SCHEMA.md` 참고.

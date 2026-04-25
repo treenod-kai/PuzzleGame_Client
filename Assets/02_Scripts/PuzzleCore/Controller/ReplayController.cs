@@ -80,26 +80,44 @@ public class ReplayController : MonoBehaviour
             return;
         }
 
-        TextAsset stageAsset = AssetManager.Instance.LoadAsset<TextAsset>(_replayData.stageAddress);
-        if (stageAsset != null)
+        if (!string.IsNullOrEmpty(_replayData.stageJson))
         {
-            replaySpec.stageData = JsonUtility.FromJson<StageData>(stageAsset.text);
+            replaySpec.stageData = JsonUtility.FromJson<StageData>(_replayData.stageJson);
             if (replaySpec.stageData == null)
             {
-                Debug.LogError($"[ReplayController] 스테이지 JSON 파싱 실패: {_replayData.stageAddress}");
+                Debug.LogError("[ReplayController] 리플레이 스테이지 스냅샷 JSON 파싱 실패");
                 return;
             }
 
             if (replaySpec.stageData.cells == null || replaySpec.stageData.cells.Count == 0)
             {
-                Debug.LogError($"[ReplayController] 스테이지 셀 데이터가 비어 있습니다: {_replayData.stageAddress}");
+                Debug.LogError("[ReplayController] 리플레이 스테이지 스냅샷 셀 데이터가 비어 있습니다.");
                 return;
             }
         }
         else
         {
-            Debug.LogError($"[ReplayController] 스테이지 에셋 로드 실패: {_replayData.stageAddress}");
-            return;
+            TextAsset stageAsset = AssetManager.Instance.LoadAsset<TextAsset>(_replayData.stageAddress);
+            if (stageAsset != null)
+            {
+                replaySpec.stageData = JsonUtility.FromJson<StageData>(stageAsset.text);
+                if (replaySpec.stageData == null)
+                {
+                    Debug.LogError($"[ReplayController] 스테이지 JSON 파싱 실패: {_replayData.stageAddress}");
+                    return;
+                }
+
+                if (replaySpec.stageData.cells == null || replaySpec.stageData.cells.Count == 0)
+                {
+                    Debug.LogError($"[ReplayController] 스테이지 셀 데이터가 비어 있습니다: {_replayData.stageAddress}");
+                    return;
+                }
+            }
+            else
+            {
+                Debug.LogError($"[ReplayController] 스테이지 에셋 로드 실패: {_replayData.stageAddress}");
+                return;
+            }
         }
 
         // 기록된 시드를 적용하여 동일한 난수 시퀀스 재현

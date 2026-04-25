@@ -16,6 +16,9 @@ namespace Puzzle.Core
         /// <summary> 스테이지 JSON의 Addressable 에셋 주소 </summary>
         public string stageAddress;
 
+        /// <summary> 리플레이 기록 시점의 스테이지 JSON 스냅샷 </summary>
+        public string stageJson;
+
         /// <summary> 게임에 사용된 난수 시드 </summary>
         public int randomSeed;
 

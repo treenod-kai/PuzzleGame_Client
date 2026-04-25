@@ -297,6 +297,7 @@ public class PuzzleGameController : MonoBehaviour
         {
             ruleAddress = StageInjection.Instance.GetRuleAddress(),
             stageAddress = StageInjection.Instance.GetStageAddress(),
+            stageJson = JsonUtility.ToJson(spec.stageData),
             randomSeed = spec.randomSeed,
             inputs = _board.GetRecordedInputs(),
             inputEnds = _board.GetRecordedInputEnds(),
