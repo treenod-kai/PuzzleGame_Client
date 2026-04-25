@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: d91c9c051b285674caf3b2155206400c
+guid: b32ee71bf8c50f8428bc9853ce3805d4
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 461393032635344246
-    second: BuleButton_0
+      213: 6775980589946837936
+    second: "ChatGPT Image 2026\uB144 4\uC6D4 25\uC77C \uC624\uC804 09_58_05_0"
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -51,8 +51,8 @@ TextureImporter:
   spriteMeshType: 1
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
-  spritePixelsToUnits: 4
-  spriteBorder: {x: 500, y: 500, z: 500, w: 500}
+  spritePixelsToUnits: 1
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
   alphaIsTransparency: 1
@@ -126,23 +126,23 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: BuleButton_0
+      name: "ChatGPT Image 2026\uB144 4\uC6D4 25\uC77C \uC624\uC804 09_58_05_0"
       rect:
         serializedVersion: 2
-        x: 107
+        x: 43
         y: 32
-        width: 899
-        height: 891
+        width: 979
+        height: 987
       alignment: 0
-      pivot: {x: 0.5, y: 0.5}
+      pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 675e114c482376600800000000000000
-      internalID: 461393032635344246
+      spriteID: 0bb19b4227e190e50800000000000000
+      internalID: 6775980589946837936
       vertices: []
       indices: 
       edges: []
@@ -152,7 +152,7 @@ TextureImporter:
     physicsShape: []
     bones: []
     spriteID: 5e97eb03825dee720800000000000000
-    internalID: 1537655665
+    internalID: 0
     vertices: []
     indices: 
     edges: []
@@ -161,7 +161,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      BuleButton_0: 461393032635344246
+      "ChatGPT Image 2026\uB144 4\uC6D4 25\uC77C \uC624\uC804 09_58_05_0": 6775980589946837936
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

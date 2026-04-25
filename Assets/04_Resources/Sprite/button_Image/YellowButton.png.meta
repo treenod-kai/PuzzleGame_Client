@@ -13,7 +13,7 @@ TextureImporter:
   mipmaps:
     mipMapMode: 0
     enableMipMap: 0
-    sRGBTexture: 0
+    sRGBTexture: 1
     linearTexture: 0
     fadeOut: 0
     borderMipMap: 0
@@ -49,7 +49,7 @@ TextureImporter:
   nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
-  spriteMode: 1
+  spriteMode: 2
   spriteExtrude: 1
   spriteMeshType: 1
   alignment: 0
@@ -77,8 +77,8 @@ TextureImporter:
     buildTarget: DefaultTexturePlatform
     maxTextureSize: 256
     resizeAlgorithm: 0
-    textureFormat: 4
-    textureCompression: 0
+    textureFormat: -1
+    textureCompression: 1
     compressionQuality: 50
     crunchedCompression: 0
     allowsAlphaSplitting: 0
@@ -129,16 +129,16 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: "ChatGPT Image 2026\uB144 4\uC6D4 25\uC77C \uC624\uC804 09_04_20_0"
+      name: yellowButton
       rect:
         serializedVersion: 2
-        x: 3
-        y: 8
-        width: 1019
-        height: 1011
+        x: 192
+        y: 112
+        width: 640
+        height: 746
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
-      border: {x: 0, y: 0, z: 0, w: 0}
+      border: {x: 307, y: 397, z: 306, w: 337}
       customData: 
       outline: []
       physicsShape: []
@@ -174,7 +174,14 @@ TextureImporter:
       weights: []
     outline: []
     customData: 
-    physicsShape: []
+    physicsShape:
+    - - {x: 312, y: 296}
+      - {x: 300, y: 336}
+      - {x: -308, y: 336}
+      - {x: -312, y: 332}
+      - {x: -312, y: -248}
+      - {x: -304, y: -308}
+      - {x: 312, y: -308}
     bones: []
     spriteID: 5e97eb03825dee720800000000000000
     internalID: 1537655665
@@ -186,8 +193,8 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      "ChatGPT Image 2026\uB144 4\uC6D4 25\uC77C \uC624\uC804 09_04_20_0": 5431321606129080730
       "ChatGPT Image 2026\uB144 4\uC6D4 25\uC77C \uC624\uC804 09_04_20_1": -4344421253723092132
+      yellowButton: 5431321606129080730
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
