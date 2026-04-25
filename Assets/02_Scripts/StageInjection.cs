@@ -124,6 +124,13 @@ public class StageInjection
                 _gameSpec = null;
                 return false;
             }
+
+            if (_gameSpec.stageData.cells == null || _gameSpec.stageData.cells.Count == 0)
+            {
+                Debug.LogError($"[StageInjection] 스테이지 셀 데이터가 비어 있습니다: {stageAddress}");
+                _gameSpec = null;
+                return false;
+            }
         }
         else
         {

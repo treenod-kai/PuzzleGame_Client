@@ -43,6 +43,15 @@ public class PuzzleBlockView : MonoBehaviour
     /// <summary> 이 블럭을 관리하는 보드 뷰 참조 </summary>
     private PuzzleBoardView _boardView;
 
+    /// <summary> 비동기 스프라이트 로드 결과의 최신 여부를 판별하는 버전 값 </summary>
+    private int _spriteRequestVersion;
+
+    private void OnDisable()
+    {
+        _spriteRequestVersion++;
+        transform.DOKill();
+    }
+
     /// <summary>
     /// 블럭 뷰를 특정 모델 데이터 및 좌표로 초기화합니다.
     /// </summary>
@@ -54,6 +63,7 @@ public class PuzzleBlockView : MonoBehaviour
         _blockData = blockData;
         _gridPos = pos;
         _boardView = boardView;
+        _spriteRequestVersion++;
 
         // 생성되거나 풀에서 재사용될 때 이전의 애니메이션 상태(예: Scale 0)를 리셋
         transform.DOKill();
@@ -77,18 +87,25 @@ public class PuzzleBlockView : MonoBehaviour
         {
             string blockId = _blockData.GetBlockId();
             string address = $"Block_{blockId}";
+            int requestVersion = _spriteRequestVersion;
 
             // 풀 재사용 시 레이어가 리셋될 수 있으므로 명시적으로 설정
             _spriteRenderer.sortingLayerName = "Ingame";
             _spriteRenderer.sortingOrder = 10;
+            _spriteRenderer.sprite = null;
 
             AssetManager.AssetArguments<Sprite> args = new AssetManager.AssetArguments<Sprite>
             {
                 address = address,
                 successCallback = (sprite) =>
                 {
-                    // 비동기 로드 도중 블럭이 파괴되었을 수 있으므로 null 체크 필수
-                    if (this == null || _spriteRenderer == null)
+                    // 비동기 로드 도중 풀 재사용으로 다른 블럭이 되었을 수 있으므로 버전을 확인합니다.
+                    if (this == null || _spriteRenderer == null || requestVersion != _spriteRequestVersion)
+                    {
+                        return;
+                    }
+
+                    if (_blockData == null || _blockData.GetBlockId() != blockId)
                     {
                         return;
                     }

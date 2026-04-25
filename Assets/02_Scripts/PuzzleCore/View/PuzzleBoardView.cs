@@ -63,6 +63,12 @@ public class PuzzleBoardView : MonoBehaviour
     /// <summary> 보드 연출 액션 그룹 대기열 (프레임 단위로 그룹화됨) </summary>
     private Queue<List<BoardViewAction>> _actionQueue = new Queue<List<BoardViewAction>>();
 
+    /// <summary> 액션 그룹 리스트 재사용 풀 </summary>
+    private readonly Stack<List<BoardViewAction>> _actionGroupPool = new Stack<List<BoardViewAction>>();
+
+    /// <summary> 액션 그룹 사이 대기 시간 캐시 </summary>
+    private static readonly WaitForSeconds _actionGroupDelay = new WaitForSeconds(0.019f);
+
     /// <summary> 현재 연출이 진행 중인지 여부 </summary>
     private bool _isAnimating = false;
 
@@ -367,20 +373,21 @@ public class PuzzleBoardView : MonoBehaviour
         float totalRequiredWidth = (_board.Width * cellSize) + (padding * 2f);
         float totalRequiredHeight = boardHeight + (padding * 2f);
 
-        if (Camera.main != null)
+        Camera mainCamera = Camera.main;
+        if (mainCamera != null)
         {
             float screenAspect = (float)Screen.width / Screen.height;
             float sizeByHeight = totalRequiredHeight / 2f;
             float sizeByWidth = (totalRequiredWidth / 2f) / screenAspect;
 
-            Camera.main.orthographicSize = Mathf.Max(sizeByHeight, sizeByWidth);
-            Camera.main.transform.position = new Vector3(0, 0, -10f);
+            mainCamera.orthographicSize = Mathf.Max(sizeByHeight, sizeByWidth);
+            mainCamera.transform.position = new Vector3(0, 0, -10f);
         }
 
         float finalY = 0f;
-        if (Camera.main != null)
+        if (mainCamera != null)
         {
-            float camHeightHalf = Camera.main.orthographicSize;
+            float camHeightHalf = mainCamera.orthographicSize;
             float boardHeightHalf = boardHeight / 2f;
             float availableSpace = camHeightHalf - boardHeightHalf - padding;
             finalY = offsetY * 2f * availableSpace;
@@ -391,6 +398,8 @@ public class PuzzleBoardView : MonoBehaviour
 
     private void ClearBoard()
     {
+        StopAllCoroutines();
+
         foreach (var view in _cellViews.Values)
         {
             if (view != null)
@@ -409,7 +418,12 @@ public class PuzzleBoardView : MonoBehaviour
 
         _cellViews.Clear();
         _blockViews.Clear();
-        _actionQueue.Clear();
+
+        while (_actionQueue.Count > 0)
+        {
+            ReleaseActionGroupList(_actionQueue.Dequeue());
+        }
+
         _isAnimating = false;
 
         if (_lineRenderer != null)
@@ -435,7 +449,7 @@ public class PuzzleBoardView : MonoBehaviour
             cellView = cellObj.AddComponent<PuzzleCellView>();
         }
 
-        cellView.Initialize(cellData, gridPos, this);
+        cellView.Initialize(cellData, gridPos, this, _cachedBoardShape);
         _cellViews[gridPos] = cellView;
     }
 
@@ -490,7 +504,10 @@ public class PuzzleBoardView : MonoBehaviour
 
     private void UpdateLineRenderer()
     {
-        if (_lineRenderer == null) return;
+        if (_lineRenderer == null)
+        {
+            return;
+        }
 
         if (_board is LinkPuzzleBoard linkBoard)
         {
@@ -614,7 +631,7 @@ public class PuzzleBoardView : MonoBehaviour
     private void GroupActionsByFrameAndOrder(List<BoardViewAction> actions)
     {
         // FetchActions()에서 이미 frame → orderIndex 순으로 정렬되어 반환됨
-        List<BoardViewAction> currentGroup = new List<BoardViewAction>();
+        List<BoardViewAction> currentGroup = GetActionGroupList();
         uint prevFrame = actions[0].frame;
         uint prevOrder = actions[0].orderIndex;
 
@@ -624,7 +641,7 @@ public class PuzzleBoardView : MonoBehaviour
             if (action.frame != prevFrame || action.orderIndex != prevOrder)
             {
                 _actionQueue.Enqueue(currentGroup);
-                currentGroup = new List<BoardViewAction>();
+                currentGroup = GetActionGroupList();
                 prevFrame = action.frame;
                 prevOrder = action.orderIndex;
             }
@@ -635,6 +652,34 @@ public class PuzzleBoardView : MonoBehaviour
         {
             _actionQueue.Enqueue(currentGroup);
         }
+    }
+
+    /// <summary>
+    /// 액션 그룹 리스트를 풀에서 가져옵니다.
+    /// </summary>
+    private List<BoardViewAction> GetActionGroupList()
+    {
+        if (_actionGroupPool.Count > 0)
+        {
+            return _actionGroupPool.Pop();
+        }
+
+        return new List<BoardViewAction>();
+    }
+
+    /// <summary>
+    /// 사용이 끝난 액션 그룹 리스트를 비우고 재사용 풀에 반환합니다.
+    /// </summary>
+    /// <param name="group">반환할 액션 그룹 리스트</param>
+    private void ReleaseActionGroupList(List<BoardViewAction> group)
+    {
+        if (group == null)
+        {
+            return;
+        }
+
+        group.Clear();
+        _actionGroupPool.Push(group);
     }
 
     /// <summary> ProcessActionQueue 내부에서 이동 액션을 재사용하는 임시 리스트 </summary>
@@ -688,7 +733,8 @@ public class PuzzleBoardView : MonoBehaviour
                 }
             }
 
-            yield return new WaitForSeconds(0.019f);
+            ReleaseActionGroupList(actionGroup);
+            yield return _actionGroupDelay;
         }
 
         _isAnimating = false;

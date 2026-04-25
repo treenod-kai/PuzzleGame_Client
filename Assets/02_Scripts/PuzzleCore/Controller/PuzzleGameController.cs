@@ -118,6 +118,15 @@ public class PuzzleGameController : MonoBehaviour
             // 뷰가 애니메이션 연출 중일 때는 어떠한 입력도 받지 않도록 차단합니다!
             if (boardView == null || !boardView.IsAnimating)
             {
+                if (_mainCamera == null)
+                {
+                    _mainCamera = Camera.main;
+                    if (_mainCamera == null)
+                    {
+                        return;
+                    }
+                }
+
                 Vector2 screenPosition = GetPointerPosition();
                 Vector2 worldPosition = _mainCamera.ScreenToWorldPoint(screenPosition);
 

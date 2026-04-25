@@ -32,17 +32,30 @@ public class PuzzleCellView : MonoBehaviour
     /// <summary> 관리 중인 보드 뷰 참조 </summary>
     private PuzzleBoardView _boardView;
 
+    /// <summary> 현재 셀이 속한 보드 모양 </summary>
+    private BoardShape _boardShape = BoardShape.None;
+
+    /// <summary> 비동기 스프라이트 로드 결과의 최신 여부를 판별하는 버전 값 </summary>
+    private int _spriteRequestVersion;
+
+    private void OnDisable()
+    {
+        _spriteRequestVersion++;
+    }
+
     /// <summary>
     /// 셀 뷰를 특정 모델 데이터 및 좌표로 초기화합니다.
     /// </summary>
     /// <param name="cellData">연결할 셀 모델 객체</param>
     /// <param name="pos">배치될 그리드 좌표</param>
     /// <param name="boardView">보드 뷰 객체</param>
-    public void Initialize(PuzzleCell cellData, GridPos pos, PuzzleBoardView boardView)
+    public void Initialize(PuzzleCell cellData, GridPos pos, PuzzleBoardView boardView, BoardShape boardShape = BoardShape.None)
     {
         _cellData = cellData;
         _gridPos = pos;
         _boardView = boardView;
+        _boardShape = boardShape;
+        _spriteRequestVersion++;
 
         UpdateVisual();
     }
@@ -71,38 +84,35 @@ public class PuzzleCellView : MonoBehaviour
                 case CellType.Generator:
                     _spriteRenderer.gameObject.SetActive(true);
 
-                    // 게임 사양(GameSpec)을 확인하여 보드 모양에 맞는 스프라이트 로드
-                    GameSpec spec = StageInjection.Instance.GetGameSpec();
-                    if (spec != null)
+                    BoardShape boardShape = _boardShape;
+                    if (boardShape == BoardShape.None)
                     {
-                        string spriteAddress = spec.rule.boardShape == BoardShape.Hexagon ? "hexagonCell" : "squareCell";
+                        GameSpec spec = StageInjection.Instance.GetGameSpec();
+                        boardShape = spec?.rule.boardShape ?? BoardShape.Quadrangle;
+                    }
 
-                        // Addressables 비동기 로드를 통해 스프라이트 교체
-                        AssetManager.Instance.LoadAssetAsync<Sprite>(new AssetManager.AssetArguments<Sprite>() 
-                        { 
-                            address = spriteAddress, 
-                            successCallback = (sprite) =>
+                    string spriteAddress = boardShape == BoardShape.Hexagon ? "hexagonCell" : "squareCell";
+                    int requestVersion = _spriteRequestVersion;
+                    PuzzleCell expectedCell = _cellData;
+
+                    // Addressables 비동기 로드를 통해 스프라이트 교체
+                    AssetManager.Instance.LoadAssetAsync<Sprite>(new AssetManager.AssetArguments<Sprite>()
+                    {
+                        address = spriteAddress,
+                        successCallback = (sprite) =>
+                        {
+                            if (_spriteRenderer != null && sprite != null && requestVersion == _spriteRequestVersion && _cellData == expectedCell)
                             {
-                                if (_spriteRenderer != null && sprite != null)
-                                {
-                                    _spriteRenderer.sprite = sprite;
+                                _spriteRenderer.sprite = sprite;
 
-                                    // 스프라이트 변경 후 콜라이더 크기 재조정
-                                    if (_boxCollider != null)
-                                    {
-                                        _boxCollider.AdjustColliderSize();
-                                    }
+                                // 스프라이트 변경 후 콜라이더 크기 재조정
+                                if (_boxCollider != null)
+                                {
+                                    _boxCollider.AdjustColliderSize();
                                 }
                             }
-                        });
-                    }
-                    else
-                    {
-                        if (_boxCollider != null)
-                        {
-                            _boxCollider.AdjustColliderSize();
                         }
-                    }
+                    });
                     break;
 
                 case CellType.Close:

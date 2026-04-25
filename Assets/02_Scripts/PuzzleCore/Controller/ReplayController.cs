@@ -44,6 +44,15 @@ public class ReplayController : MonoBehaviour
     /// <param name="replayData">재생할 리플레이 데이터</param>
     public void Initialize(ReplayData replayData)
     {
+        _isInitialized = false;
+        _board = null;
+
+        if (replayData == null)
+        {
+            Debug.LogError("[ReplayController] 리플레이 데이터가 null입니다.");
+            return;
+        }
+
         _replayData = replayData;
         _frameCount = 0;
         _inputIndex = 0;
@@ -56,6 +65,12 @@ public class ReplayController : MonoBehaviour
         if (ruleAsset != null)
         {
             GameRuleContainer ruleContainer = JsonUtility.FromJson<GameRuleContainer>(ruleAsset.text);
+            if (ruleContainer == null)
+            {
+                Debug.LogError($"[ReplayController] 규칙 JSON 파싱 실패: {_replayData.ruleAddress}");
+                return;
+            }
+
             replaySpec.rule = ruleContainer.rule;
             replaySpec.blocks = ruleContainer.blocks;
         }
@@ -69,6 +84,17 @@ public class ReplayController : MonoBehaviour
         if (stageAsset != null)
         {
             replaySpec.stageData = JsonUtility.FromJson<StageData>(stageAsset.text);
+            if (replaySpec.stageData == null)
+            {
+                Debug.LogError($"[ReplayController] 스테이지 JSON 파싱 실패: {_replayData.stageAddress}");
+                return;
+            }
+
+            if (replaySpec.stageData.cells == null || replaySpec.stageData.cells.Count == 0)
+            {
+                Debug.LogError($"[ReplayController] 스테이지 셀 데이터가 비어 있습니다: {_replayData.stageAddress}");
+                return;
+            }
         }
         else
         {
@@ -107,7 +133,9 @@ public class ReplayController : MonoBehaviour
         }
 
         _isInitialized = true;
-        Debug.Log($"[ReplayController] 리플레이 재생 시작 (입력 {_replayData.inputs.Count}개, 입력종료 {_replayData.inputEnds.Count}개)");
+        int inputCount = _replayData.inputs != null ? _replayData.inputs.Count : 0;
+        int inputEndCount = _replayData.inputEnds != null ? _replayData.inputEnds.Count : 0;
+        Debug.Log($"[ReplayController] 리플레이 재생 시작 (입력 {inputCount}개, 입력종료 {inputEndCount}개)");
     }
 
     /// <summary>
@@ -166,7 +194,8 @@ public class ReplayController : MonoBehaviour
         _board.FixedUpdate();
 
         // 현재 프레임에 해당하는 모든 Input 기록 주입
-        while (_inputIndex < _replayData.inputs.Count &&
+        while (_replayData.inputs != null &&
+               _inputIndex < _replayData.inputs.Count &&
                _replayData.inputs[_inputIndex].frame == _frameCount)
         {
             _board.Input(_replayData.inputs[_inputIndex].position);
@@ -174,7 +203,8 @@ public class ReplayController : MonoBehaviour
         }
 
         // 현재 프레임에 해당하는 모든 InputEnd 기록 주입
-        while (_inputEndIndex < _replayData.inputEnds.Count &&
+        while (_replayData.inputEnds != null &&
+               _inputEndIndex < _replayData.inputEnds.Count &&
                _replayData.inputEnds[_inputEndIndex].frame == _frameCount)
         {
             _board.InputEnd();
