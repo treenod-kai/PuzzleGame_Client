@@ -46,7 +46,7 @@ TextureImporter:
   nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
-  spriteMode: 1
+  spriteMode: 2
   spriteExtrude: 1
   spriteMeshType: 1
   alignment: 0
@@ -126,16 +126,16 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: BuleButton_0
+      name: bulebutton
       rect:
         serializedVersion: 2
-        x: 107
-        y: 32
-        width: 899
-        height: 891
+        x: 190
+        y: 142
+        width: 643
+        height: 716
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
-      border: {x: 0, y: 0, z: 0, w: 0}
+      border: {x: 300, y: 346, z: 300, w: 348}
       customData: 
       outline: []
       physicsShape: []
@@ -161,7 +161,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      BuleButton_0: 461393032635344246
+      bulebutton: 461393032635344246
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
