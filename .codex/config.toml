@@ -1,0 +1,11 @@
+[features]
+codex_hooks = true
+
+[[hooks.PreToolUse]]
+matcher = "Bash|shell_command"
+
+[[hooks.PreToolUse.hooks]]
+type = "command"
+command = 'pwsh -NoProfile -ExecutionPolicy Bypass -File "$(git rev-parse --show-toplevel)/.codex/hooks/require_review_before_git.ps1"'
+timeout = 10
+statusMessage = "Checking commit/push review gate"
