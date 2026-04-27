@@ -10,7 +10,8 @@ using UnityEngine;
 public class IdentityLayer
 {
     /// <summary> 서버 엔드포인트 경로 </summary>
-    private const string ENDPOINT = "user/identity";
+    private const string LOGIN_ENDPOINT = "auth/login";
+    private const string GuestProviderUserIdKey = "PuzleBattle.GuestProviderUserId";
 
     /// <summary> 유저 기본 데이터 (PuzleBattleShared.Models.UserData) </summary>
     public UserData Data { get; private set; }
@@ -26,13 +27,22 @@ public class IdentityLayer
     /// <param name="onFailed">로드 실패 시 호출되는 콜백</param>
     public void Request(Action onComplete, Action<string> onFailed)
     {
-        NetworkManager.Instance.Get<UserData>(
-            ENDPOINT,
-            (data) =>
+        AuthLoginRequest request = new AuthLoginRequest
+        {
+            provider = AuthProvider.Guest,
+            providerUserId = GetOrCreateGuestProviderUserId(),
+            nickname = "Guest",
+            email = ""
+        };
+
+        NetworkManager.Instance.Post<AuthLoginRequest, AuthLoginResponse>(
+            LOGIN_ENDPOINT,
+            request,
+            (response) =>
             {
-                Data = data;
+                Data = response.user;
                 IsLoaded = true;
-                Debug.Log($"[IdentityLayer] 서버 로드 완료: uid={data.uid}, nickname={data.nickname}");
+                Debug.Log($"[IdentityLayer] 게스트 로그인 완료: uid={Data.uid}, nickname={Data.nickname}");
                 onComplete?.Invoke();
             },
             (error) =>
@@ -43,6 +53,15 @@ public class IdentityLayer
                 onComplete?.Invoke();
             }
         );
+    }
+
+    /// <summary>
+    /// 로그인/연동 응답으로 받은 유저 데이터를 반영합니다.
+    /// </summary>
+    public void SetData(UserData data)
+    {
+        Data = data;
+        IsLoaded = data != null;
     }
 
     /// <summary>
@@ -60,6 +79,20 @@ public class IdentityLayer
             freeDia = 50,
             paidDia = 0
         };
+    }
+
+    private string GetOrCreateGuestProviderUserId()
+    {
+        string providerUserId = PlayerPrefs.GetString(GuestProviderUserIdKey, "");
+        if (!string.IsNullOrEmpty(providerUserId))
+        {
+            return providerUserId;
+        }
+
+        providerUserId = Guid.NewGuid().ToString();
+        PlayerPrefs.SetString(GuestProviderUserIdKey, providerUserId);
+        PlayerPrefs.Save();
+        return providerUserId;
     }
 
     /// <summary>

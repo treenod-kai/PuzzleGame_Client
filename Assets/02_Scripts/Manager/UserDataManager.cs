@@ -1,5 +1,6 @@
 ﻿using System;
 using UnityEngine;
+using PuzleBattleShared.Models;
 
 /// <summary>
 /// 유저 데이터를 관리하는 싱글톤 매니저.
@@ -21,6 +22,9 @@ public class UserDataManager : MonoBehaviour
     /// <summary> 유저 기본 정보 레이어 </summary>
     public IdentityLayer Identity { get; private set; }
 
+    /// <summary> 로그인 및 계정 연동 레이어 </summary>
+    public AuthLayer Auth { get; private set; }
+
     /// <summary>
     /// 싱글톤 인스턴스 등록 및 중복 방지
     /// </summary>
@@ -41,6 +45,7 @@ public class UserDataManager : MonoBehaviour
     public void Initialize()
     {
         Identity = new IdentityLayer();
+        Auth = new AuthLayer();
         Debug.Log("[UserDataManager] 초기화 완료");
     }
 
@@ -70,11 +75,92 @@ public class UserDataManager : MonoBehaviour
     }
 
     /// <summary>
+    /// 서버 로그인 API를 호출하고 응답 유저 데이터를 Identity에 반영합니다.
+    /// </summary>
+    public void Login(
+        AuthProvider provider,
+        string providerUserId,
+        string nickname,
+        string email,
+        Action<AuthLoginResponse> onComplete,
+        Action<string> onFailed)
+    {
+        if (!EnsureInitialized(onFailed))
+        {
+            return;
+        }
+
+        Auth.Login(
+            provider,
+            providerUserId,
+            nickname,
+            email,
+            Identity.Data?.uid ?? "",
+            (response) =>
+            {
+                Identity.SetData(response.user);
+                onComplete?.Invoke(response);
+            },
+            onFailed
+        );
+    }
+
+    /// <summary>
+    /// 현재 Identity 유저에 소셜 계정을 연동합니다.
+    /// </summary>
+    public void LinkAuthAccount(
+        AuthProvider provider,
+        string providerUserId,
+        string email,
+        Action<AuthLoginResponse> onComplete,
+        Action<string> onFailed)
+    {
+        if (!EnsureInitialized(onFailed))
+        {
+            return;
+        }
+        if (Identity.Data == null || string.IsNullOrEmpty(Identity.Data.uid))
+        {
+            string error = "[UserDataManager] 연동할 유저 데이터가 없습니다. LoadIdentity 또는 Login을 먼저 호출하세요.";
+            Debug.LogError(error);
+            onFailed?.Invoke(error);
+            return;
+        }
+
+        Auth.Link(
+            Identity.Data.uid,
+            provider,
+            providerUserId,
+            email,
+            (response) =>
+            {
+                Identity.SetData(response.user);
+                onComplete?.Invoke(response);
+            },
+            onFailed
+        );
+    }
+
+    /// <summary>
     /// 모든 유저 데이터를 초기화합니다. 로그아웃 시 호출합니다.
     /// </summary>
     public void ClearAll()
     {
+        Auth?.Clear();
         Identity?.Clear();
         Debug.Log("[UserDataManager] 모든 데이터 초기화 완료");
+    }
+
+    private bool EnsureInitialized(Action<string> onFailed)
+    {
+        if (Identity != null && Auth != null)
+        {
+            return true;
+        }
+
+        string error = "[UserDataManager] 초기화되지 않았습니다. Initialize()를 먼저 호출하세요.";
+        Debug.LogError(error);
+        onFailed?.Invoke(error);
+        return false;
     }
 }
