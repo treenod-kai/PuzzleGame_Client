@@ -53,6 +53,36 @@
 | 3 | FreeDia | 무료 다이아 |
 | 4 | PaidDia | 유료 다이아 |
 
+### AuthProvider (enum)
+
+| 값 | 이름 | 설명 |
+|----|------|------|
+| 0 | None | 없음 |
+| 1 | Guest | 게스트 로그인 |
+| 2 | Google | 구글 로그인 |
+| 3 | Apple | 애플 로그인 |
+| 4 | Facebook | 페이스북 로그인 |
+
+### AuthLoginRequest (class)
+
+| 필드 | 타입 | 설명 |
+|------|------|------|
+| `provider` | AuthProvider | 로그인 제공자 |
+| `providerUserId` | string | provider별 고유 유저 ID |
+| `uid` | string | 기존 게스트 유저에 연동할 때 사용 |
+| `nickname` | string | 신규 유저 기본 닉네임 |
+| `email` | string | 소셜 이메일 |
+
+### AuthLoginResponse (class)
+
+| 필드 | 타입 | 설명 |
+|------|------|------|
+| `user` | UserData | 로그인된 유저 데이터 |
+| `accessToken` | string | 서버 토큰 자리. 현재는 빈 문자열 |
+| `isNewUser` | bool | 신규 생성 여부 |
+| `isLinked` | bool | 계정 연결 여부 |
+| `provider` | AuthProvider | 로그인 제공자 |
+
 ---
 
 ## 네트워크 레이어 구조
@@ -86,8 +116,10 @@ NetworkManager (MonoBehaviour 싱글톤, SharedScene)
 
 ```
 UserDataManager (MonoBehaviour 싱글톤, SharedScene)
-└─ IdentityLayer (순수 C# 클래스)
-    └─ UserData (PuzleBattleShared.Models.UserData)
+├─ IdentityLayer (순수 C# 클래스)
+│  └─ UserData (PuzleBattleShared.Models.UserData)
+└─ AuthLayer (순수 C# 클래스)
+   └─ AuthLoginResponse (PuzleBattleShared.Models.AuthLoginResponse)
 ```
 
 ### UserDataManager API
@@ -95,16 +127,26 @@ UserDataManager (MonoBehaviour 싱글톤, SharedScene)
 | 메서드 | 용도 |
 |--------|------|
 | `Initialize()` | 레이어 인스턴스 생성 |
-| `LoadIdentity(onComplete, onFailed, forceRefresh?)` | Identity 서버 로드 |
+| `LoadIdentity(onComplete, onFailed, forceRefresh?)` | 설치별 게스트 ID로 서버 로그인 |
+| `Login(provider, providerUserId, nickname, email, onComplete, onFailed)` | provider 계정 로그인 |
+| `LinkAuthAccount(provider, providerUserId, email, onComplete, onFailed)` | 현재 유저에 provider 계정 연동 |
 | `ClearAll()` | 전체 데이터 초기화 (로그아웃) |
 | `Identity` | IdentityLayer 프로퍼티 접근 |
+| `Auth` | AuthLayer 프로퍼티 접근 |
 
 ### IdentityLayer
-- 엔드포인트: `GET user/identity`
-- 응답 DTO: `UserData`
+- 엔드포인트: `POST auth/login`
+- 요청 DTO: `AuthLoginRequest` (`provider=Guest`, `providerUserId=PlayerPrefs` 저장값)
+- 응답 DTO: `AuthLoginResponse`
 - 서버 연결 실패 시 더미 데이터로 폴백 (uid=`"dummy_user"`, nickname=`"Guest"`)
 - `Data`: 로드된 `UserData` 인스턴스
 - `IsLoaded`: 서버 로드 완료 여부
+
+### AuthLayer
+- 엔드포인트: `POST auth/login`, `POST auth/link`
+- `Login`: provider 계정 로그인. 기존 게스트 uid가 있으면 요청에 포함해 연동 가능
+- `Link`: 현재 uid에 provider 계정 연결
+- 실제 소셜 SDK 단계에서는 클라이언트 provider ID를 그대로 믿지 않고 서버 토큰 검증으로 교체해야 함
 
 ---
 
@@ -112,7 +154,8 @@ UserDataManager (MonoBehaviour 싱글톤, SharedScene)
 
 | 메서드 | 경로 | 요청 DTO | 응답 DTO | 사용처 |
 |--------|------|----------|----------|--------|
-| GET | `user/identity` | — | `UserData` | `IdentityLayer.Request()` |
+| POST | `auth/login` | `AuthLoginRequest` | `AuthLoginResponse` | `IdentityLayer.Request()`, `AuthLayer.Login()` |
+| POST | `auth/link` | `AuthLoginRequest` | `AuthLoginResponse` | `AuthLayer.Link()` |
 
 ---
 
