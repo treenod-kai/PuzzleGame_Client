@@ -46,7 +46,7 @@ ToolScene
     StageMapCellBrush        - 셀 페인팅 입력값
   Runtime
     StageMapToolController   - 툴씬 흐름 조정
-    StageMapGridView         - 셀/블럭/생성기 표시
+    StageMapGridView         - 코드 생성 셀/블럭/생성기 표시
     StageMapInputController  - 마우스 입력, 드래그 페인팅
     StageMapToolPanel        - 모드/스테이지/브러시/검증/저장 UI
     StageMapPlaytestLauncher - Save & Test 진입
@@ -136,7 +136,7 @@ Save & Test
 
 ### StageMapGridView
 
-- `StageData.cells`를 기준으로 그리드를 그린다.
+- `StageData.cells`를 기준으로 코드 생성 셀 뷰를 그린다.
 - 셀 타입, 블럭 ID, 패널 ID, 생성기 여부를 시각적으로 구분한다.
 - 런타임 퍼즐 View와 분리한다. 실제 게임용 `PuzzleBoardView`를 편집 도구로 재사용하지 않는다.
 
@@ -149,7 +149,7 @@ Save & Test
 
 ### StageMapToolPanel
 
-- 모드, 스테이지 번호, Rule, 셀 타입, 블럭, 패널, 생성기 브러시를 표시한다.
+- 모드, 스테이지 번호, Rule, 셀 타입, 블럭, 패널, 생성기 브러시와 테스트 단축키를 표시한다.
 - 검증 오류와 저장 결과를 표시한다.
 - 저장 로직을 직접 수행하지 않는다.
 

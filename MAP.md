@@ -9,6 +9,11 @@
 | 문서 | 내용 | 언제 읽을까? |
 |------|------|-------------|
 | `AGENTS.md` | Codex 작업 원칙, 코딩 규칙, 주의사항(Known Pitfalls), 작업별 참고 링크 | 항상 (기본 규칙) |
+| `AGENT_TEAM.md` | 단독 진행/팀 에이전트 구성 기준과 역할 | 작업 규모 판단 또는 에이전트 협업 시 |
+| `AGENT_ARCHITECT.md` | 아키텍처 에이전트 역할과 주의사항 | 설계 에이전트 구성 시 |
+| `AGENT_CODING.md` | 코딩 에이전트 역할과 주의사항 | 구현 에이전트 구성 시 |
+| `AGENT_REVIEW.md` | 리뷰 에이전트 역할과 점검 항목 | 리뷰 에이전트 구성 시 |
+| `AGENT_CONVENTION.md` | 코딩 컨벤션 에이전트 역할과 점검 항목 | 컨벤션 에이전트 구성 시 |
 | `CLAUDE.md` | Claude Code 호환용 기존 가이드 | Claude Code 사용 시 |
 | `ARCHITECTURE.md` | MVC, 데이터 흐름, 리플레이, 게임 흐름, 폴더 구조 | 아키텍처 이해 시 |
 | `ARCHITECTURE_FLOW.md` | 메인 대전/사이드 콘텐츠 게임 흐름 상세 | 게임 흐름 상세 확인 시 |

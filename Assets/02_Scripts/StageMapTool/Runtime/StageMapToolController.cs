@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using Puzzle.Core;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 /// <summary>
 /// ToolScene의 스테이지 맵 툴 전체 흐름을 조정합니다.
@@ -56,6 +57,14 @@ public class StageMapToolController : MonoBehaviour
     private void Start()
     {
         LoadCurrentStage();
+    }
+
+    /// <summary>
+    /// 테스트용 키보드 단축키를 처리합니다.
+    /// </summary>
+    private void Update()
+    {
+        HandleDebugShortcuts();
     }
 
     /// <summary>
@@ -138,6 +147,20 @@ public class StageMapToolController : MonoBehaviour
     }
 
     /// <summary>
+    /// 현재 규칙의 첫 번째 블럭 아이디를 반환합니다.
+    /// </summary>
+    /// <returns>첫 번째 블럭 아이디입니다.</returns>
+    public string GetFirstRuleBlockId()
+    {
+        if (_ruleBlocks == null || _ruleBlocks.Count == 0 || _ruleBlocks[0] == null)
+        {
+            return null;
+        }
+
+        return _ruleBlocks[0].blockId;
+    }
+
+    /// <summary>
     /// 현재 컨텍스트의 스테이지와 규칙을 로드합니다.
     /// </summary>
     private void LoadCurrentStage()
@@ -175,6 +198,66 @@ public class StageMapToolController : MonoBehaviour
         }
 
         return ruleContainer.blocks;
+    }
+
+    /// <summary>
+    /// 임시 테스트용 키보드 단축키를 처리합니다.
+    /// </summary>
+    private void HandleDebugShortcuts()
+    {
+        Keyboard keyboard = Keyboard.current;
+        if (keyboard == null)
+        {
+            return;
+        }
+
+        if (keyboard.digit1Key.wasPressedThisFrame)
+        {
+            ChangeBrush(CreateShortcutBrush(CellType.Normal));
+        }
+        else if (keyboard.digit2Key.wasPressedThisFrame)
+        {
+            ChangeBrush(CreateShortcutBrush(CellType.Close));
+        }
+        else if (keyboard.digit3Key.wasPressedThisFrame)
+        {
+            ChangeBrush(CreateShortcutBrush(CellType.Lock));
+        }
+        else if (keyboard.digit4Key.wasPressedThisFrame)
+        {
+            ChangeBrush(CreateShortcutBrush(CellType.Generator));
+        }
+        else if (keyboard.sKey.wasPressedThisFrame)
+        {
+            Save();
+        }
+        else if (keyboard.tKey.wasPressedThisFrame)
+        {
+            SaveAndTest();
+        }
+    }
+
+    /// <summary>
+    /// 단축키 입력에 사용할 브러시를 생성합니다.
+    /// </summary>
+    /// <param name="cellType">브러시에 적용할 셀 타입입니다.</param>
+    /// <returns>생성된 셀 브러시입니다.</returns>
+    private StageMapCellBrush CreateShortcutBrush(CellType cellType)
+    {
+        string blockId = GetFirstRuleBlockId();
+        StageMapCellBrush brush = new StageMapCellBrush
+        {
+            cellType = cellType,
+            blockId = cellType == CellType.Close || cellType == CellType.Generator ? null : blockId,
+            panelId = 0
+        };
+
+        if (cellType == CellType.Generator && !string.IsNullOrEmpty(blockId))
+        {
+            brush.generatorBlockIds.Add(blockId);
+        }
+
+        return brush;
     }
 
     /// <summary>

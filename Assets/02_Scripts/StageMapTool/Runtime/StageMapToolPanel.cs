@@ -26,6 +26,7 @@ public class StageMapToolPanel : MonoBehaviour
     public void Refresh(StageMapToolState state)
     {
         Debug.Log($"[StageMapToolPanel] UI 갱신: {state.PuzzleType} Stage_{state.StageId:000}");
+        Debug.Log("[StageMapToolPanel] 단축키: 1 Normal, 2 Close, 3 Lock, 4 Generator, S Save, T Save & Test");
     }
 
     /// <summary>
