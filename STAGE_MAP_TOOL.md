@@ -1,6 +1,8 @@
 # 스테이지 맵 툴 사양
 
-퍼즐 맵 제작 툴 구현 전 합의된 스펙을 기록한다. 작업 시작 시 `MAP.md`, `DATA.md`, `INGAME.md`와 함께 확인한다.
+퍼즐 맵 제작 툴 구현 전 합의된 스펙을 기록한다.
+`ToolScene` 구조와 컴포넌트 분해는 `STAGE_MAP_SCENE.md`를 따른다.
+작업 시작 시 `MAP.md`, `DATA.md`, `INGAME.md`와 함께 확인한다.
 
 ---
 
@@ -178,4 +180,4 @@ Tools/Puzzle/Stage Map Editor
 
 ## 다음 작업 프롬프트
 
-`STAGE_MAP_TOOL.md` 기준으로 StageStorage와 모드별 Resources 스테이지 로드 구조부터 구현해줘. MAP/DATA/INGAME 문서 확인 후 진행.`
+`STAGE_MAP_TOOL.md`와 `STAGE_MAP_SCENE.md` 기준으로 ToolScene 맵 툴 구조를 구현해줘. MAP/DATA/INGAME 문서 확인 후 진행.`

@@ -18,6 +18,7 @@
 | `DATA.md` | JSON 구조, GameSpec, Rule/Stage/Replay 데이터, 추가 방법 | 데이터/설정 작업 시 |
 | `DATA_SCHEMA.md` | GameSpec/ReplayData 상세 스키마 | 데이터 필드 상세 확인 시 |
 | `STAGE_MAP_TOOL.md` | 모드별 Resources 스테이지 로드 정책과 맵 툴 사양 | 스테이지 맵 툴 작업 시 |
+| `STAGE_MAP_SCENE.md` | ToolScene 기반 스테이지 맵 툴 아키텍처와 구현 분해 | 맵 툴씬 구조 설계/구현 시 |
 | `UI.md` | 도메인 시스템, 팝업/탭 생명주기, UIButton, 추가 방법 | UI 작업 시 |
 | `SCENE.md` | 씬 전환, SharedScene, 매니저, AssetManager, PoolManager | 인프라 작업 시 |
 | `SERVER.md` | 서버 통신, 공유 DLL, 네트워크 레이어, API 연동 | 서버 API 작업 시 |
@@ -46,7 +47,7 @@
 | 새 퍼즐 모드 추가 | `INGAME.md` → `DATA.md` |
 | 새 블럭 타입 추가 | `INGAME.md` → `DATA.md` |
 | 새 스테이지 추가 | `DATA.md` |
-| 스테이지 맵 툴 제작 | `STAGE_MAP_TOOL.md` → `DATA.md` → `INGAME.md` |
+| 스테이지 맵 툴 제작 | `STAGE_MAP_TOOL.md` → `STAGE_MAP_SCENE.md` → `DATA.md` → `INGAME.md` |
 | 매칭/점수 밸런싱 | `INGAME.md` → `DATA.md` |
 | 애니메이션 수정 | `INGAME.md` |
 | 보드 좌표/레이아웃 | `INGAME.md` |
