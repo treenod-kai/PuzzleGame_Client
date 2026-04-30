@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 02809c6ea1f9dbc46a94541e58b5b775
+guid: 09934733823eceb418d1584294574865
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 4295244689351144405
-    second: "ChatGPT Image 2026\uB144 4\uC6D4 28\uC77C \uC624\uD6C4 09_11_29_0"
+      213: 7726071803101444367
+    second: "ChatGPT Image 2026\uB144 4\uC6D4 30\uC77C \uC624\uC804 07_58_09_0"
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -51,7 +51,7 @@ TextureImporter:
   spriteMeshType: 1
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
-  spritePixelsToUnits: 1
+  spritePixelsToUnits: 2048
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
@@ -72,7 +72,7 @@ TextureImporter:
   platformSettings:
   - serializedVersion: 4
     buildTarget: DefaultTexturePlatform
-    maxTextureSize: 1024
+    maxTextureSize: 256
     resizeAlgorithm: 0
     textureFormat: -1
     textureCompression: 1
@@ -126,23 +126,23 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: "ChatGPT Image 2026\uB144 4\uC6D4 28\uC77C \uC624\uD6C4 09_11_29_0"
+      name: DarkPlus
       rect:
         serializedVersion: 2
-        x: 46
-        y: 0
-        width: 934
-        height: 1019
+        x: 252
+        y: 293
+        width: 517
+        height: 483
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 5d3782ca946cb9b30800000000000000
-      internalID: 4295244689351144405
+      spriteID: f09f505de55883b60800000000000000
+      internalID: 7726071803101444367
       vertices: []
       indices: 
       edges: []
@@ -151,7 +151,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: 1428f7a2758509e47b31fe1ae01f1fe9
     internalID: 0
     vertices: []
     indices: 
@@ -161,7 +161,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      "ChatGPT Image 2026\uB144 4\uC6D4 28\uC77C \uC624\uD6C4 09_11_29_0": 4295244689351144405
+      DarkPlus: 7726071803101444367
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

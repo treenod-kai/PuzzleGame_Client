@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: d91c9c051b285674caf3b2155206400c
+guid: 02809c6ea1f9dbc46a94541e58b5b775
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 461393032635344246
-    second: BuleButton_0
+      213: 4295244689351144405
+    second: "ChatGPT Image 2026\uB144 4\uC6D4 28\uC77C \uC624\uD6C4 09_11_29_0"
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -51,8 +51,8 @@ TextureImporter:
   spriteMeshType: 1
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
-  spritePixelsToUnits: 4
-  spriteBorder: {x: 500, y: 500, z: 500, w: 500}
+  spritePixelsToUnits: 1
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
   alphaIsTransparency: 1
@@ -126,23 +126,23 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: bulebutton
+      name: "ChatGPT Image 2026\uB144 4\uC6D4 28\uC77C \uC624\uD6C4 09_11_29_0"
       rect:
         serializedVersion: 2
-        x: 190
-        y: 142
-        width: 643
-        height: 716
+        x: 46
+        y: 39
+        width: 935
+        height: 935
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
-      border: {x: 300, y: 346, z: 300, w: 348}
+      border: {x: 390, y: 390, z: 390, w: 390}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 675e114c482376600800000000000000
-      internalID: 461393032635344246
+      spriteID: 5d3782ca946cb9b30800000000000000
+      internalID: 4295244689351144405
       vertices: []
       indices: 
       edges: []
@@ -151,8 +151,8 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 5e97eb03825dee720800000000000000
-    internalID: 1537655665
+    spriteID: bea51675a2f732a40a0e1cf21d1d53ed
+    internalID: 0
     vertices: []
     indices: 
     edges: []
@@ -161,7 +161,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      bulebutton: 461393032635344246
+      "ChatGPT Image 2026\uB144 4\uC6D4 28\uC77C \uC624\uD6C4 09_11_29_0": 4295244689351144405
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

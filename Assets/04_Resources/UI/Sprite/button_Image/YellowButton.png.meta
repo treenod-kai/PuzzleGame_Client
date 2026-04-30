@@ -1,7 +1,13 @@
 fileFormatVersion: 2
-guid: 804461bef59b141dba258fc997c8ca15
+guid: 0bb660e2e18746d458da032a7b49f8e9
 TextureImporter:
-  internalIDToNameTable: []
+  internalIDToNameTable:
+  - first:
+      213: 5431321606129080730
+    second: "ChatGPT Image 2026\uB144 4\uC6D4 25\uC77C \uC624\uC804 09_04_20_0"
+  - first:
+      213: -4344421253723092132
+    second: "ChatGPT Image 2026\uB144 4\uC6D4 25\uC77C \uC624\uC804 09_04_20_1"
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -43,17 +49,17 @@ TextureImporter:
   nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
-  spriteMode: 1
+  spriteMode: 2
   spriteExtrude: 1
   spriteMeshType: 1
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
-  spritePixelsToUnits: 1
-  spriteBorder: {x: 20, y: 40, z: 20, w: 20}
+  spritePixelsToUnits: 10
+  spriteBorder: {x: 500, y: 500, z: 500, w: 500}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
   alphaIsTransparency: 1
-  spriteTessellationDetail: -1
+  spriteTessellationDetail: 0
   textureType: 8
   textureShape: 1
   singleChannelComponent: 0
@@ -65,11 +71,11 @@ TextureImporter:
   ignorePngGamma: 0
   applyGammaDecoding: 0
   swizzle: 50462976
-  cookieLightType: 1
+  cookieLightType: 0
   platformSettings:
   - serializedVersion: 4
     buildTarget: DefaultTexturePlatform
-    maxTextureSize: 2048
+    maxTextureSize: 256
     resizeAlgorithm: 0
     textureFormat: -1
     textureCompression: 1
@@ -121,10 +127,39 @@ TextureImporter:
     forceMaximumCompressionQuality_BC6H_BC7: 0
   spriteSheet:
     serializedVersion: 2
-    sprites: []
+    sprites:
+    - serializedVersion: 2
+      name: YellowButton_0
+      rect:
+        serializedVersion: 2
+        x: 192
+        y: 198
+        width: 640
+        height: 660
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 300, y: 300, z: 300, w: 340}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 2e95109d4eca5364689cf4bb40887b65
+      internalID: 419056516
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
     outline: []
     customData: 
-    physicsShape: []
+    physicsShape:
+    - - {x: 312, y: 296}
+      - {x: 300, y: 336}
+      - {x: -308, y: 336}
+      - {x: -312, y: 332}
+      - {x: -312, y: -248}
+      - {x: -304, y: -308}
+      - {x: 312, y: -308}
     bones: []
     spriteID: 5e97eb03825dee720800000000000000
     internalID: 1537655665
@@ -135,7 +170,11 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      "ChatGPT Image 2026\uB144 4\uC6D4 25\uC77C \uC624\uC804 09_04_20_1": -4344421253723092132
+      YellowButton_0: 419056516
+      YellowButton_1: -1533169027
+      yellowButton: 5431321606129080730
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
