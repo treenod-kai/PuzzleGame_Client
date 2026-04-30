@@ -4,6 +4,22 @@
 
 ---
 
+## 2026-04-30 — UI 버튼 및 맵툴 재작업 기반
+
+### UI
+- **UIButton**: 클릭 시 DOTween 스케일 피드백 추가.
+- **UIButton**: 버튼 이미지 스프라이트 교체용 `SetSprite(Sprite)` 추가.
+- **UIButtonGroup**: 인스펙터 캐싱된 버튼 배열에 normal/selected 스프라이트 적용.
+
+### StageMapTool
+- **StageMapToolController**: 퍼즐 타입 선택을 `StageMapToolState`와 연결.
+- 마지막 퍼즐 타입은 새 맵 데이터가 없을 때만 `PlayerPrefs`에서 복원.
+- **StageMapToolController**: 셀/블럭/타일 편집 모드 선택과 하위 패널 전환 추가.
+- 기존 Runtime 뷰/입력/패널 스크립트와 `ToolScene` 제거, `Core` 모듈은 유지.
+- 다음 작업 메모는 `STAGE_MAP_TOOL.md`에 정리.
+
+---
+
 ## 2026-04-13 — 버그 수정 및 안전성 강화
 
 ### Null 안전성

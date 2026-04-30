@@ -21,6 +21,15 @@ public class StageMapToolState
     /// <summary> 현재 선택된 셀 브러시입니다. </summary>
     public StageMapCellBrush Brush { get; } = new StageMapCellBrush();
 
+    /// <summary> 현재 편집 중인 스테이지 데이터가 있는지 여부입니다. </summary>
+    public bool HasStageData
+    {
+        get
+        {
+            return StageData != null;
+        }
+    }
+
     /// <summary>
     /// 현재 편집 컨텍스트를 설정합니다.
     /// </summary>
@@ -31,6 +40,17 @@ public class StageMapToolState
     {
         PuzzleType = puzzleType;
         StageId = stageId;
+        RuleAddress = ruleAddress;
+    }
+
+    /// <summary>
+    /// 현재 편집 퍼즐 모드와 규칙 주소를 변경합니다.
+    /// </summary>
+    /// <param name="puzzleType">변경할 퍼즐 모드입니다.</param>
+    /// <param name="ruleAddress">변경할 규칙 Addressable 주소입니다.</param>
+    public void SetPuzzleType(PuzzleType puzzleType, string ruleAddress)
+    {
+        PuzzleType = puzzleType;
         RuleAddress = ruleAddress;
     }
 

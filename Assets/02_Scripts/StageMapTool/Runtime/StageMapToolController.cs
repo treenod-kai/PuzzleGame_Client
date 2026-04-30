@@ -1,317 +1,242 @@
-﻿using System.Collections.Generic;
 using Puzzle.Core;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 /// <summary>
-/// ToolScene의 스테이지 맵 툴 전체 흐름을 조정합니다.
+/// 스테이지 맵 툴 UI 입력을 상태 모듈에 연결하는 컨트롤러입니다.
 /// </summary>
 public class StageMapToolController : MonoBehaviour
 {
-    /// <summary> 기본 3매치 규칙 주소입니다. </summary>
-    private const string ThreeMatchRuleAddress = "ThreeMatchRule";
+    /// <summary>
+    /// 스테이지 맵 툴의 상위 편집 모드입니다.
+    /// </summary>
+    private enum StageMapEditMode
+    {
+        /// <summary> 셀 속성 편집 </summary>
+        Cell = 0,
 
-    /// <summary> 기본 링크 규칙 주소입니다. </summary>
-    private const string LinkRuleAddress = "LinkMatchRule";
+        /// <summary> 블럭 배치 편집 </summary>
+        Block = 1,
 
-    /// <summary> 기본 탭 매치 규칙 주소입니다. </summary>
-    private const string TapMatchRuleAddress = "TapMatchRule";
+        /// <summary> 타일/패널 편집 </summary>
+        Tile = 2
+    }
 
-    /// <summary> 그리드 표시 컴포넌트입니다. </summary>
-    private StageMapGridView _gridView;
+    #region 퍼즐 타입 선택
+[Header("PUZZLE TYPE COMPONENT")]
+    /// <summary> 마지막으로 선택한 퍼즐 타입 저장 키입니다. </summary>
+    private const string LastPuzzleTypeKey = "StageMapTool.LastPuzzleType";
 
-    /// <summary> 입력 처리 컴포넌트입니다. </summary>
-    private StageMapInputController _inputController;
+    /// <summary> 버튼 인덱스 순서에 대응하는 퍼즐 타입 목록입니다. </summary>
+    private static readonly PuzzleType[] PuzzleTypes =
+    {
+        PuzzleType.ThreeMatch,
+        PuzzleType.TapMatch,
+        PuzzleType.Link
+    };
 
-    /// <summary> 툴 UI 패널입니다. </summary>
-    private StageMapToolPanel _toolPanel;
+    /// <summary> 퍼즐 타입별 기본 규칙 주소 목록입니다. </summary>
+    private static readonly string[] RuleAddresses =
+    {
+        "ThreeMatchRule",
+        "TapMatchRule",
+        "LinkMatchRule"
+    };
 
-    /// <summary> 현재 편집 상태입니다. </summary>
+    /// <summary> 퍼즐 타입 버튼 선택 뷰 그룹입니다. </summary>
+    [SerializeField]
+    private UIButtonGroup _puzzleTypeButtonGroup;
+
+    /// <summary> 맵툴 현재 작업 상태 모듈입니다. </summary>
     private readonly StageMapToolState _state = new StageMapToolState();
 
-    /// <summary> JSON 로드/저장소입니다. </summary>
-    private readonly StageMapJsonRepository _repository = new StageMapJsonRepository();
-
-    /// <summary> 저장 전 검증기입니다. </summary>
-    private readonly StageMapValidator _validator = new StageMapValidator();
-
-    /// <summary> 저장 후 테스트 진입 실행기입니다. </summary>
-    private readonly StageMapPlaytestLauncher _playtestLauncher = new StageMapPlaytestLauncher();
-
-    /// <summary> 현재 규칙에서 허용하는 블럭 목록입니다. </summary>
-    private List<BlockData> _ruleBlocks;
+    /// <summary> 현재 선택된 퍼즐 타입입니다. </summary>
+    public PuzzleType CurrentPuzzleType
+    {
+        get
+        {
+            return _state.PuzzleType;
+        }
+    }
 
     /// <summary>
-    /// 필요한 컴포넌트 참조를 보장합니다.
+    /// 맵 데이터가 아직 없을 때 마지막 선택한 퍼즐 타입을 복원합니다.
     /// </summary>
     private void Awake()
     {
-        EnsureComponents();
-        _inputController.Initialize(this, _gridView);
-        _toolPanel.Initialize(this);
-    }
-
-    /// <summary>
-    /// 기본 스테이지를 로드합니다.
-    /// </summary>
-    private void Start()
-    {
-        LoadCurrentStage();
-    }
-
-    /// <summary>
-    /// 테스트용 키보드 단축키를 처리합니다.
-    /// </summary>
-    private void Update()
-    {
-        HandleDebugShortcuts();
-    }
-
-    /// <summary>
-    /// 퍼즐 모드를 변경하고 현재 스테이지를 다시 로드합니다.
-    /// </summary>
-    /// <param name="puzzleType">변경할 퍼즐 모드입니다.</param>
-    public void ChangePuzzleType(PuzzleType puzzleType)
-    {
-        _state.SetContext(puzzleType, _state.StageId, GetDefaultRuleAddress(puzzleType));
-        LoadCurrentStage();
-    }
-
-    /// <summary>
-    /// 스테이지 번호를 변경하고 현재 스테이지를 다시 로드합니다.
-    /// </summary>
-    /// <param name="stageId">변경할 스테이지 번호입니다.</param>
-    public void ChangeStageId(int stageId)
-    {
-        if (!StageStorage.IsValidStageId(stageId))
+        if (!_state.HasStageData)
         {
-            Debug.LogError($"[StageMapToolController] 스테이지 번호가 범위를 벗어났습니다. stageId: {stageId}");
+            ApplyPuzzleType(LoadLastPuzzleType(), false);
+        }
+
+        ApplyEditMode(_editMode);
+    }
+
+    /// <summary>
+    /// 퍼즐 타입 버튼 클릭 시 상태 모듈과 버튼 뷰를 갱신합니다.
+    /// UIButton 콜백 값은 0, 1, 2 인덱스를 사용합니다.
+    /// </summary>
+    /// <param name="val">선택한 퍼즐 타입 버튼 인덱스 문자열입니다.</param>
+    public void OnClickPuzzleType(string val)
+    {
+        if (!int.TryParse(val, out int index) || !IsValidPuzzleIndex(index))
+        {
+            Debug.LogError($"[StageMapToolController] 지원하지 않는 퍼즐 타입 인덱스입니다. value: {val}");
             return;
         }
 
-        _state.SetContext(_state.PuzzleType, stageId, _state.RuleAddress);
-        LoadCurrentStage();
+        ApplyPuzzleType(PuzzleTypes[index], true);
     }
 
     /// <summary>
-    /// 현재 브러시를 변경합니다.
+    /// 로드한 맵 파일의 퍼즐 타입을 상태와 버튼 뷰에 적용합니다.
+    /// 파일 데이터가 우선이므로 마지막 선택 PlayerPrefs는 갱신하지 않습니다.
     /// </summary>
-    /// <param name="brush">적용할 새 브러시입니다.</param>
-    public void ChangeBrush(StageMapCellBrush brush)
+    /// <param name="puzzleType">로드한 맵 파일의 퍼즐 타입입니다.</param>
+    public void ApplyLoadedPuzzleType(PuzzleType puzzleType)
     {
-        _state.SetBrush(brush);
+        ApplyPuzzleType(puzzleType, false);
     }
 
     /// <summary>
-    /// 지정한 좌표에 현재 브러시를 적용합니다.
+    /// 퍼즐 타입을 상태 모듈과 버튼 뷰에 적용합니다.
     /// </summary>
-    /// <param name="x">수정할 X 좌표입니다.</param>
-    /// <param name="y">수정할 Y 좌표입니다.</param>
-    public void PaintCell(int x, int y)
+    /// <param name="puzzleType">적용할 퍼즐 타입입니다.</param>
+    /// <param name="savePreference">마지막 선택값으로 저장할지 여부입니다.</param>
+    private void ApplyPuzzleType(PuzzleType puzzleType, bool savePreference)
     {
-        if (!_state.PaintCell(x, y))
+        int index = GetPuzzleTypeIndex(puzzleType);
+        if (!IsValidPuzzleIndex(index))
+        {
+            puzzleType = PuzzleType.ThreeMatch;
+            index = 0;
+        }
+
+        _state.SetPuzzleType(puzzleType, RuleAddresses[index]);
+        _puzzleTypeButtonGroup?.Select(index);
+
+        if (savePreference)
+        {
+            PlayerPrefs.SetInt(LastPuzzleTypeKey, (int)puzzleType);
+            PlayerPrefs.Save();
+        }
+    }
+
+    /// <summary>
+    /// 마지막으로 선택한 퍼즐 타입을 불러옵니다.
+    /// </summary>
+    /// <returns>저장된 퍼즐 타입입니다.</returns>
+    private PuzzleType LoadLastPuzzleType()
+    {
+        return (PuzzleType)PlayerPrefs.GetInt(LastPuzzleTypeKey, (int)PuzzleType.ThreeMatch);
+    }
+
+    /// <summary>
+    /// 퍼즐 타입에 대응하는 버튼 인덱스를 반환합니다.
+    /// </summary>
+    /// <param name="puzzleType">검색할 퍼즐 타입입니다.</param>
+    /// <returns>버튼 인덱스입니다. 없으면 -1입니다.</returns>
+    private int GetPuzzleTypeIndex(PuzzleType puzzleType)
+    {
+        for (int i = 0; i < PuzzleTypes.Length; i++)
+        {
+            if (PuzzleTypes[i] == puzzleType)
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    /// <summary>
+    /// 퍼즐 타입 버튼 인덱스가 유효한지 확인합니다.
+    /// </summary>
+    /// <param name="index">검사할 버튼 인덱스입니다.</param>
+    /// <returns>유효하면 true입니다.</returns>
+    private bool IsValidPuzzleIndex(int index)
+    {
+        return index >= 0 && index < PuzzleTypes.Length;
+    }
+
+    #endregion
+
+    #region 편집 모드 선택
+
+[Header("EDIT BUTTON COMPONENT")]
+    /// <summary> 편집 모드 버튼 선택 뷰 그룹입니다. </summary>
+    [SerializeField]
+    private UIButtonGroup _editModeButtonGroup;
+
+    /// <summary> 셀 편집 하위 버튼 패널입니다. </summary>
+    [SerializeField]
+    private GameObject _cellEditPanel;
+
+    /// <summary> 블럭 편집 하위 버튼 패널입니다. </summary>
+    [SerializeField]
+    private GameObject _blockEditPanel;
+
+    /// <summary> 타일 편집 하위 버튼 패널입니다. </summary>
+    [SerializeField]
+    private GameObject _tileEditPanel;
+
+    /// <summary> 현재 선택된 편집 모드입니다. </summary>
+    private StageMapEditMode _editMode = StageMapEditMode.Cell;
+
+    /// <summary>
+    /// 편집 모드 버튼 클릭 시 선택 상태와 하위 패널 노출을 갱신합니다.
+    /// UIButton 콜백 값은 0, 1, 2 인덱스를 사용합니다.
+    /// </summary>
+    /// <param name="val">선택한 편집 모드 버튼 인덱스 문자열입니다.</param>
+    public void OnClickEditMode(string val)
+    {
+        if (!int.TryParse(val, out int index) || !IsValidEditModeIndex(index))
+        {
+            Debug.LogError($"[StageMapToolController] 지원하지 않는 편집 모드 인덱스입니다. value: {val}");
+            return;
+        }
+
+        ApplyEditMode((StageMapEditMode)index);
+    }
+
+    /// <summary>
+    /// 편집 모드를 적용하고 버튼 및 하위 패널 상태를 갱신합니다.
+    /// </summary>
+    /// <param name="editMode">적용할 편집 모드입니다.</param>
+    private void ApplyEditMode(StageMapEditMode editMode)
+    {
+        _editMode = editMode;
+        int index = (int)_editMode;
+
+        _editModeButtonGroup?.Select(index);
+        SetPanelActive(_cellEditPanel, _editMode == StageMapEditMode.Cell);
+        SetPanelActive(_blockEditPanel, _editMode == StageMapEditMode.Block);
+        SetPanelActive(_tileEditPanel, _editMode == StageMapEditMode.Tile);
+    }
+
+    /// <summary>
+    /// 패널 활성 상태를 변경합니다.
+    /// </summary>
+    /// <param name="panel">활성 상태를 바꿀 패널입니다.</param>
+    /// <param name="isActive">활성화 여부입니다.</param>
+    private void SetPanelActive(GameObject panel, bool isActive)
+    {
+        if (panel == null)
         {
             return;
         }
 
-        _gridView.RefreshCell(x, y, _state.GetCell(x, y));
+        panel.SetActive(isActive);
     }
 
     /// <summary>
-    /// 현재 스테이지를 기본 Resources 경로에 저장합니다.
+    /// 편집 모드 버튼 인덱스가 유효한지 확인합니다.
     /// </summary>
-    /// <returns>저장 성공 여부입니다.</returns>
-    public bool Save()
+    /// <param name="index">검사할 버튼 인덱스입니다.</param>
+    /// <returns>유효하면 true입니다.</returns>
+    private bool IsValidEditModeIndex(int index)
     {
-        StageMapValidationResult result = _validator.Validate(_state.StageData, _state.StageId, _ruleBlocks);
-        _toolPanel.ShowValidationResult(result);
-        if (!result.IsValid())
-        {
-            return false;
-        }
-
-        return _repository.SaveToResources(_state.PuzzleType, _state.StageId, _state.StageData);
+        return index >= 0 && index <= (int)StageMapEditMode.Tile;
     }
 
-    /// <summary>
-    /// 현재 스테이지를 저장한 뒤 실제 게임 씬으로 테스트 진입합니다.
-    /// </summary>
-    public void SaveAndTest()
-    {
-        if (!Save())
-        {
-            return;
-        }
-
-        _playtestLauncher.Run(_state.RuleAddress, _state.PuzzleType, _state.StageId);
-    }
-
-    /// <summary>
-    /// 현재 규칙의 첫 번째 블럭 아이디를 반환합니다.
-    /// </summary>
-    /// <returns>첫 번째 블럭 아이디입니다.</returns>
-    public string GetFirstRuleBlockId()
-    {
-        if (_ruleBlocks == null || _ruleBlocks.Count == 0 || _ruleBlocks[0] == null)
-        {
-            return null;
-        }
-
-        return _ruleBlocks[0].blockId;
-    }
-
-    /// <summary>
-    /// 현재 컨텍스트의 스테이지와 규칙을 로드합니다.
-    /// </summary>
-    private void LoadCurrentStage()
-    {
-        if (string.IsNullOrEmpty(_state.RuleAddress))
-        {
-            _state.SetContext(_state.PuzzleType, _state.StageId, GetDefaultRuleAddress(_state.PuzzleType));
-        }
-
-        _ruleBlocks = LoadRuleBlocks(_state.RuleAddress);
-        _state.SetStage(_repository.LoadOrCreate(_state.PuzzleType, _state.StageId));
-        _gridView.Rebuild(_state.StageData);
-        _toolPanel.Refresh(_state);
-    }
-
-    /// <summary>
-    /// 규칙 JSON에서 블럭 목록을 로드합니다.
-    /// </summary>
-    /// <param name="ruleAddress">로드할 규칙 Addressable 주소입니다.</param>
-    /// <returns>규칙에 포함된 블럭 목록입니다.</returns>
-    private List<BlockData> LoadRuleBlocks(string ruleAddress)
-    {
-        TextAsset ruleAsset = AssetManager.Instance.LoadAsset<TextAsset>(ruleAddress);
-        if (ruleAsset == null)
-        {
-            Debug.LogError($"[StageMapToolController] 규칙 에셋 로드 실패: {ruleAddress}");
-            return null;
-        }
-
-        GameRuleContainer ruleContainer = JsonUtility.FromJson<GameRuleContainer>(ruleAsset.text);
-        if (ruleContainer == null)
-        {
-            Debug.LogError($"[StageMapToolController] 규칙 JSON 파싱 실패: {ruleAddress}");
-            return null;
-        }
-
-        return ruleContainer.blocks;
-    }
-
-    /// <summary>
-    /// 임시 테스트용 키보드 단축키를 처리합니다.
-    /// </summary>
-    private void HandleDebugShortcuts()
-    {
-        Keyboard keyboard = Keyboard.current;
-        if (keyboard == null)
-        {
-            return;
-        }
-
-        if (keyboard.digit1Key.wasPressedThisFrame)
-        {
-            ChangeBrush(CreateShortcutBrush(CellType.Normal));
-        }
-        else if (keyboard.digit2Key.wasPressedThisFrame)
-        {
-            ChangeBrush(CreateShortcutBrush(CellType.Close));
-        }
-        else if (keyboard.digit3Key.wasPressedThisFrame)
-        {
-            ChangeBrush(CreateShortcutBrush(CellType.Lock));
-        }
-        else if (keyboard.digit4Key.wasPressedThisFrame)
-        {
-            ChangeBrush(CreateShortcutBrush(CellType.Generator));
-        }
-        else if (keyboard.sKey.wasPressedThisFrame)
-        {
-            Save();
-        }
-        else if (keyboard.tKey.wasPressedThisFrame)
-        {
-            SaveAndTest();
-        }
-    }
-
-    /// <summary>
-    /// 단축키 입력에 사용할 브러시를 생성합니다.
-    /// </summary>
-    /// <param name="cellType">브러시에 적용할 셀 타입입니다.</param>
-    /// <returns>생성된 셀 브러시입니다.</returns>
-    private StageMapCellBrush CreateShortcutBrush(CellType cellType)
-    {
-        string blockId = GetFirstRuleBlockId();
-        StageMapCellBrush brush = new StageMapCellBrush
-        {
-            cellType = cellType,
-            blockId = cellType == CellType.Close || cellType == CellType.Generator ? null : blockId,
-            panelId = 0
-        };
-
-        if (cellType == CellType.Generator && !string.IsNullOrEmpty(blockId))
-        {
-            brush.generatorBlockIds.Add(blockId);
-        }
-
-        return brush;
-    }
-
-    /// <summary>
-    /// 퍼즐 모드에 대응하는 기본 규칙 주소를 반환합니다.
-    /// </summary>
-    /// <param name="puzzleType">규칙 주소를 구할 퍼즐 모드입니다.</param>
-    /// <returns>기본 규칙 Addressable 주소입니다.</returns>
-    private string GetDefaultRuleAddress(PuzzleType puzzleType)
-    {
-        switch (puzzleType)
-        {
-            case PuzzleType.Link:
-                return LinkRuleAddress;
-            case PuzzleType.TapMatch:
-                return TapMatchRuleAddress;
-            case PuzzleType.ThreeMatch:
-            default:
-                return ThreeMatchRuleAddress;
-        }
-    }
-
-    /// <summary>
-    /// 씬에 필요한 컴포넌트가 없으면 현재 오브젝트에 추가합니다.
-    /// </summary>
-    private void EnsureComponents()
-    {
-        if (_gridView == null)
-        {
-            _gridView = GetComponent<StageMapGridView>();
-        }
-
-        if (_gridView == null)
-        {
-            _gridView = gameObject.AddComponent<StageMapGridView>();
-        }
-
-        if (_inputController == null)
-        {
-            _inputController = GetComponent<StageMapInputController>();
-        }
-
-        if (_inputController == null)
-        {
-            _inputController = gameObject.AddComponent<StageMapInputController>();
-        }
-
-        if (_toolPanel == null)
-        {
-            _toolPanel = GetComponent<StageMapToolPanel>();
-        }
-
-        if (_toolPanel == null)
-        {
-            _toolPanel = gameObject.AddComponent<StageMapToolPanel>();
-        }
-    }
+    #endregion
 }

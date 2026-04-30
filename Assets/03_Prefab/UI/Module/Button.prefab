@@ -54,6 +54,7 @@ MonoBehaviour:
   _unityButton: {fileID: 6152134135614511035}
   _callbackName: 
   _callbackValue: 
+  _buttonImage: {fileID: 160604638974810638}
 --- !u!1 &8475507098319021979
 GameObject:
   m_ObjectHideFlags: 0

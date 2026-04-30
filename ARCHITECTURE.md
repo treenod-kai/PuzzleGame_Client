@@ -14,7 +14,6 @@
 ### 콘텐츠 구조
 - **메인 게임(대전 퍼즐)**: 플레이 진입 시 상대 유저의 리플레이 데이터를 다운로드/로드하고, 플레이어가 같은 조건의 퍼즐을 직접 플레이하여 점수 환산 결과로 랭킹을 구성한다.
 - **사이드 콘텐츠(스테이지형 게임)**: ThreeMatch, Link, TapMatch 3가지 모드별 스테이지를 순차 공략하는 별도 콘텐츠다. 메인 대전 진입 흐름과 분리한다.
-- 스테이지형 콘텐츠는 기본 스테이지 제작/검증/밸런싱을 위해 맵 툴을 사용한다. 상세 사양은 `STAGE_MAP_TOOL.md`를 따른다.
 
 ### 재화/경제 (추후)
 - 게임 내 재화는 **별(★) 단일 통화**. 스테이지 클리어 시 쌓인 별이 재화가 된다.
@@ -170,7 +169,7 @@
 ## 9. 폴더 구조 (Assets 기준)
 
 ```
-01_Scenes/    - SharedScene, TitleScene, LoadingScene, LobbyScene, GameScene, ToolScene
+01_Scenes/    - SharedScene, TitleScene, LoadingScene, LobbyScene, GameScene
 02_Scripts/
   PuzzleCore/ - Module(Model) / View / Controller
   Manager/    - 시스템 매니저 전체
