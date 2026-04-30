@@ -49,6 +49,7 @@
 | 코딩 에이전트 | 아키텍처 설계를 바탕으로 실제 구현 | `AGENT_CODING.md` |
 | 리뷰 에이전트 | 버그, 회귀, 최적화, 결정론 위험 점검 및 수정 | `AGENT_REVIEW.md` |
 | 코딩 컨벤션 에이전트 | 주석, 네이밍, 스타일, 저장소 규칙 점검 및 수정 | `AGENT_CONVENTION.md` |
+| 이미지 프롬프트 에이전트 | 프로젝트 톤에 맞는 이미지 생성 전용 프롬프트 작성 | `AGENT_IMAGE_PROMPT.md` |
 
 ---
 
@@ -72,6 +73,7 @@
 | 코딩 에이전트 | `MAP.md`, `AGENTS.md`, 대상 영역 문서 |
 | 리뷰 에이전트 | `MAP.md`, `AGENTS.md`, `CONVENTIONS.md`, 대상 영역 문서 |
 | 코딩 컨벤션 에이전트 | `MAP.md`, `AGENTS.md`, `CONVENTIONS.md`, 대상 영역 문서 |
+| 이미지 프롬프트 에이전트 | `MAP.md`, `AGENTS.md`, `README.md`, 필요 시 `UI.md`/`INGAME.md`/`DATA.md` |
 
 ---
 

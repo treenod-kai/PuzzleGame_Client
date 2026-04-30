@@ -14,6 +14,7 @@
 | `AGENT_CODING.md` | 코딩 에이전트 역할과 주의사항 | 구현 에이전트 구성 시 |
 | `AGENT_REVIEW.md` | 리뷰 에이전트 역할과 점검 항목 | 리뷰 에이전트 구성 시 |
 | `AGENT_CONVENTION.md` | 코딩 컨벤션 에이전트 역할과 점검 항목 | 컨벤션 에이전트 구성 시 |
+| `AGENT_IMAGE_PROMPT.md` | 이미지 생성 전용 프롬프트 에이전트 역할과 산출 형식 | 이미지 에셋 프롬프트 작성 시 |
 | `CLAUDE.md` | Claude Code 호환용 기존 가이드 | Claude Code 사용 시 |
 | `ARCHITECTURE.md` | MVC, 데이터 흐름, 리플레이, 게임 흐름, 폴더 구조 | 아키텍처 이해 시 |
 | `ARCHITECTURE_FLOW.md` | 메인 대전/사이드 콘텐츠 게임 흐름 상세 | 게임 흐름 상세 확인 시 |
