@@ -7,7 +7,10 @@ using System.Text;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.InputSystem.Controls;
+using UnityEngine.InputSystem.EnhancedTouch;
+using UnityEngine.InputSystem.LowLevel;
+using EnhancedTouch = UnityEngine.InputSystem.EnhancedTouch.Touch;
+using InputTouchPhase = UnityEngine.InputSystem.TouchPhase;
 
 /// <summary>
 /// 유저의 입력을 감지하고 퍼즐 보드 모델 및 뷰와 통신하여 전체 게임 루프를 제어하는 컨트롤러 클래스입니다.
@@ -63,6 +66,15 @@ public class PuzzleGameController : MonoBehaviour
 
     /// <summary> 현재 드래그 중 마지막으로 머문 좌표 (되돌리기 등 경로 재진입 허용을 위해) </summary>
     private GridPos? _lastHoveredPos = null;
+    /// <summary>한 렌더 프레임 사이에 들어온 포인터 좌표와 종료 사유를 수신 순서대로 보관합니다.</summary>
+    private readonly Queue<(Vector2 Position, InputTouchPhase Phase)> _pointerSamples = new Queue<(Vector2, InputTouchPhase)>();
+    private Finger _inputFinger;
+    private Mouse _inputMouse;
+    private bool _inputFocused = true;
+    private bool _inputPaused;
+    private bool _hasBoardInput;
+    private static int _inputControllerCount;
+    private static bool _previousDisableMerging;
 
     /// <summary> 보드가 정상적으로 초기화되었는지 여부 </summary>
     private bool _isInitialized = false;
@@ -88,6 +100,59 @@ public class PuzzleGameController : MonoBehaviour
 
     /// <summary> 점수 텍스트 갱신 빈도 제어용 (이전 표시된 점수 값) </summary>
     private int _lastDisplayedScore = -1;
+
+    /// <summary>입력 이벤트를 구독하고 첫 컨트롤러가 이동 이벤트 병합을 중지합니다.</summary>
+    private void OnEnable()
+    {
+        // 같은 프레임의 연속 이동도 링크가 지나간 서로 다른 칸일 수 있습니다.
+        if (_inputControllerCount++ == 0)
+        {
+            _previousDisableMerging = InputSystem.settings.disableRedundantEventsMerging;
+            InputSystem.settings.disableRedundantEventsMerging = true;
+        }
+        InputSystem.onEvent += RecordMouse;
+        InputSystem.onDeviceChange += OnInputDeviceChange;
+        EnhancedTouchSupport.Enable();
+        EnhancedTouch.onFingerDown += RecordTouch;
+        EnhancedTouch.onFingerMove += RecordTouch;
+        EnhancedTouch.onFingerUp += RecordTouch;
+    }
+
+    /// <summary>진행 중인 선택을 정리하고 터치 구독을 해제합니다.</summary>
+    private void OnDisable()
+    {
+        EnhancedTouch.onFingerDown -= RecordTouch;
+        EnhancedTouch.onFingerMove -= RecordTouch;
+        EnhancedTouch.onFingerUp -= RecordTouch;
+        EnhancedTouchSupport.Disable();
+        InputSystem.onEvent -= RecordMouse;
+        InputSystem.onDeviceChange -= OnInputDeviceChange;
+        if (--_inputControllerCount == 0 && InputSystem.settings.disableRedundantEventsMerging)
+        {
+            InputSystem.settings.disableRedundantEventsMerging = _previousDisableMerging;
+        }
+        CancelPointer();
+    }
+
+    /// <summary>게임 창이 포커스 <paramref name="focused"/>를 잃으면 진행 중인 입력을 취소합니다.</summary>
+    private void OnApplicationFocus(bool focused)
+    {
+        _inputFocused = focused;
+        if (!focused)
+        {
+            CancelPointer();
+        }
+    }
+
+    /// <summary>앱이 일시정지되면 <paramref name="paused"/> 상태를 기록하고 진행 중인 조작을 취소합니다.</summary>
+    private void OnApplicationPause(bool paused)
+    {
+        _inputPaused = paused;
+        if (paused)
+        {
+            CancelPointer();
+        }
+    }
 
     /// <summary>
     /// 게임 시작 시 스테이지 데이터를 로드하고 보드를 초기화합니다.
@@ -203,17 +268,7 @@ public class PuzzleGameController : MonoBehaviour
 
         if (_board.State != BoardState.Finish)
         {
-            bool hasPosition = ReadPointer(out Vector2 screenPosition, out bool released);
-            if (hasPosition && boardView != null && !boardView.IsAnimating)
-            {
-                InputBlockAt(screenPosition);
-            }
-            if (released)
-            {
-                // 한 프레임 안에 끝난 클릭도 좌표를 먼저 기록한 뒤 종료합니다.
-                _board.InputEnd();
-                _lastHoveredPos = null;
-            }
+            ReadPointer();
         }
         UpdateTimerUI();
         UpdateScoreUI();
@@ -546,32 +601,145 @@ public class PuzzleGameController : MonoBehaviour
         return null;
     }
 
-    /// <summary><paramref name="position"/>에 입력 좌표, <paramref name="released"/>에 같은 장치의 해제 여부를 담고 좌표 입력이 있는지 반환합니다.</summary>
-    private static bool ReadPointer(out Vector2 position, out bool released)
+    /// <summary>먼저 누른 손가락 <paramref name="finger"/>의 터치만 복사해 같은 프레임에 겹친 이동과 해제도 보존합니다.</summary>
+    private void RecordTouch(Finger finger)
     {
-        Touchscreen screen = Touchscreen.current;
-        if (screen != null)
+        if (!CanReceivePointer || _inputMouse != null)
         {
-            TouchControl touch = screen.primaryTouch;
-            bool held = touch.press.isPressed;
-            released = touch.press.wasReleasedThisFrame;
-            bool pressed = touch.press.wasPressedThisFrame;
-            if (held || pressed || released)
-            {
-                position = held ? touch.position.ReadValue() : touch.startPosition.ReadValue();
-                return held || pressed;
-            }
+            return;
         }
-        Mouse mouse = Mouse.current;
-        if (mouse != null)
+        EnhancedTouch touch = finger.lastTouch;
+        if (_inputFinger == null && touch.phase == InputTouchPhase.Began)
         {
-            position = mouse.position.ReadValue();
-            released = mouse.leftButton.wasReleasedThisFrame;
-            return mouse.leftButton.wasPressedThisFrame || mouse.leftButton.isPressed;
+            _inputFinger = finger;
         }
-        position = Vector2.zero;
-        released = false;
-        return false;
+        if (_inputFinger != finger)
+        {
+            return;
+        }
+        _pointerSamples.Enqueue((touch.screenPosition, touch.phase));
+        if (touch.phase == InputTouchPhase.Ended || touch.phase == InputTouchPhase.Canceled)
+        {
+            _inputFinger = null;
+        }
+    }
+
+    /// <summary>포커스를 가진 플레이어 보드만 새 조작을 받아들입니다.</summary>
+    private bool CanReceivePointer => _inputFocused && !_inputPaused && _isInitialized && _board.State != BoardState.Finish;
+
+    /// <summary>마우스 <paramref name="device"/>의 상태 <paramref name="inputEvent"/>에서 누른 위치부터 해제까지 순서대로 복사합니다.</summary>
+    private void RecordMouse(InputEventPtr inputEvent, InputDevice device)
+    {
+        if (!(device is Mouse mouse) || !CanReceivePointer || _inputFinger != null ||
+            (!inputEvent.IsA<StateEvent>() && !inputEvent.IsA<DeltaStateEvent>()))
+        {
+            return;
+        }
+        bool wasPressed = mouse.leftButton.isPressed;
+        bool pressed = wasPressed;
+        if (mouse.leftButton.ReadValueFromEvent(inputEvent, out float value))
+        {
+            pressed = value >= mouse.leftButton.pressPointOrDefault;
+        }
+        if (_inputMouse == null && pressed && !wasPressed)
+        {
+            _inputMouse = mouse;
+        }
+        if (_inputMouse != mouse)
+        {
+            return;
+        }
+        // 델타 이벤트에는 좌표의 한 축 또는 버튼만 들어올 수 있습니다.
+        Vector2 position = mouse.position.ReadValue();
+        if (mouse.position.x.ReadValueFromEvent(inputEvent, out float x))
+        {
+            position.x = x;
+        }
+        if (mouse.position.y.ReadValueFromEvent(inputEvent, out float y))
+        {
+            position.y = y;
+        }
+        _pointerSamples.Enqueue((position, pressed ? InputTouchPhase.Moved : InputTouchPhase.Ended));
+        if (!pressed)
+        {
+            _inputMouse = null;
+        }
+    }
+
+    /// <summary>현재 조작 중인 <paramref name="device"/>의 <paramref name="change"/>가 분리나 초기화이면 선택을 해제합니다.</summary>
+    private void OnInputDeviceChange(InputDevice device, InputDeviceChange change)
+    {
+        if (device != _inputMouse && (_inputFinger == null || device != _inputFinger.screen))
+        {
+            return;
+        }
+        if (change == InputDeviceChange.Removed || change == InputDeviceChange.Disconnected ||
+            change == InputDeviceChange.Disabled || change == InputDeviceChange.SoftReset || change == InputDeviceChange.HardReset)
+        {
+            // 같은 프레임에 이미 끝난 조작을 보존하고 현재 제스처의 끝에만 취소를 붙입니다.
+            _pointerSamples.Enqueue((Vector2.zero, InputTouchPhase.Canceled));
+            _inputFinger = null;
+            _inputMouse = null;
+        }
+    }
+
+    /// <summary>포인터 표본을 받은 순서대로 처리하고, 계속 누른 장치는 현재 위치에서 선택을 갱신합니다.</summary>
+    private void ReadPointer()
+    {
+        if (_pointerSamples.Count > 0)
+        {
+            DrainPointerSamples();
+            return;
+        }
+        if (_inputFinger != null)
+        {
+            ProcessPointerSample(_inputFinger.screenPosition, InputTouchPhase.Stationary);
+        }
+        else if (_inputMouse != null)
+        {
+            ProcessPointerSample(_inputMouse.position.ReadValue(), InputTouchPhase.Stationary);
+        }
+    }
+
+    /// <summary>현재 프레임까지 모인 입력을 수신한 순서로 모델에 전달합니다.</summary>
+    private void DrainPointerSamples()
+    {
+        while (_pointerSamples.Count > 0)
+        {
+            (Vector2 Position, InputTouchPhase Phase) sample = _pointerSamples.Dequeue();
+            ProcessPointerSample(sample.Position, sample.Phase);
+        }
+    }
+
+    /// <summary><paramref name="phase"/>에 맞춰 <paramref name="position"/>의 마지막 칸까지 전달한 뒤 확정하거나 취소합니다.</summary>
+    private void ProcessPointerSample(Vector2 position, InputTouchPhase phase)
+    {
+        bool canceled = phase == InputTouchPhase.Canceled;
+        if (!canceled && boardView != null && !boardView.IsAnimating)
+        {
+            InputBlockAt(position);
+        }
+        if (canceled || phase == InputTouchPhase.Ended)
+        {
+            _board.InputEnd(canceled);
+            // 3매치의 첫 탭은 정상 해제 뒤에도 선택이 남아 포커스를 잃으면 취소해야 합니다.
+            _hasBoardInput = _hasBoardInput && !canceled && _board is ThreeMatchPuzzleBoard;
+            _lastHoveredPos = null;
+        }
+    }
+
+    /// <summary>중단된 조작이 다음 포커스나 터치에서 확정되지 않도록 현재 선택을 해제합니다.</summary>
+    private void CancelPointer()
+    {
+        DrainPointerSamples();
+        if (_hasBoardInput)
+        {
+            _board.InputEnd(true);
+        }
+        _hasBoardInput = false;
+        _inputFinger = null;
+        _inputMouse = null;
+        _lastHoveredPos = null;
     }
 
     /// <summary><paramref name="screenPosition"/>에서 플레이어 보드의 새 블록을 찾아 입력합니다.</summary>
@@ -598,6 +766,7 @@ public class PuzzleGameController : MonoBehaviour
             if (pos.HasValue && pos.Value != _lastHoveredPos)
             {
                 _lastHoveredPos = pos.Value;
+                _hasBoardInput = true;
                 blockCollider.OnClickBlock();
                 break;
             }

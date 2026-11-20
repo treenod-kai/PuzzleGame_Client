@@ -11,7 +11,7 @@
 
 | 찾는 콘텐츠 | 담당 C# 파일 | 주요 메서드·타입·멤버 |
 |---|---|---|
-| 입력, 게임 루프, 종료 후 저장, 화면 배치와 안내 | [PuzzleGameController.cs](../../02_Scripts/PuzzleCore/Controller/PuzzleGameController.cs) | `ReadPointer`, `FixedUpdate`(양쪽 공통 틱), `SaveReplay`, `GetStageResult`, `GetBattleResult`, `UpdatePlayHint`, `OnClickRetry`, `OnClickLobby`, `UpdateTimerUI`, `RefreshScreenLayout`, `PuzzleHudPlacement`, `PuzzleHudText` |
+| 입력, 게임 루프, 종료 후 저장, 화면 배치와 안내 | [PuzzleGameController.cs](../../02_Scripts/PuzzleCore/Controller/PuzzleGameController.cs) | `RecordTouch`, `RecordMouse`, `ReadPointer`, `FixedUpdate`(양쪽 공통 틱), `SaveReplay`, `GetStageResult`, `GetBattleResult`, `UpdatePlayHint`, `OnClickRetry`, `OnClickLobby`, `UpdateTimerUI`, `RefreshScreenLayout`, `PuzzleHudPlacement`, `PuzzleHudText` |
 | 보드 공통 계약·매칭과 폭탄 연쇄 파괴의 연출 순서 | [IPuzzleBoard.cs](../../02_Scripts/PuzzleCore/Module/Board/IPuzzleBoard.cs) | `IPuzzleBoard`, `BoardViewAction`, `MatchDestructionGroup.DestroyMatches`, `BoardViewAction.IsPivotNeighbor` |
 | 3매치 스왑·매칭·낙하·셔플 | [ThreeMatchPuzzleBoard.cs](../../02_Scripts/PuzzleCore/Module/Board/ThreeMatchPuzzleBoard.cs) | `ProcessSwapInput`, `FindMatches`, `ProcessFallingAndFilling`, `FillFromGenerator`, `CheckAndShuffleIfNoMoves`, `MatchTargetsExpanding` |
 | 드래그 링크 성립 기준·연결·해제·낙하·막힌 보드 복구·매칭 대상 확장 | [LinkPuzzleBoard.cs](../../02_Scripts/PuzzleCore/Module/Board/LinkPuzzleBoard.cs) | `MinimumLinkLength`, `Input`, `InputEnd`, `FixedUpdate`, `UpdateState`, `ProcessFallingAndFilling`, `FillFromGenerator`, `HasEmptyCell`, `EnsurePossibleLink`, `HasNoPossibleLink`, `MatchTargetsExpanding` |
@@ -44,7 +44,7 @@
 
 ### Controller (PuzzleGameController)
 - `Update()`: 마우스/터치 입력 → `Physics2D.OverlapPoint` → `PuzzleBlockCollider` → `board.Input(gridPos)`
-- 포인터 릴리즈 시 `board.InputEnd()` 호출
+- 먼저 누른 손가락이나 마우스의 입력을 수신 순서대로 처리한다. 한 렌더 프레임 안에서 움직였다 떼도 경로를 전달한 뒤 확정한다. 포커스 상실·앱 일시정지·입력 장치 분리 시 이미 끝난 조작은 보존하고 진행 중인 선택을 취소한다.
 - `FixedUpdate()`: `board.FixedUpdate()` 후 `replayController.AdvanceFrame()` 호출. 양쪽 입력 판정·타이머·상태 전환을 동일한 공통 틱에서 진행
 - `boardView.IsAnimating` 동안에는 포인터 아래 블럭을 새로 선택하지 않는다. 포인터 해제는 별도로 감지해 `InputEnd()`를 전달한다.
 
