@@ -74,6 +74,9 @@ namespace Puzzle.Core
         /// <summary> 연출의 시각적 순서를 정하는 인덱스 (프레임과 무관하게 증가) </summary>
         private uint _currentOrderIndex = 0;
 
+        /// <summary> 현재 매칭과 그로부터 발생한 연쇄 파괴의 연출 순서를 공유합니다. </summary>
+        private readonly MatchDestructionGroup _matchDestruction = new MatchDestructionGroup();
+
         /// <summary> FindMatches() 재사용 HashSet (매 호출마다 할당 방지) </summary>
         private HashSet<GridPos> _matchBuffer = new HashSet<GridPos>();
 
@@ -496,29 +499,7 @@ namespace Puzzle.Core
                 _expandedMatchTargets.AddRange(_originalMatchTargets);
                 MatchTargetsExpanding.Invoke(gameSpec.rule.boardShape, _originalMatchTargets, _expandedMatchTargets);
             }
-            for (int targetIndex = 0; targetIndex < _expandedMatchTargets.Count; targetIndex++)
-            {
-                GridPos pos = _expandedMatchTargets[targetIndex];
-                PuzzleCell cell = GetCell(pos);
-                if (cell != null && cell.Block != null)
-                {
-                    Block destroyed = cell.Block;
-                    destroyed.SetState(BlockState.Matched);
-                    Objective.OnBlockDestroyed(destroyed.GetBlockId());
-                    cell.Block = null;
-
-                    AddView(new BoardViewAction
-                    {
-                        type = ViewType.Destroy,
-                        blockData = destroyed,
-                        frame = (uint)_frameCount,
-                        position = pos
-                    }, burstOrder);
-
-                    // 파괴된 블럭에 부착된 기믹 발화 (폭탄 등)
-                    destroyed.FireDestroyed(this, pos);
-                }
-            }
+            _matchDestruction.DestroyMatches(this, _expandedMatchTargets, burstOrder);
             return true;
         }
         /// <summary> 가로 또는 세로로 연속된 매칭 블럭의 좌표를 수집합니다. </summary>
@@ -736,23 +717,12 @@ namespace Puzzle.Core
             return res;
         }
 
-        /// <summary>
-        /// 화면 연출용 액션을 추가합니다. 추가될 때마다 orderIndex가 자동으로 증가하여 순차적 연출을 보장합니다.
-        /// </summary>
-        /// <param name="view">등록할 연출 액션</param>
-        /// <param name="customOrder">직접 지정할 연출 순서이며 생략하면 내부 순서를 사용</param>
+        /// <summary><paramref name="view"/>에 현재 프레임과 <paramref name="customOrder"/>를 부여합니다. 순서가 생략된 파괴는 진행 중인 매칭의 순서를 사용합니다.</summary>
         public void AddView(BoardViewAction view, uint? customOrder = null)
         {
             // 연출 프레임/순서는 큐 소유자(보드)가 스탬프한다. (Model의 연출 데이터 책임 분리)
             view.frame = (uint)_frameCount;
-            if (customOrder.HasValue)
-            {
-                view.orderIndex = customOrder.Value;
-            }
-            else
-            {
-                view.orderIndex = _currentOrderIndex++;
-            }
+            view.orderIndex = _matchDestruction.ResolveOrder(view.type, customOrder, ref _currentOrderIndex);
             _views.Add(view);
         }
         

@@ -24,7 +24,7 @@
         → board.AddView(Destroy)               ← 연출 프레임/order는 AddView가 스탬프
         → destroyed.FireDestroyed(...)          ← 연쇄 (폭탄이 폭탄을 터뜨림)
 ```
-- 보드의 파괴 경로(ThreeMatch/Link/TapMatch 모두)는 블럭 제거 시 `destroyed.FireDestroyed(this, pos)`를 호출한다.
+- 세 보드는 `MatchDestructionGroup.DestroyMatches`에서 매칭된 블럭을 제거하고 `FireDestroyed`를 호출한다. 이때 폭탄이 주변 블럭이나 다른 폭탄을 파괴하면 보드는 그 파괴 액션에도 원래 매칭의 연출 순서를 부여한다.
 - **연출 책임 분리**: 기믹/`Block`은 `frame`/`orderIndex`(연출 데이터)를 다루지 않는다. 보드의 `AddView`가 frame을 스탬프하고 order를 부여한다.
 - `IGimmick`은 `OnTouched`/`OnSwapped` 훅도 정의하지만, 현재 보드는 입력을 `inputType`으로 게이팅하며 **파괴 경로(`OnDestroyed`)만 발화**한다. 터치/스왑 훅은 향후 확장용으로 예약되어 있다.
 

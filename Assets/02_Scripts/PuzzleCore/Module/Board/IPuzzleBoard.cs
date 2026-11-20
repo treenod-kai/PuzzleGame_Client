@@ -23,6 +23,57 @@ namespace Puzzle.Core
         public bool IsPivotNeighbor => type == ViewType.Destroy && blockData != null && blockData.IsPivotTarget;
     }
 
+    /// <summary>한 번의 매칭에서 직접 파괴한 블럭과 그 기믹이 연쇄 파괴한 블럭을 같은 연출 순서로 묶습니다.</summary>
+    internal sealed class MatchDestructionGroup
+    {
+        /// <summary>현재 매칭을 처리하는 동안 보드가 파괴 액션에 부여하는 순서입니다.</summary>
+        private uint? _activeOrder;
+
+        /// <summary><paramref name="type"/>의 연출에 <paramref name="customOrder"/> 또는 매칭 순서를 적용하며, 독립 액션은 <paramref name="nextOrder"/>에서 발급합니다.</summary>
+        public uint ResolveOrder(ViewType type, uint? customOrder, ref uint nextOrder)
+        {
+            if (customOrder.HasValue)
+            {
+                return customOrder.Value;
+            }
+            if (type == ViewType.Destroy && _activeOrder.HasValue)
+            {
+                return _activeOrder.Value;
+            }
+            return nextOrder++;
+        }
+
+        /// <summary><paramref name="board"/>의 <paramref name="targets"/>를 차례로 파괴하며 연쇄 기믹까지 <paramref name="order"/>를 공유합니다.</summary>
+        public void DestroyMatches(IPuzzleBoard board, IReadOnlyList<GridPos> targets, uint order)
+        {
+            uint? previousOrder = _activeOrder;
+            _activeOrder = order;
+            try
+            {
+                for (int i = 0; i < targets.Count; i++)
+                {
+                    GridPos pos = targets[i];
+                    PuzzleCell cell = board.GetCell(pos);
+                    if (cell == null || cell.Block == null)
+                    {
+                        continue;
+                    }
+
+                    Block destroyed = cell.Block;
+                    destroyed.SetState(BlockState.Matched);
+                    board.Objective.OnBlockDestroyed(destroyed.GetBlockId());
+                    cell.Block = null;
+                    board.AddView(new BoardViewAction { type = ViewType.Destroy, blockData = destroyed, position = pos });
+                    destroyed.FireDestroyed(board, pos);
+                }
+            }
+            finally
+            {
+                _activeOrder = previousOrder;
+            }
+        }
+    }
+
     /// <summary>
     /// 퍼즐 보드의 핵심 로직을 정의하는 인터페이스입니다.
     /// 게임 타입(매치3, 육각형, 링크 등)에 따라 다르게 구현될 수 있습니다.
@@ -65,9 +116,7 @@ namespace Puzzle.Core
         /// <param name="pause">일시정지 요청 여부</param>
         void Pause(bool pause);
 
-        /// <summary> 화면 연출을 위해 발생한 상태 변화를 추가합니다. </summary>
-        /// <param name="view">등록할 연출 액션</param>
-        /// <param name="customOrder">직접 지정할 연출 순서이며 생략하면 내부 순서를 사용</param>
+        /// <summary><paramref name="view"/>에 현재 프레임과 <paramref name="customOrder"/>를 부여합니다. 순서가 생략된 파괴는 진행 중인 매칭의 순서를 사용합니다.</summary>
         public void AddView(BoardViewAction view, uint? customOrder = null);
 
         /// <summary> 발생한 View 액션 리스트를 가져오고 보드 내역을 비웁니다. (소비형) </summary>

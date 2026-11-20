@@ -34,10 +34,10 @@ public class PuzzleBlockView : MonoBehaviour
     /// <summary> 입력 소유권을 확인하기 위한 소속 보드입니다. </summary>
     public PuzzleBoardView BoardView => _boardView;
 
-    /// <summary> 풀 반환과 새 요청마다 증가하여 이전 스프라이트 콜백을 무효화합니다. </summary>
+    /// <summary>공유 로드가 끝나는 동안 뷰의 바인딩이 바뀌었는지 확인하는 번호입니다.</summary>
     private ulong _visualRequestVersion;
 
-    /// <summary> 풀 반환 또는 비활성화 시 대기 중인 이미지 요청을 무효화합니다. </summary>
+    /// <summary>풀에 반환하거나 비활성화하면 이미지 요청과 진행 중인 연출을 종료합니다.</summary>
     private void OnDisable()
     {
         _visualRequestVersion++;
@@ -64,64 +64,35 @@ public class PuzzleBlockView : MonoBehaviour
         UpdateStateVisual();
     }
 
-    /// <summary>
-    /// 모델 데이터의 상태에 맞춰 블럭의 스프라이트나 색상 등을 업데이트합니다.
-    /// </summary>
+    /// <summary> 배치와 낙하 연출을 시작하기 전에 현재 블럭의 스프라이트와 충돌체를 적용합니다. </summary>
     public void UpdateVisual()
     {
         ulong requestVersion = ++_visualRequestVersion;
-        if (_blockData == null)
+        if (_spriteRenderer == null)
         {
             return;
         }
 
-        if (_spriteRenderer != null)
+        if (_blockData == null)
         {
-            // 새 이미지가 도착하기 전에는 이전 블럭 이미지를 노출하지 않습니다.
             _spriteRenderer.sprite = null;
-            string blockId = _blockData.GetBlockId();
-            string address = $"Block_{blockId}";
+            return;
+        }
 
-            // 풀 재사용 시 레이어가 리셋될 수 있으므로 명시적으로 설정
-            _spriteRenderer.sortingLayerName = "Ingame";
-            _spriteRenderer.sortingOrder = 10;
+        string address = $"Block_{_blockData.GetBlockId()}";
+        _spriteRenderer.sortingLayerName = "Ingame";
+        _spriteRenderer.sortingOrder = 10;
+        Sprite sprite = AssetManager.Instance.LoadAsset<Sprite>(address);
+        // 공유 로드의 완료 콜백에서 풀에 있던 뷰를 다른 블럭에 배정할 수 있습니다.
+        if (this == null || _spriteRenderer == null || requestVersion != _visualRequestVersion)
+        {
+            return;
+        }
 
-            /// <summary> 현재 요청의 스프라이트를 적용하고 충돌체 크기를 갱신합니다. </summary>
-            /// <param name="sprite">로드한 블럭 스프라이트</param>
-            void OnSpriteLoaded(Sprite sprite)
-            {
-                // 비동기 로드 도중 블럭이 파괴되었을 수 있으므로 null 체크 필수
-                if (this == null || _spriteRenderer == null || requestVersion != _visualRequestVersion)
-                {
-                    return;
-                }
-
-                _spriteRenderer.sprite = sprite;
-
-                if (_boxCollider != null)
-                {
-                    _boxCollider.AdjustColliderSize();
-                }
-            }
-
-            /// <summary> 현재 스프라이트 요청의 실패를 기록합니다. </summary>
-            void OnSpriteLoadFailed()
-            {
-                if (this == null || requestVersion != _visualRequestVersion)
-                {
-                    return;
-                }
-                Debug.LogWarning($"[PuzzleBlockView] 스프라이트 로드 실패! 주소: {address}");
-            }
-
-            AssetManager.AssetArguments<Sprite> args = new AssetManager.AssetArguments<Sprite>
-            {
-                address = address,
-                successCallback = OnSpriteLoaded,
-                failedCallback = OnSpriteLoadFailed
-            };
-
-            AssetManager.Instance.LoadAssetAsync(args);
+        _spriteRenderer.sprite = sprite;
+        if (sprite != null && _boxCollider != null)
+        {
+            _boxCollider.AdjustColliderSize();
         }
     }
 

@@ -49,6 +49,9 @@ namespace Puzzle.Core
         internal GameSpec gameSpec;
         private uint _currentOrderIndex = 0;
 
+        /// <summary> 현재 매칭과 그로부터 발생한 연쇄 파괴의 연출 순서를 공유합니다. </summary>
+        private readonly MatchDestructionGroup _matchDestruction = new MatchDestructionGroup();
+
         /// <summary> 외부 로깅 콜백에 메시지를 전달합니다. </summary>
         /// <param name="message">전달할 로그 메시지</param>
         private void Log(string message)
@@ -524,28 +527,7 @@ namespace Puzzle.Core
             }
             uint burstOrder = _currentOrderIndex++;
 
-            foreach (GridPos pos in _matchTargets)
-            {
-                PuzzleCell cell = GetCell(pos);
-                if (cell != null && cell.Block != null)
-                {
-                    Block destroyed = cell.Block;
-                    destroyed.SetState(BlockState.Matched);
-                    Objective.OnBlockDestroyed(destroyed.GetBlockId());
-                    cell.Block = null;
-
-                    AddView(new BoardViewAction
-                    {
-                        type = ViewType.Destroy,
-                        blockData = destroyed,
-                        frame = (uint)_frameCount,
-                        position = pos
-                    }, burstOrder);
-
-                    // 파괴된 블럭에 부착된 기믹 발화 (폭탄 등)
-                    destroyed.FireDestroyed(this, pos);
-                }
-            }
+            _matchDestruction.DestroyMatches(this, _matchTargets, burstOrder);
 
             _matchTargets.Clear();
             _linkPath.Clear();
@@ -715,21 +697,12 @@ namespace Puzzle.Core
             return res;
         }
 
-        /// <summary> 연출 액션에 현재 프레임과 처리 순서를 부여해 등록합니다. </summary>
-        /// <param name="view">등록할 연출 액션</param>
-        /// <param name="customOrder">직접 지정할 연출 순서이며 생략하면 내부 순서를 사용</param>
+        /// <summary><paramref name="view"/>에 현재 프레임과 <paramref name="customOrder"/>를 부여합니다. 순서가 생략된 파괴는 진행 중인 매칭의 순서를 사용합니다.</summary>
         public void AddView(BoardViewAction view, uint? customOrder = null)
         {
             // 연출 프레임/순서는 큐 소유자(보드)가 스탬프한다. (Model의 연출 데이터 책임 분리)
             view.frame = (uint)_frameCount;
-            if (customOrder.HasValue)
-            {
-                view.orderIndex = customOrder.Value;
-            }
-            else
-            {
-                view.orderIndex = _currentOrderIndex++;
-            }
+            view.orderIndex = _matchDestruction.ResolveOrder(view.type, customOrder, ref _currentOrderIndex);
             _views.Add(view);
         }
 

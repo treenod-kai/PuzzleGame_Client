@@ -12,7 +12,7 @@
 | 찾는 콘텐츠 | 담당 C# 파일 | 주요 메서드·타입·멤버 |
 |---|---|---|
 | 입력, 게임 루프, 종료 후 저장, 화면 배치와 안내 | [PuzzleGameController.cs](../../02_Scripts/PuzzleCore/Controller/PuzzleGameController.cs) | `ReadPointer`, `FixedUpdate`(양쪽 공통 틱), `SaveReplay`, `GetStageResult`, `GetBattleResult`, `UpdatePlayHint`, `OnClickRetry`, `OnClickLobby`, `UpdateTimerUI`, `RefreshScreenLayout`, `PuzzleHudPlacement`, `PuzzleHudText` |
-| 보드 공통 계약 | [IPuzzleBoard.cs](../../02_Scripts/PuzzleCore/Module/Board/IPuzzleBoard.cs) | `IPuzzleBoard`, `BoardViewAction`, `BoardViewAction.IsPivotNeighbor` |
+| 보드 공통 계약·매칭과 폭탄 연쇄 파괴의 연출 순서 | [IPuzzleBoard.cs](../../02_Scripts/PuzzleCore/Module/Board/IPuzzleBoard.cs) | `IPuzzleBoard`, `BoardViewAction`, `MatchDestructionGroup.DestroyMatches`, `BoardViewAction.IsPivotNeighbor` |
 | 3매치 스왑·매칭·낙하·셔플 | [ThreeMatchPuzzleBoard.cs](../../02_Scripts/PuzzleCore/Module/Board/ThreeMatchPuzzleBoard.cs) | `ProcessSwapInput`, `FindMatches`, `ProcessFallingAndFilling`, `FillFromGenerator`, `CheckAndShuffleIfNoMoves`, `MatchTargetsExpanding` |
 | 드래그 링크 성립 기준·연결·해제·낙하·막힌 보드 복구·매칭 대상 확장 | [LinkPuzzleBoard.cs](../../02_Scripts/PuzzleCore/Module/Board/LinkPuzzleBoard.cs) | `MinimumLinkLength`, `Input`, `InputEnd`, `FixedUpdate`, `UpdateState`, `ProcessFallingAndFilling`, `FillFromGenerator`, `HasEmptyCell`, `EnsurePossibleLink`, `HasNoPossibleLink`, `MatchTargetsExpanding` |
 | 탭 매치 연결 블럭 탐색·파괴 | [TapMatchPuzzleBoard.cs](../../02_Scripts/PuzzleCore/Module/Board/TapMatchPuzzleBoard.cs) | `Input`, `InputEnd`(큐 등록), `FixedUpdate`, `UpdateState`, `GetConnectedBlocks`, `FillFromGenerator`, `CheckAndShuffleIfNoMoves`, `MatchTargetsExpanding` |
@@ -116,7 +116,7 @@ Block : IGimmickHost — State: Idle, Selected, Moving, Matched, Falling, None
 - 탭 매치의 셔플 성공 시 같은 논리 틱의 연출 순서는 **파괴 → 낙하/생성 낙하 → 셔플 생성**입니다. 순서 인덱스는 셔플 등록 후 초기화합니다.
 - 이동 가능 여부 검사도 실제 입력 규칙을 따릅니다. 3매치는 교환 양쪽에 `Swap`, 탭 매치는 시작 블럭에 `Touch`가 있어야 합니다. 탭의 같은 색 연결 대상은 `Touch`가 없어도 실제 파괴 판정과 동일하게 인정합니다.
 - 세 보드의 낙하 처리에서 누락된 셀 좌표는 낙하 경계로 취급합니다. 맵은 모든 셀을 작성하는 것이 원칙이며, 누락 데이터에서도 블럭 참조를 덮어쓰지 않도록 방어합니다.
-- `PuzzleBlockView.UpdateVisual()`은 요청 세대를 비교하여 이전 이미지 완료 콜백을 무시합니다. `OnDisable()`에서도 세대를 증가시켜 풀 반환 전 요청을 무효화하며, 새 이미지 대기 중에는 이전 스프라이트를 표시하지 않습니다.
+- `PuzzleBlockView.UpdateVisual()`은 초기 배치와 낙하 전에 `AssetManager.LoadAsset<Sprite>()`로 블럭 이미지를 적용합니다. 플레이어와 리플레이는 같은 주소의 로드를 공유합니다. 완료 콜백에서 뷰가 풀로 돌아가거나 다른 블럭에 배정되면 이전 요청의 이미지를 건너뜁니다.
 
 ## 입력 처리 방식
 
