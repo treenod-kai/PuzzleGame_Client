@@ -1,6 +1,6 @@
 # 침공 몬스터 방향과 봉쇄 공격
 
-몬스터 5종은 각각 Walk와 Attack이 있다. 동작마다 위·오른쪽 위·오른쪽·오른쪽 아래·아래의 다섯 시점을 그리고, 왼쪽 세 방향은 대응하는 원화를 가로로 반전한다. 전체 구성은 원화 시트 50장, 방향별 클립 80개다. [동작 원본](../../04_Resources/Images/LobbyDefense/Motions) · [5종 움직임 비교](../../../Docs/Previews/LobbyDefense/InvaderDirections.gif)
+몬스터 5종은 각각 Walk와 Attack이 있다. 동작마다 위·오른쪽 위·오른쪽·오른쪽 아래·아래의 다섯 시점을 그리고, 왼쪽 세 방향은 대응하는 원화를 가로로 반전한다. 전체 구성은 원화 시트 50장, 방향별 클립 80개다. [동작 원본](../../04_Resources/Images/LobbyDefense/Motions)
 
 ## 생성 프롬프트
 
@@ -28,6 +28,6 @@
 | `SouthEast` / `SouthWest` | 대각선 아래로 다가온다. 얼굴과 가슴이 함께 보인다. | 오른쪽 아래 원화 / 같은 원화 반전 |
 | `South` | 아래로 다가온다. 두 눈과 배 앞면이 보인다. | 아래 원화 |
 
-클립 주소는 `LobbyDefense/Motions/{몬스터 ID}/{Walk|Attack}/{방향}`이다. 예를 들어 `LobbyDefense/Motions/PebbleCrab/Attack/NorthWest`는 오른쪽 위 시트와 클립의 가로 반전 값을 함께 사용한다. [방향·접촉 프레임 비교](../../../Docs/Previews/LobbyDefense/LobbyDefenseMotion.html#PebbleCrab/Attack/NorthWest)
+클립 주소는 `LobbyDefense/Motions/{몬스터 ID}/{Walk|Attack}/{방향}`이다. 예를 들어 `LobbyDefense/Motions/PebbleCrab/Attack/NorthWest`는 오른쪽 위 시트와 클립의 가로 반전 값을 함께 사용한다.
 
 보드 경로는 상하좌우 네 이웃을 사용한다. 몬스터가 출구로 갈 수 없을 때 인접한 길막 유닛을 향해 공격한다. 세 번째 접촉 그림은 클립 시작 후 0.25초에 보이며, 다음 공격 시각은 전투 모델에서 정한다. [전장과 봉쇄 규칙](../01_Architecture/LOBBY-DEFENSE.md)

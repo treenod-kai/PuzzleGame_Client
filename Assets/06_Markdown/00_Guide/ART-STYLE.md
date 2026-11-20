@@ -56,11 +56,11 @@
 
 하단 탭은 1280×256 텍스처의 256px 칸 다섯 개다. 상점, 가방, 집, 말풍선, 톱니 순서를 유지하고, 글자는 UI에 맡긴다. Addressables 주소는 `Lobby/TabIcons`다. [로비 탭 원본](../../04_Resources/Images/LobbyTabIcons.png)
 
-방어 카드용 초상은 배경을 투명하게 두고 이름·등급을 그리지 않는다. Unity가 카드별 정보를 겹쳐 표시하므로 인벤토리 크기에서도 얼굴과 장비가 함께 읽히는지 확인한다. [인벤토리에 표시한 초상](../../../Docs/Previews/LobbyDefense/LobbyDefenseInventory.png) · [카드 프레임과 상세 창 원화](../../../Docs/Previews/LobbyDefense/InventoryCardArt.md)
+방어 카드용 초상은 배경을 투명하게 두고 이름·등급을 그리지 않는다. Unity가 카드별 정보를 겹쳐 표시하므로 인벤토리 크기에서도 얼굴과 장비가 함께 읽히는지 확인한다. [카드 프레임과 상세 창 원화](LOBBY-ART-PROMPTS.md#방어-카드-인벤토리-원화)
 
 ## 로비 디펜스 캐릭터
 
-전신은 256×256 투명 PNG이며 몸과 장비를 합친 긴 쪽이 약 218px다. 카메라는 약간 위에서 내려다보고 얼굴과 장비가 겹치지 않게 한다. 기본 수비 유닛은 입구 쪽인 왼쪽, 침공 몬스터는 출구 쪽인 오른쪽을 본다. [수비 10종과 몬스터 5종 비교](../../../Docs/Previews/LobbyDefense/LobbyDefenseRoster.jpg) · [로비 디펜스 기획](../01_Architecture/LOBBY-DEFENSE.md)
+전신은 256×256 투명 PNG이며 몸과 장비를 합친 긴 쪽이 약 218px다. 카메라는 약간 위에서 내려다보고 얼굴과 장비가 겹치지 않게 한다. 기본 수비 유닛은 입구 쪽인 왼쪽, 침공 몬스터는 출구 쪽인 오른쪽을 본다. [로비 디펜스 기획](../01_Architecture/LOBBY-DEFENSE.md)
 
 ## 프로필과 캐릭터 동작
 
@@ -78,11 +78,11 @@
 
 ## 공격 투사체
 
-장비에서 떨어져 날아가는 물체 한 개를 128×128 투명 단일 Sprite로 그린다. 긴 쪽은 약 112px다. 기본 진행 방향은 왼쪽이며, 꼬리가 있다면 오른쪽에 둔다. 고리 구멍과 파동 사이는 투명하게 비운다. [진주 방울](../../04_Resources/Images/LobbyDefense/Projectiles/PearlSentry/Attack.png) · [투사체 13종 비교](../../../Docs/Previews/LobbyDefense/LobbyDefenseProjectiles.jpg)
+장비에서 떨어져 날아가는 물체 한 개를 128×128 투명 단일 Sprite로 그린다. 긴 쪽은 약 112px다. 기본 진행 방향은 왼쪽이며, 꼬리가 있다면 오른쪽에 둔다. 고리 구멍과 파동 사이는 투명하게 비운다. [진주 방울](../../04_Resources/Images/LobbyDefense/Projectiles/PearlSentry/Attack.png)
 
 기본 공격용 투사체 7종과 Special 시안 6종이 있다. 성벽거북·조개방패 소라게·돌갑옷 천산갑의 Attack 시트는 몸이나 장비로 타격하는 자세를 담는다. 현재 전투 규칙에서는 진주 수비병이 진주 탄을 발사하고 성벽거북은 길을 막는다. [로비 전투 규칙](../../05_Table/LobbyDefenseRules.json)
 
-미리보기에서는 일부 장기자랑에 탄을 합성한다. 게임에서 장기자랑은 피해가 없는 대기 연출이다. [동작 미리보기](../../../Docs/Previews/LobbyDefense/LobbyDefenseMotion.html#SeedFinch/Special) · [로비 표시 흐름](../01_Architecture/LOBBY-DEFENSE-ARCHITECTURE.md)
+장기자랑은 피해가 없는 대기 연출이다. [로비 표시 흐름](../01_Architecture/LOBBY-DEFENSE-ARCHITECTURE.md)
 
 ## 납품 전 확인
 
