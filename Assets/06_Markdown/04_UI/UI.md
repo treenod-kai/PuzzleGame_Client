@@ -11,7 +11,7 @@ UI, 팝업, 탭 관련 작업 시 이 문서를 참고.
 | 팝업/탭 스택·뒤로 가기·전체 닫기 | [DomainManager.cs](../../02_Scripts/Manager/DomainManager.cs) | `OpenPopup`, `OpenTab`, `Back`, `CloseAll` |
 | 팝업/탭 공통 계약 | [IDomainNode.cs](../../02_Scripts/Manager/IDomainNode.cs) | `IDomainNode` |
 | 팝업 생성·파괴·씬별 등록 | [PopupController.cs](../../02_Scripts/Manager/PopupController.cs) | `CreatePopup`, `DestroyPopup` |
-| 팝업 열기/닫기 생명주기·애니메이션 | [PopupBase.cs](../../02_Scripts/Manager/PopupBase.cs) | `Open`, `Close`, `OpenRoutine`, `CloseRoutine` |
+| 팝업 생명주기·애니메이션·안전 영역 배치 | [PopupBase.cs](../../02_Scripts/Manager/PopupBase.cs) | `Open`, `Close`, `OpenRoutine`, `CloseRoutine`, `FitSafeArea` |
 | 팝업 버튼 처리용 기반 클래스 | [PopupHandler.cs](../../02_Scripts/Manager/PopupHandler.cs) | `ClosePopup`, `BackPopup` |
 | 탭 검색·활성화·비활성화 | [TabController.cs](../../02_Scripts/Manager/TabController.cs) | `ActivateTab`, `DeactivateTab` |
 | 탭 생명주기·애니메이션 확장 | [TabBase.cs](../../02_Scripts/Manager/TabBase.cs) | `Activate`, `Deactivate`, `ActivateAnimation`, `DeactivateAnimation` |
@@ -22,7 +22,7 @@ UI, 팝업, 탭 관련 작업 시 이 문서를 참고.
 | Shared 공용 팝업 등록 | [SharedPopupController.cs](../../02_Scripts/Manager/SharedPopupController.cs) | `ControllerName` |
 | 로비 팝업 등록·로비 직접 실행 시 매니저 대기 | [LobbyPopupController.cs](../../02_Scripts/Lobby/LobbyPopupController.cs) | `ControllerName`, `RegisterWhenReady` |
 | 게임 팝업 등록 | [GamePopupController.cs](../../02_Scripts/PuzzleCore/Controller/GamePopupController.cs) | `ControllerName` |
-| 하단 다섯 탭·스와이프·모달 입력 | [LobbyNavigation.cs](../../02_Scripts/Lobby/LobbyNavigation.cs) | `SelectTab`, `OnEndDrag`, `SwitchBySwipe` |
+| 로비 안전 영역·하단 다섯 탭·스와이프·모달 입력 | [LobbyNavigation.cs](../../02_Scripts/Lobby/LobbyNavigation.cs) | `FitSafeArea`, `SelectTab`, `OnEndDrag`, `SwitchBySwipe` |
 | 오버레이 패널의 가로 전환 | [LobbyOverlayTab.cs](../../02_Scripts/Lobby/LobbyOverlayTab.cs) | `Bind`, `ActivateAnimation`, `DeactivateAnimation` |
 | 메인 화면의 상주 탭 컴포넌트 | [LobbyTabController.cs](../../02_Scripts/Lobby/LobbyTabController.cs) | `LobbyTabController` |
 | 대전 전용 피벗 충전·활성 게이지 | [PivotGaugeView.cs](../../02_Scripts/Battle/Pivot/PivotGaugeView.cs) | `PivotGaugeView`, `SetLayout`, `Refresh`, `Dispose` |
@@ -114,7 +114,8 @@ PopupHandler.ClosePopup() 또는 DomainManager.Close(name)
 
 ## 로비 하단 탭
 
-상점 · 인벤토리 · **메인** · 소셜 · 옵션 순서이며 로비에 들어오면 메인을 표시한다. 다른 네 탭은 메인을 완전히 덮고 하단 바는 계속 표시한다. 메인의 디펜스에서 배치·고용하고 인벤토리에서 보유 카드를 조회·강화·에너지로 변환한다. 탭을 열어 두어도 전투는 진행된다. 대전 준비 팝업은 탭 위에 열린다. [디펜스 화면과 카드 인벤토리](../01_Architecture/LOBBY-DEFENSE-ARCHITECTURE.md#콘텐츠와-c-매핑)
+대전 버튼·디펜스 전장·하단 탭은 같은 기기 안전 영역을 기준으로 배치한다.
+상점 · 인벤토리 · **메인** · 소셜 · 옵션 순서이며 로비에 들어오면 메인을 표시한다. 다른 네 탭은 메인을 완전히 덮고 하단 바는 계속 표시한다. 메인의 디펜스에서 배치·고용한다. 인벤토리의 [카드 목록](../../03_Prefab/UI/DefenseCardCollection.prefab)을 세로로 스크롤하고 카드를 누르면 [상세 창](../../03_Prefab/UI/Popup/PopupDefenseCard.prefab)에서 개별 강화와 종류별 에너지 변환을 할 수 있다. 탭을 열어 두어도 전투는 진행된다. 대전 준비 팝업은 탭 위에 열린다. [디펜스 화면과 카드 인벤토리](../01_Architecture/LOBBY-DEFENSE-ARCHITECTURE.md#콘텐츠와-c-매핑)
 버튼을 누르거나 좌우로 스와이프해 이동한다. 세로 드래그는 무시하고 양 끝에서 멈춘다. 메인 선택 또는 도메인 뒤로 가기는 패널을 닫는다. 이동 중에는 패널 콘텐츠 입력을 막는다. 대전 준비를 요청하면 팝업이 닫힐 때까지 메인과 하단 탭의 포인터·키보드 입력을 잠그고, 닫거나 로드에 실패하면 이전 입력을 복원한다. 패널의 콘텐츠와 각 탭의 선택 표시는 [로비 탭 프리팹](../../03_Prefab/UI/LobbyNavigation.prefab)에서 편집한다. [탭 아이콘 원화](../../04_Resources/Images/LobbyTabIcons.png)
 
 <details><summary>내장 ImageGen에 사용한 아이콘 생성 프롬프트</summary>Game asset, a single transparent horizontal sprite atlas for the bottom navigation of a Korean mobile puzzle game. Precisely five separate equal-sized icons in ONE straight row, centered in five equal-width cells, left to right: a tiny shop kiosk with a coral-and-cream striped awning; a golden ochre adventurer backpack with a teal clasp; a small cream house with a seafoam/teal roof and a warm golden doorway; two overlapping coral and turquoise speech bubbles; a blue-silver eight-tooth settings gear with an open circular hole. Cheerful polished enamel toy sculptures, soft bevels, sculpted detail, broad highlights from upper left, crisp legible silhouettes at 44px, near-frontal slight perspective. Coordinated colors and consistent outline weight, same optical size. Wide landscape canvas, generous entirely transparent gutters between each silhouette and around outer edges. Background genuine alpha transparency. Objects floating individually, no cast shadows outside silhouettes, no plates or button tiles, no lettering, no symbols other than the five described, no numbers, no borders, no captions.</details>
@@ -174,7 +175,7 @@ Inspector에서 설정하는 범용 버튼 컴포넌트.
 
 ## 팝업 추가 방법 (체크리스트)
 
-1. `Assets/03_Prefab/UI/Popup/`에 프리팹을 만들고 같은 객체에 PopupBase와 PopupHandler 서브클래스를 붙인다. PopupBase의 `_dimBackground`, `_contentPanel`을 연결한다.
+1. `Assets/03_Prefab/UI/Popup/`에 프리팹을 만들고 같은 객체에 PopupBase와 PopupHandler 서브클래스를 붙인다. PopupBase의 `_dimBackground`, `_contentPanel`을 연결한다. 안전 영역에 맞출 때는 본문 크기의 부모 `_safeFrame`과 터치 높이 기준 `_referenceButton`도 연결한다.
 2. 주소 `Popup/{팝업이름}`을 등록하고 UIButton의 `_root`와 `_callbackName`에 핸들러와 메서드명을 지정한다. `DomainManager.Instance.OpenPopup("팝업이름")`으로 연다.
 
 ## 사이드 스테이지 팝업
@@ -194,5 +195,5 @@ Inspector에서 설정하는 범용 버튼 컴포넌트.
 - 라이프는 최초 5개이며 최대 5개까지 30분마다 1개씩 회복한다. 완충 예정 UTC 시각을 PlayerPrefs에 보관해 앱 종료 중에도 충전한다. 대전 준비가 끝나면 라이프 1개를 쓰고 게임 씬으로 이동한다. 잔량이 0이면 START를 비활성화하고 다음 충전까지 남은 시간을 표시한다.
 - 대전 준비 시 추첨된 Rule과 점수·보드 판정·피벗 설정이 맞는 최근 90초 완주 기록을 상대로 선택해 게임 씬에서 자동 재생한다. 호환 기록이 없으면 혼자 첫 대전 기록에 도전한다.
 - 대전 결과의 `다시 도전`은 라이프 1개를 사용해 같은 규칙·시드·상대로 새 판을 시작한다. 대전 라이프가 0개면 `로비로`를 누르거나 충전 후 다시 도전할 수 있다. 에디터에서 직접 실행한 스테이지의 시작과 재도전은 무료다.
-- 로비와 게임 캔버스는 가로·세로 화면 모두에서 800×1422의 기준 영역을 확보한다. 준비 팝업은 중앙에 표시하고 딤 배경으로 화면 전체의 뒤쪽 입력을 막는다. 팝업 버튼은 `PopupReady.prefab`의 `UIButton` 메시지로 연결한다.
+- 로비와 게임 캔버스는 가로·세로 화면 모두에서 800×1422의 기준 영역을 확보한다. 준비·카드 상세 팝업은 기기 안전 영역의 중앙에 표시하고 딤 배경으로 화면 전체의 뒤쪽 입력을 막는다. 닫기 버튼의 터치 영역은 기준 캔버스에서 132×132이며 두 줄 안내와 라이프 잔량은 영역을 나눠 표시한다. 팝업 버튼은 `PopupReady.prefab`의 `UIButton` 메시지로 연결한다.
 - 대전 점수 비교와 상대 상태 표시는 `GameScene.unity`에 연결된 TMP UI이며 상세는 [INGAME-VIEW-AND-BATTLE.md](../02_Ingame/INGAME-VIEW-AND-BATTLE.md#스테이지와-90초-대전)를 참고한다.

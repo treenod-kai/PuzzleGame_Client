@@ -31,7 +31,8 @@ namespace LobbyDefense.Controller
         internal void Initialize(RectTransform parent, GameObject navigation)
         {
             Transform content = navigation.transform.Find("SafeArea/OverlayPages/Inventory/Panel/Content");
-            if (content == null)
+            DefenseCardInventoryView inventory = navigation.GetComponentInChildren<DefenseCardInventoryView>(true);
+            if (content == null || inventory == null)
             {
                 Debug.LogError("[로비 디펜스] 인벤토리 콘텐츠를 찾을 수 없습니다.");
                 return;
@@ -41,12 +42,11 @@ namespace LobbyDefense.Controller
             area.SetParent(parent, false);
             area.SetAsFirstSibling();
             area.anchorMin = new Vector2(0.035f, 0f);
-            area.anchorMax = new Vector2(0.965f, 0.95f);
-            area.offsetMin = new Vector2(0f, 312f);
-            area.offsetMax = Vector2.zero;
+            area.anchorMax = new Vector2(0.965f, 1f);
+            area.offsetMin = new Vector2(0f, 268f);
+            area.offsetMax = new Vector2(0f, -6f);
             _view = area.gameObject.AddComponent<LobbyDefenseView>();
-            DefenseCardInventoryView inventory = content.gameObject.AddComponent<DefenseCardInventoryView>();
-            inventory.Initialize(font);
+            inventory.ShowState("카드를 불러오는 중입니다.");
             LoadRules(font, inventory);
         }
 
@@ -67,7 +67,7 @@ namespace LobbyDefense.Controller
             if (this != null && inventory != null)
             {
                 Debug.LogError("[로비 디펜스] 규칙표를 불러오지 못했습니다. " + DefenseRules.Address);
-                inventory.ShowCard(null, "디펜스 데이터 불러오는 중", "잠시 후 다시 시도합니다.", false, false, false);
+                inventory.ShowState("디펜스 데이터를 불러오는 중입니다. 잠시 후 다시 시도합니다.");
                 StartCoroutine(RetryRules(font, inventory));
             }
         }
@@ -103,7 +103,7 @@ namespace LobbyDefense.Controller
             catch (Exception error)
             {
                 Debug.LogError("[로비 디펜스] 초기화 실패. " + error);
-                inventory.ShowCard(null, "디펜스를 열지 못했습니다", "다시 로비에 들어와 주세요.", false, false, false);
+                inventory.ShowState("디펜스를 열지 못했습니다. 다시 로비에 들어와 주세요.");
                 if (_controls != null)
                 {
                     _view.SetControls("", "", false, false, "디펜스 저장 데이터를 불러올 수 없습니다.");

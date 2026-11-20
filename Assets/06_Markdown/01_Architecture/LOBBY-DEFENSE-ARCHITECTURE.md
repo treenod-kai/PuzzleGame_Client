@@ -17,14 +17,16 @@
 | [OwnedDefenseCard.cs](../../02_Scripts/LobbyDefense/Model/OwnedDefenseCard.cs) · [DefenseCampaign.cs](../../02_Scripts/LobbyDefense/Model/DefenseCampaign.cs) | 고유 등급, `TryHire`, `TryPlace`, `TryRecall`, `TryConvert`, `TryUpgrade`. 보유 카드, 에너지, 골드와 웨이브 보상을 관리한다. |
 | [DefenseSessionState.cs](../../02_Scripts/LobbyDefense/Model/DefenseSessionState.cs) · [DefenseProgressStore.cs](../../02_Scripts/Manager/UserData/DefenseProgressStore.cs) | `Capture`·`Restore`로 완료 틱의 상태를 복원하고 `CaptureForBoard`로 구판 좌표를 변환한다. 계정별 파일 교체와 백업 복구를 담당한다. |
 | [LobbyDefenseController.cs](../../02_Scripts/LobbyDefense/Controller/LobbyDefenseController.cs) · [LobbyDefenseControls.cs](../../02_Scripts/LobbyDefense/Controller/LobbyDefenseControls.cs) | 실제 로비 진입, 계정 전환, 다음 틱의 입력 처리, 지도·인벤토리 표시, 대전 전 저장을 연결한다. |
-| [LobbyDefenseView.cs](../../02_Scripts/LobbyDefense/View/LobbyDefenseView.cs) · [DefenseBoardGraphic.cs](../../02_Scripts/LobbyDefense/View/DefenseBoardGraphic.cs) · [DefenseUnitMarkers.cs](../../02_Scripts/LobbyDefense/View/DefenseUnitMarkers.cs) | 세로 10행을 표시하고, 배치 지도의 좌우 드래그와 미니맵의 열 선택을 같은 좌표로 처리한다. 등장 구역·경로·사거리와 유닛·체력을 그린다. |
+| [LobbyDefenseView.cs](../../02_Scripts/LobbyDefense/View/LobbyDefenseView.cs) · [DefenseBoardGraphic.cs](../../02_Scripts/LobbyDefense/View/DefenseBoardGraphic.cs) · [DefenseUnitMarkers.cs](../../02_Scripts/LobbyDefense/View/DefenseUnitMarkers.cs) | 상단 상태와 하단 조작 영역 사이에 정사각형 칸 10행을 맞춘다. 배치 지도의 좌우 드래그와 미니맵의 열 선택을 같은 좌표로 처리한다. 등장 구역·경로·사거리와 유닛·체력을 그린다. |
 | [DefenseMotionLibrary.cs](../../02_Scripts/LobbyDefense/View/DefenseMotionLibrary.cs) | 대기·걷기를 처음 표시할 때 공격 클립을, 수비 유닛을 대기 상태로 표시할 때 장기자랑 클립도 준비한다. 각 클립의 네 장과 좌우 반전값을 재사용한다. |
 | [DefenseProjectileView.cs](../../02_Scripts/LobbyDefense/View/DefenseProjectileView.cs) | `DefenderFired`에서 발사 칸과 표적을 기록한다. 사수와 탄은 같은 표적 위치를 바라보고, 세 번째 공격 프레임에 탄이 나온다. 계정 전환 시 진행 중인 탄을 비운다. |
-| [DefenseCardInventoryView.cs](../../02_Scripts/LobbyDefense/View/DefenseCardInventoryView.cs) | 선택 카드의 초상·등급·능력치와 종류별 에너지를 표시한다. 카드 전환, 강화, 변환 확인 입력을 컨트롤러에 전달한다. |
+| [DefenseCardInventoryView.cs](../../02_Scripts/LobbyDefense/View/DefenseCardInventoryView.cs) · [DefenseInventoryTile.cs](../../02_Scripts/LobbyDefense/View/DefenseInventoryTile.cs) | 보유 카드 ID별로 초상·별·배치 상태를 세로 스크롤 목록에 표시한다. 목록 위치를 유지하며 카드 상세를 연다. |
+| [DefenseGradeStars.cs](../../02_Scripts/LobbyDefense/View/DefenseGradeStars.cs) | 목록과 상세 창에서 1~3성 및 금색 3성을 표시한다. |
+| [PopupDefenseCard.cs](../../02_Scripts/LobbyDefense/View/PopupDefenseCard.cs) | 카드 상세와 변환 확인을 열어 능력치·에너지 잔액을 표시하고 강화와 변환을 선택 카드 ID로 전달한다. 창 배치는 [공용 팝업](../../02_Scripts/Manager/PopupBase.cs)의 안전 영역을 따른다. |
 
 ## 책임과 수명
 
-[실제 로비 전투 재생](../../../Docs/Previews/LobbyDefense/LobbyDefensePlay.gif) · [카드 인벤토리에서 본 진주 수비병 초상](../../../Docs/Previews/LobbyDefense/LobbyDefenseInventory.png)
+[실제 로비 전투 재생](../../../Docs/Previews/LobbyDefense/LobbyDefensePlay.gif) · [테스트 계정의 방어 카드 목록](../../../Docs/Previews/LobbyDefense/LobbyDefenseInventory.png)
 
 확대 지도에서 대기 중인 수비 유닛을 누르면 카드를 선택하면서 해당 유닛의 장기자랑(`Special`)을 한 번 재생한다. 배치·이동 뒤나 공격·장기자랑이 끝난 뒤 15초 동안 계속 대기해도 재생한다. 연속 터치는 재생 중인 동작을 이어가고, 실제 공격은 즉시 장기자랑을 중단한다. 장기자랑은 화면 연출이며 피해·발사·저장 상태를 바꾸지 않는다.
 
@@ -34,7 +36,7 @@
 
 ## 유저 데이터와 보유 유닛
 
-로비 두 번째 탭에서 이전·다음 버튼으로 보유 카드를 선택한다. 선택한 카드의 초상, 등급, 태생 점수, 강화값, 최종 전투 능력치와 같은 종류의 에너지를 확인한다. 변환은 카드 한 장을 소모한다는 확인을 거친다.
+로비 두 번째 탭에서 보유 카드를 세로로 스크롤한다. 같은 종류도 한 장씩 표시되며 카드를 누르면 상세 창에서 등급, 태생 점수, 개별 강화값, 최종 전투 능력치와 종류별 에너지를 확인한다. 변환은 카드 한 장을 소모한다는 확인을 거친다. 성공하면 목록으로 돌아와 지급량과 잔액을 표시하며, 그 종류의 마지막 카드를 소모해도 보유 에너지는 목록 아래에 남는다.
 
 보유 카드와 종류별 에너지는 현재 계정 또는 설치 게스트 단위로 보관한다. 기본 능력치·보정치·등급 경계·변환 지급량은 공통 규칙표에서 읽는다. 카드별 강화와 태생 점수는 계정 저장본에 담는다. [UserDataManager.cs](../../02_Scripts/Manager/UserDataManager.cs) · [규칙표](../../05_Table/LobbyDefenseRules.json)
 

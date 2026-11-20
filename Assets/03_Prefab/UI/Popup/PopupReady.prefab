@@ -10,7 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4411992183601757177}
   m_Layer: 5
-  m_Name: PopupRoot
+  m_Name: SafeFrame
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -34,7 +34,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_SizeDelta: {x: 700, y: 850}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &5339322011993056277
 GameObject:
@@ -163,7 +163,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PopupBase
   _dimBackground: {fileID: 4034712659091828267}
-  _contentPanel: {fileID: 4411992183601757177}
+  _contentPanel: {fileID: 3300350150276004490}
+  _safeFrame: {fileID: 4411992183601757177}
+  _referenceButton: {fileID: 2100000741}
   _animationDuration: 0.3
 --- !u!114 &1701155376339700695
 MonoBehaviour:
@@ -298,7 +300,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: -133}
-  m_SizeDelta: {x: 625, y: 86}
+  m_SizeDelta: {x: 625, y: 98}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2100000702
 MonoBehaviour:
@@ -484,8 +486,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 27
-  m_fontSizeBase: 27
+  m_fontSize: 30
+  m_fontSizeBase: 30
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -918,11 +920,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3615526853626541721, guid: 1dd7abb55ae232d44b600f5607c47108, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 300
+      value: 132
       objectReference: {fileID: 0}
     - target: {fileID: 3615526853626541721, guid: 1dd7abb55ae232d44b600f5607c47108, type: 3}
       propertyPath: m_SizeDelta.y
-      value: 145
+      value: 132
       objectReference: {fileID: 0}
     - target: {fileID: 3615526853626541721, guid: 1dd7abb55ae232d44b600f5607c47108, type: 3}
       propertyPath: m_LocalPosition.x
@@ -980,14 +982,6 @@ PrefabInstance:
       propertyPath: m_text
       value:
       objectReference: {fileID: 0}
-    - target: {fileID: 3615526853626541721, guid: 1dd7abb55ae232d44b600f5607c47108, type: 3}
-      propertyPath: m_LocalScale.x
-      value: 0.48
-      objectReference: {fileID: 0}
-    - target: {fileID: 3615526853626541721, guid: 1dd7abb55ae232d44b600f5607c47108, type: 3}
-      propertyPath: m_LocalScale.y
-      value: 0.48
-      objectReference: {fileID: 0}
     - target: {fileID: 160604638974810638, guid: 1dd7abb55ae232d44b600f5607c47108, type: 3}
       propertyPath: m_Sprite
       value:
@@ -1002,11 +996,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4760552368652298055, guid: 1dd7abb55ae232d44b600f5607c47108, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 300
+      value: 132
       objectReference: {fileID: 0}
     - target: {fileID: 4760552368652298055, guid: 1dd7abb55ae232d44b600f5607c47108, type: 3}
       propertyPath: m_SizeDelta.y
-      value: 145
+      value: 132
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

@@ -30,6 +30,7 @@ public sealed class LobbyNavigation : TabController, IDragHandler, IEndDragHandl
     public override string ControllerName => "Lobby";
     public override bool CanOpenTab => (_lobbyControls == null || _lobbyControls.interactable) &&
         (DomainManager.Instance == null || !(DomainManager.Instance.Peek() is PopupBase));
+    internal CanvasGroup LobbyControls => _lobbyControls;
     internal int Direction { get; private set; } = 1;
 
     /// <summary>패널 뒤의 <paramref name="mainControls"/>와 팝업이 입력을 잠그는 <paramref name="lobbyControls"/>를 연결한다.</summary>
@@ -37,6 +38,7 @@ public sealed class LobbyNavigation : TabController, IDragHandler, IEndDragHandl
     {
         _mainControls = mainControls;
         _lobbyControls = lobbyControls;
+        FitSafeArea();
     }
 
     /// <summary>버튼과 비활성 패널의 도메인 이름을 연결하고 메인을 선택한다.</summary>
@@ -79,21 +81,31 @@ public sealed class LobbyNavigation : TabController, IDragHandler, IEndDragHandl
         base.OnDisable();
     }
 
-    /// <summary>화면의 안전 영역에 패널과 하단 버튼을 맞춘다.</summary>
+    /// <summary>메인 전장과 대전 버튼, 탭 패널과 하단 바를 같은 화면 안전 영역에 맞춘다.</summary>
     private void FitSafeArea()
     {
-        if (Screen.width <= 0 || Screen.height <= 0)
+        Rect safe = Screen.safeArea;
+        if (Screen.width <= 0 || Screen.height <= 0 || safe.width <= 0f || safe.height <= 0f)
         {
             return;
         }
-        Rect safe = Screen.safeArea;
         Vector2 screen = new Vector2(Screen.width, Screen.height);
         Vector2 min = safe.min / screen;
         Vector2 max = safe.max / screen;
-        if (_safeArea.anchorMin != min || _safeArea.anchorMax != max)
+        SetSafeAnchors(_safeArea, min, max);
+        if (_mainControls != null)
         {
-            _safeArea.anchorMin = min;
-            _safeArea.anchorMax = max;
+            SetSafeAnchors((RectTransform)_mainControls.transform, min, max);
+        }
+    }
+
+    /// <summary>전체 화면 아래의 <paramref name="root"/>에 안전 영역 경계 <paramref name="min"/>과 <paramref name="max"/>를 적용한다.</summary>
+    private static void SetSafeAnchors(RectTransform root, Vector2 min, Vector2 max)
+    {
+        if (root.anchorMin != min || root.anchorMax != max)
+        {
+            root.anchorMin = min;
+            root.anchorMax = max;
         }
     }
 

@@ -366,11 +366,11 @@ public class ReplayController : MonoBehaviour
         _lastPivotActive = pivotActive;
 
         _statusMessage.Clear();
-        _statusMessage.Append("상대 리플레이\n");
+        _statusMessage.Append("상대 ");
         switch (statusState)
         {
             case ReplayStatusState.Failed:
-                _statusMessage.Append("리플레이를 불러오지 못했습니다");
+                _statusMessage.Append("리플레이 로드 실패");
                 break;
             case ReplayStatusState.LegacyComplete:
                 _statusMessage.Append("이전 기록 재생 완료");
@@ -382,7 +382,7 @@ public class ReplayController : MonoBehaviour
                 _statusMessage.Append("기록 불일치 (비교 제외)");
                 break;
             default:
-                _statusMessage.Append(statusState == ReplayStatusState.Waiting ? "남은 입력 없음  " : "재생 중  ");
+                _statusMessage.Append(statusState == ReplayStatusState.Waiting ? "입력 종료  " : "재생 중  ");
                 PuzzleHudText.AppendNumber(_statusMessage, seconds / 60);
                 _statusMessage.Append(':');
                 PuzzleHudText.AppendNumber(_statusMessage, seconds % 60, true);

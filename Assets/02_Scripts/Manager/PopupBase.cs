@@ -32,6 +32,11 @@ public class PopupBase : MonoBehaviour, IDomainNode
     [SerializeField]
     private RectTransform _contentPanel;
 
+    /// <summary>중앙 정렬된 본문을 감싸는 안전 영역 프레임과 터치 높이 기준 버튼.</summary>
+    [SerializeField] private RectTransform _safeFrame;
+    [SerializeField] private Button _referenceButton;
+    private const float MinimumTouchHeight = 44f;
+
     /// <summary> 열림/닫힘 연출 시간 (초) </summary>
     [SerializeField]
     private float _animationDuration = 0.3f;
@@ -47,6 +52,39 @@ public class PopupBase : MonoBehaviour, IDomainNode
 
     /// <summary> 현재 진행 중인 DOTween 시퀀스 </summary>
     private Sequence _currentSequence;
+
+    /// <summary>팝업이 열려 있는 동안 해상도와 기기 안전 영역 변경을 반영한다.</summary>
+    private void LateUpdate() => FitSafeArea();
+
+    /// <summary>안전 영역에 본문을 맞추고, 여유가 있으면 가장 작은 버튼도 누를 수 있는 크기로 확대한다.</summary>
+    private void FitSafeArea()
+    {
+        if (_safeFrame == null || _referenceButton == null)
+        {
+            return;
+        }
+        Vector2 screen = new Vector2(Screen.width, Screen.height);
+        Rect safe = Screen.safeArea;
+        Vector2 size = _safeFrame.rect.size;
+        if (screen.x <= 0f || screen.y <= 0f || safe.width <= 0f || safe.height <= 0f || size.x <= 0f || size.y <= 0f)
+        {
+            return;
+        }
+
+        RectTransform root = (RectTransform)_safeFrame.parent;
+        Vector2 unitsPerPixel = root.rect.size / screen;
+        Vector2 available = Vector2.Scale(safe.size, unitsPerPixel);
+        float fit = Mathf.Min((available.x - 24f) / size.x, (available.y - 24f) / size.y);
+        float buttonHeight = ((RectTransform)_referenceButton.transform).rect.height;
+        float readable = Mathf.Max(1f, MinimumTouchHeight * unitsPerPixel.y / Mathf.Max(1f, buttonHeight));
+        float scale = Mathf.Clamp(fit, 0f, readable);
+        Vector2 center = Vector2.Scale(safe.center - screen * 0.5f, unitsPerPixel);
+        if (_safeFrame.anchoredPosition != center || !Mathf.Approximately(_safeFrame.localScale.x, scale))
+        {
+            _safeFrame.anchoredPosition = center;
+            _safeFrame.localScale = Vector3.one * scale;
+        }
+    }
 
     /// <summary>
     /// 팝업 이름을 설정합니다. DomainManager에서 생성 시 호출됩니다.
@@ -69,6 +107,7 @@ public class PopupBase : MonoBehaviour, IDomainNode
         }
 
         gameObject.SetActive(true);
+        FitSafeArea();
         InitializeOpenState();
         StartCoroutine(OpenRoutine());
     }
@@ -156,7 +195,7 @@ public class PopupBase : MonoBehaviour, IDomainNode
         {
             _currentSequence.Join(
                 _contentPanel.DOScale(Vector3.one, _animationDuration)
-                    .SetEase(Ease.OutBack)
+                    .SetEase(_safeFrame != null ? Ease.OutCubic : Ease.OutBack)
             );
         }
 
@@ -185,7 +224,7 @@ public class PopupBase : MonoBehaviour, IDomainNode
         {
             _currentSequence.Join(
                 _contentPanel.DOScale(Vector3.zero, _animationDuration)
-                    .SetEase(Ease.InBack)
+                    .SetEase(_safeFrame != null ? Ease.InCubic : Ease.InBack)
             );
         }
 

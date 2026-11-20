@@ -18,7 +18,6 @@ namespace LobbyDefense.Controller
         private DefenseCampaign _game;
         private int _cell = -1;
         private int _choice;
-        private int _cardIndex;
         private int _revision;
         private int _boardRevision;
         private int _wave;
@@ -40,7 +39,6 @@ namespace LobbyDefense.Controller
             view.ChoiceChanged += SelectChoice;
             view.Confirmed += Confirm;
             view.Recalled += Recall;
-            inventory.CardChanged += Browse;
             inventory.Converted += ConvertCard;
             inventory.Upgraded += Upgrade;
         }
@@ -52,7 +50,6 @@ namespace LobbyDefense.Controller
             _view.BindCombat(game);
             _cell = -1;
             _choice = 0;
-            _cardIndex = 0;
             _message = null;
             _view.gameObject.SetActive(true);
             Refresh();
@@ -64,7 +61,7 @@ namespace LobbyDefense.Controller
             _game = null;
             _view.BindCombat(null);
             _view.gameObject.SetActive(false);
-            _inventory.ShowCard(null, message, "", false, false, false);
+            _inventory.ShowState(message);
         }
 
         /// <summary>최근 조작이나 저장 결과인 <paramref name="message"/>를 지도에 표시한다.</summary>
@@ -185,30 +182,11 @@ namespace LobbyDefense.Controller
             }
         }
 
-        /// <summary>인벤토리에서 <paramref name="direction"/> 방향으로 카드 한 장을 선택한다.</summary>
-        private void Browse(int direction)
-        {
-            int count = _game.Cards.Count;
-            if (count > 0)
-            {
-                _cardIndex = (_cardIndex + direction + count) % count;
-                ShowInventory();
-            }
-        }
+        /// <summary>확정한 카드 <paramref name="id"/> 한 장을 해당 종류의 에너지로 변환한다.</summary>
+        private void ConvertCard(string id) => _submit(game => game.TryConvert(id));
 
-        /// <summary>인벤토리에서 변환을 확정한 카드 한 장을 종류별 에너지로 바꾼다.</summary>
-        private void ConvertCard()
-        {
-            string id = _game.Cards[_cardIndex].Id;
-            _submit(game => game.TryConvert(id));
-        }
-
-        /// <summary>인벤토리에서 선택한 <paramref name="stat"/> 능력치를 해당 카드에서 한 단계 강화한다.</summary>
-        private void Upgrade(int stat)
-        {
-            string id = _game.Cards[_cardIndex].Id;
-            _submit(game => game.TryUpgrade(id, (DefenseAttribute)stat));
-        }
+        /// <summary>카드 <paramref name="id"/>의 <paramref name="stat"/> 하나를 같은 종류의 에너지로 강화한다.</summary>
+        private void Upgrade(string id, DefenseAttribute stat) => _submit(game => game.TryUpgrade(id, stat));
 
         /// <summary>지도나 카드가 바뀌었을 때 선택 상태와 경로 및 인벤토리 표시를 함께 갱신한다.</summary>
         internal void Refresh()
@@ -267,34 +245,8 @@ namespace LobbyDefense.Controller
             }
             _view.SetControls(choice, action, _canPlace, _preparing && location >= 0, hint);
             _view.SetRoute(_route, _preview, _cell, range, _canPlace);
-            ShowInventory();
+            _inventory.ShowInventory(_game);
             SetStatus(SecondsRemaining());
-        }
-
-        /// <summary>선택한 카드의 고유 등급·태생 점수·최종 능력치와 종류별 에너지를 표시한다.</summary>
-        private void ShowInventory()
-        {
-            if (_game.Cards.Count == 0)
-            {
-                _inventory.ShowCard(null, "보유한 카드가 없습니다", "로비에서 유닛을 고용하세요.", false, false, false);
-                return;
-            }
-            _cardIndex = Mathf.Clamp(_cardIndex, 0, _game.Cards.Count - 1);
-            OwnedDefenseCard card = _game.Cards[_cardIndex];
-            DefenseUnitDefinition definition = _game.Rules.Find(card.TypeId);
-            DefenseUnit unit = card.CreateUnit(definition);
-            string grade = card.Grade == 4 ? "금색 3성" : $"{card.Grade}성";
-            string title = $"{definition.Name}  {grade}  ({_cardIndex + 1}/{_game.Cards.Count})";
-            int energy = _game.EnergyFor(card.TypeId);
-            string details = $"태생  공격 {card.Roll.Attack}   체력 {card.Roll.Health}   방어 {card.Roll.Defense}\n" +
-                $"전투  공격 {unit.AttackPower}   체력 {unit.MaxHealth}   방어 {unit.DefensePower}\n" +
-                $"에너지 {energy}   강화 비용 {_game.Rules.UpgradeCost}   변환 지급 {_game.Rules.ConversionEnergy}";
-            bool canConvert = _game.CanConvert(card.Id);
-            if (!canConvert)
-            {
-                details += _game.Session.IsCardDeployed(card.Id) ? "\n회수 후 변환할 수 있습니다." : "\n마지막 공격 카드는 재고용 골드가 필요합니다.";
-            }
-            _inventory.ShowCard(card.TypeId, title, details, canConvert, energy >= _game.Rules.UpgradeCost, _game.Cards.Count > 1);
         }
 
         /// <summary>다음 소환이나 정비 종료까지 남은 시간을 논리 틱에서 초로 변환한다.</summary>

@@ -1,244 +1,244 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Text;
+using LobbyDefense.Model;
 using TMPro;
 using UnityEngine;
-using UnityEngine.Events;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace LobbyDefense.View
 {
-    /// <summary>인벤토리에 선택한 카드의 초상·능력치와 같은 종류의 에너지를 표시하고 강화·변환 입력을 전달한다.</summary>
-    public sealed class DefenseCardInventoryView : MonoBehaviour
+    /// <summary>현재 계정의 방어 카드를 스크롤 목록에 표시하고 선택한 카드의 상세 창을 연결한다.</summary>
+    public sealed class DefenseCardInventoryView : MonoBehaviour, IEndDragHandler
     {
-        private static readonly Color Ink = new Color32(66, 46, 39, 255);
-        private static readonly Color Teal = new Color32(31, 100, 99, 255);
-        private static readonly Color Copper = new Color32(148, 72, 36, 255);
+        [SerializeField] private ScrollRect _scroll;
+        [SerializeField] private RectTransform _grid;
+        [SerializeField] private DefenseInventoryTile _template;
+        [SerializeField] private TMP_Text _count;
+        [SerializeField] private TMP_Text _state;
+        [SerializeField] private TMP_Text _balances;
+        private readonly List<DefenseInventoryTile> _tiles = new List<DefenseInventoryTile>();
+        private DefenseCampaign _game;
+        private string _selectedId;
+        private string _receipt;
+        private GameObject _previousSelection;
+        private PopupBase _popup;
+        private PopupDefenseCard _detail;
+        private CanvasGroup _lockedControls;
+        public event Action<string> Converted;
+        public event Action<string, DefenseAttribute> Upgraded;
 
-        public event Action<int> CardChanged;
-        public event Action Converted;
-        public event Action<int> Upgraded;
-
-        private TMP_FontAsset _font;
-        private TextMeshProUGUI _title;
-        private TextMeshProUGUI _details;
-        private Image _portrait;
-        private Button _previous;
-        private Button _next;
-        private readonly Button[] _upgrades = new Button[3];
-        private Button _convert;
-        private RectTransform _actions;
-        private RectTransform _confirmation;
-        private string _shownType;
-
-        /// <summary>기존 로비 글꼴 <paramref name="font"/>를 사용해 비활성 인벤토리에도 카드 화면을 준비한다.</summary>
-        public void Initialize(TMP_FontAsset font)
+        /// <summary><paramref name="game"/>의 보유 목록과 에너지를 갱신하고 열려 있는 상세 창의 카드 ID를 다시 확인한다.</summary>
+        public void ShowInventory(DefenseCampaign game)
         {
-            if (_title != null)
+            if (_game != game)
+            {
+                ShowState("");
+                _game = game;
+            }
+            if (isActiveAndEnabled)
+            {
+                Render();
+            }
+        }
+
+        /// <summary>탭을 열 때 현재 계정의 목록을 표시한다.</summary>
+        private void OnEnable()
+        {
+            if (_game != null)
+            {
+                Render();
+            }
+        }
+
+        /// <summary>스크롤 위치를 유지하면서 카드 목록·잔액과 열린 상세 창을 현재 상태로 맞춘다.</summary>
+        private void Render()
+        {
+            DefenseCampaign game = _game;
+            int count = game.Cards.Count;
+            for (int i = 0; i < count; i++)
+            {
+                OwnedDefenseCard card = game.Cards[i];
+                if (i == _tiles.Count)
+                {
+                    _tiles.Add(Instantiate(_template, _grid));
+                }
+                DefenseInventoryTile tile = _tiles[i];
+                tile.Bind(card, game.Rules.Find(card.TypeId).Name, game.Session.IsCardDeployed(card.Id), OpenCard);
+                tile.gameObject.SetActive(true);
+            }
+            TrimTiles(count);
+            _count.text = $"보유 {count}장";
+            StringBuilder balances = new StringBuilder();
+            foreach (DefenseUnitDefinition unit in game.Rules.Units)
+            {
+                int amount = game.EnergyFor(unit.Id);
+                if (amount > 0)
+                {
+                    balances.AppendLine($"{unit.Name}   {amount}개");
+                }
+            }
+            _balances.gameObject.SetActive(balances.Length > 0);
+            _balances.text = "보유 에너지\n" + balances.ToString().TrimEnd();
+            if (_detail != null)
+            {
+                OwnedDefenseCard selected = game.FindCard(_selectedId);
+                if (selected != null)
+                {
+                    _detail.Present(game, selected);
+                }
+                else
+                {
+                    string type = _detail.UnitTypeId;
+                    _receipt = $"{game.Rules.Find(type).Name} 에너지 +{game.Rules.ConversionEnergy}   /   보유 {game.EnergyFor(type)}개";
+                    Dismiss();
+                }
+            }
+            _state.gameObject.SetActive(count == 0 || !string.IsNullOrEmpty(_receipt));
+            _state.text = _receipt;
+            if (count == 0)
+            {
+                _state.text = string.IsNullOrEmpty(_receipt) ? "보유 카드가 없습니다. 로비에서 유닛을 고용하세요." : _receipt + "   /   보유 카드 없음";
+            }
+        }
+
+        /// <summary>이전 계정의 카드와 창을 정리하고 로드·실패 상태 <paramref name="message"/>를 표시한다.</summary>
+        public void ShowState(string message)
+        {
+            Dismiss();
+            _game = null;
+            _receipt = null;
+            TrimTiles(0);
+            _scroll.StopMovement();
+            _scroll.content.anchoredPosition = Vector2.zero;
+            _state.text = message;
+            _state.gameObject.SetActive(true);
+            _count.text = "";
+            _balances.gameObject.SetActive(false);
+        }
+
+        /// <summary>남길 카드 <paramref name="count"/> 이후의 칸을 즉시 숨기고 정리한다.</summary>
+        private void TrimTiles(int count)
+        {
+            for (int i = _tiles.Count - 1; i >= count; i--)
+            {
+                GameObject tile = _tiles[i].gameObject;
+                tile.SetActive(false);
+                Destroy(tile);
+                _tiles.RemoveAt(i);
+            }
+        }
+
+        /// <summary>목록에서 누른 <paramref name="id"/>를 고정하고 팝업이 닫힐 때까지 뒤쪽 조작을 잠근다.</summary>
+        private void OpenCard(string id)
+        {
+            if (_lockedControls != null || _game == null || _game.FindCard(id) == null)
             {
                 return;
             }
-
-            _font = font;
-            Transform placeholderTitle = transform.Find("Title");
-            if (_font == null && placeholderTitle != null)
+            LobbyNavigation navigation = GetComponentInParent<LobbyNavigation>();
+            if (!navigation.CanOpenTab || !ReferenceEquals(DomainManager.Instance.Peek(), GetComponentInParent<LobbyOverlayTab>()))
             {
-                TextMeshProUGUI titleText = placeholderTitle.GetComponent<TextMeshProUGUI>();
-                if (titleText != null)
+                return;
+            }
+            _selectedId = id;
+            _receipt = null;
+            _state.gameObject.SetActive(false);
+            EventSystem events = EventSystem.current;
+            if (events != null)
+            {
+                _previousSelection = events.currentSelectedGameObject;
+                events.SetSelectedGameObject(null);
+            }
+            _lockedControls = navigation.LobbyControls;
+            _lockedControls.interactable = false;
+            _lockedControls.blocksRaycasts = false;
+            _scroll.StopMovement();
+            DomainManager.Instance.OpenPopup("PopupDefenseCard", OnCreated, OnLoadFailed);
+        }
+
+        /// <summary>요청한 카드가 남아 있으면 생성된 <paramref name="popup"/>에 현재 값을 반영한다.</summary>
+        private void OnCreated(PopupBase popup)
+        {
+            if (this == null)
+            {
+                popup.RequestClose();
+                return;
+            }
+            _popup = popup;
+            popup.OnClosed += OnClosed;
+            if (!isActiveAndEnabled || _game == null || _selectedId == null || _game.FindCard(_selectedId) == null)
+            {
+                Dismiss();
+                return;
+            }
+            _detail = popup.GetComponent<PopupDefenseCard>();
+            _detail.Converted += Converted;
+            _detail.Upgraded += Upgraded;
+            _detail.Present(_game, _game.FindCard(_selectedId));
+        }
+
+        /// <summary>선택이 사라지면 입력을 끊고 상세 창을 닫는다.</summary>
+        private void Dismiss()
+        {
+            _selectedId = null;
+            if (_detail != null)
+            {
+                _detail.Converted -= Converted;
+                _detail.Upgraded -= Upgraded;
+                _detail = null;
+            }
+            if (_popup != null && DomainManager.Instance != null && ReferenceEquals(DomainManager.Instance.Peek(), _popup))
+            {
+                _popup.RequestClose();
+            }
+        }
+
+        /// <summary>상세 창을 불러오지 못했을 때 다음 선택을 허용한다.</summary>
+        private void OnLoadFailed()
+        {
+            if (this != null)
+            {
+                _receipt = "카드 상세를 열지 못했습니다. 다시 선택해 주세요.";
+                _state.text = _receipt;
+                _state.gameObject.SetActive(true);
+                Unlock();
+            }
+        }
+
+        /// <summary><paramref name="popup"/>이 닫히면 목록을 원래 스크롤 위치에서 다시 조작할 수 있게 한다.</summary>
+        private void OnClosed(PopupBase popup)
+        {
+            popup.OnClosed -= OnClosed;
+            _popup = null;
+            Dismiss();
+            Unlock();
+        }
+
+        /// <summary>상세 창이 잠갔던 로비 입력을 복구한다.</summary>
+        private void Unlock()
+        {
+            if (_lockedControls != null)
+            {
+                _lockedControls.interactable = true;
+                _lockedControls.blocksRaycasts = true;
+                _lockedControls = null;
+                if (isActiveAndEnabled && _previousSelection != null && _previousSelection.activeInHierarchy && EventSystem.current != null)
                 {
-                    _font = titleText.font;
+                    EventSystem.current.SetSelectedGameObject(_previousSelection);
                 }
-            }
-            HidePlaceholder("Status");
-            HidePlaceholder("Illustration");
-
-            _portrait = MakeRect(transform, "초상", 0, 156, 144, 144).gameObject.AddComponent<Image>();
-            _portrait.preserveAspect = true;
-            _portrait.raycastTarget = false;
-            _previous = MakeButton(transform, "이전", -182, 155, 110, Teal, () => Browse(-1));
-            _next = MakeButton(transform, "다음", 182, 155, 110, Teal, () => Browse(1));
-            _title = MakeText(transform, "카드 이름", 0, 60, 510, 52, 31);
-            _title.fontStyle = FontStyles.Bold;
-            _details = MakeText(transform, "능력치", 0, -42, 510, 146, 24);
-
-            _actions = MakeRect(transform, "카드 관리", 0, -198, 540, 140);
-            string[] labels = { "공격 강화", "체력 강화", "방어 강화" };
-            for (int i = 0; i < labels.Length; i++)
-            {
-                int stat = i;
-                _upgrades[i] = MakeButton(_actions, labels[i], (i - 1) * 172, 35, 159, Teal, () => Upgrade(stat));
-            }
-            _convert = MakeButton(_actions, "에너지로 변환", 0, -43, 326, Copper, AskConversion);
-
-            _confirmation = MakeRect(transform, "변환 확인", 0, -198, 540, 140);
-            MakeText(_confirmation, "이 카드 한 장을 에너지로 변환할까요?", 0, 35, 526, 58, 25);
-            MakeButton(_confirmation, "취소", -112, -43, 205, Teal, CancelConversion);
-            MakeButton(_confirmation, "변환 확정", 112, -43, 205, Copper, ConfirmConversion);
-            ShowCard(null, null, null, false, false, false);
-        }
-
-        /// <summary>종류 <paramref name="unitTypeId"/>의 이름·등급 <paramref name="title"/>과 능력치·에너지 <paramref name="details"/>를 표시하고
-        /// 변환 <paramref name="canConvert"/>, 강화 <paramref name="canUpgrade"/>, 탐색 <paramref name="canBrowse"/> 가능 여부를 반영한다.</summary>
-        public void ShowCard(string unitTypeId, string title, string details, bool canConvert, bool canUpgrade, bool canBrowse)
-        {
-            bool hasCard = !string.IsNullOrEmpty(unitTypeId);
-            bool keepConfirmation = _confirmation.gameObject.activeSelf && hasCard && canConvert &&
-                _shownType == unitTypeId && _title.text == title && _details.text == details;
-            if (!keepConfirmation)
-            {
-                CancelConversion();
-            }
-            _actions.gameObject.SetActive(hasCard && !keepConfirmation);
-            _previous.gameObject.SetActive(hasCard && canBrowse);
-            _next.gameObject.SetActive(hasCard && canBrowse);
-            _title.text = !hasCard && string.IsNullOrEmpty(title) ? "보유한 카드가 없습니다" : title;
-            _details.text = details;
-            _convert.interactable = hasCard && canConvert;
-            for (int i = 0; i < _upgrades.Length; i++)
-            {
-                _upgrades[i].interactable = hasCard && canUpgrade;
-            }
-
-            if (!hasCard || unitTypeId != _shownType)
-            {
-                _shownType = unitTypeId;
-                _portrait.enabled = false;
-                _portrait.sprite = null;
-                if (hasCard)
-                {
-                    AssetManager.Instance.LoadAssetAsync(new AssetManager.AssetArguments<Sprite>
-                    {
-                        address = "LobbyDefense/Profiles/" + unitTypeId,
-                        successCallback = sprite => SetPortrait(unitTypeId, sprite)
-                    });
-                }
+                _previousSelection = null;
             }
         }
 
-        /// <summary>비동기로 도착한 <paramref name="sprite"/>를 현재 선택한 종류 <paramref name="unitTypeId"/>에만 반영한다.</summary>
-        private void SetPortrait(string unitTypeId, Sprite sprite)
+        /// <summary>목록의 드래그 <paramref name="eventData"/>가 가로 스와이프이면 기존 로비 탭 전환으로 전달한다.</summary>
+        public void OnEndDrag(PointerEventData eventData)
         {
-            if (this != null && unitTypeId == _shownType)
-            {
-                _portrait.sprite = sprite;
-                _portrait.enabled = sprite != null;
-            }
+            GetComponentInParent<LobbyNavigation>().OnEndDrag(eventData);
         }
 
-        /// <summary>패널을 닫으면 진행 중이던 변환 확인도 닫는다.</summary>
-        private void OnDisable()
-        {
-            if (_confirmation != null && _confirmation.gameObject.activeSelf)
-            {
-                CancelConversion();
-            }
-        }
-
-        /// <summary>카드 목록에서 <paramref name="direction"/>만큼 앞이나 뒤로 이동한다.</summary>
-        private void Browse(int direction)
-        {
-            if (CardChanged != null)
-            {
-                CardChanged(direction);
-            }
-        }
-
-        /// <summary>선택 카드에서 <paramref name="stat"/>에 해당하는 능력치 하나의 강화를 요청한다.</summary>
-        private void Upgrade(int stat)
-        {
-            if (Upgraded != null)
-            {
-                Upgraded(stat);
-            }
-        }
-
-        /// <summary>조회 중인 카드의 변환을 확인할 동안 강화와 카드 이동을 잠근다.</summary>
-        private void AskConversion()
-        {
-            _actions.gameObject.SetActive(false);
-            _confirmation.gameObject.SetActive(true);
-            _previous.interactable = false;
-            _next.interactable = false;
-        }
-
-        /// <summary>확인을 닫고 현재 카드의 조작 버튼을 복원한다.</summary>
-        private void CancelConversion()
-        {
-            _confirmation.gameObject.SetActive(false);
-            _actions.gameObject.SetActive(true);
-            _previous.interactable = true;
-            _next.interactable = true;
-        }
-
-        /// <summary>확인 화면을 닫은 후 선택 카드 한 장의 변환을 요청한다.</summary>
-        private void ConfirmConversion()
-        {
-            CancelConversion();
-            if (Converted != null)
-            {
-                Converted();
-            }
-        }
-
-        /// <summary>인벤토리 프리팹의 임시 콘텐츠 <paramref name="childName"/>를 숨긴다.</summary>
-        private void HidePlaceholder(string childName)
-        {
-            Transform child = transform.Find(childName);
-            if (child != null)
-            {
-                child.gameObject.SetActive(false);
-            }
-        }
-
-        /// <summary>부모 <paramref name="parent"/>에 이름 <paramref name="name"/>인 영역을 중앙 기준 <paramref name="x"/>, <paramref name="y"/>에
-        /// 가로 <paramref name="width"/>, 세로 <paramref name="height"/>로 만든다.</summary>
-        private static RectTransform MakeRect(Transform parent, string name, float x, float y, float width, float height)
-        {
-            GameObject element = new GameObject(name, typeof(RectTransform));
-            element.layer = parent.gameObject.layer;
-            RectTransform rect = (RectTransform)element.transform;
-            rect.SetParent(parent, false);
-            rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
-            rect.anchoredPosition = new Vector2(x, y);
-            rect.sizeDelta = new Vector2(width, height);
-            return rect;
-        }
-
-        /// <summary>부모 <paramref name="parent"/>의 <paramref name="x"/>, <paramref name="y"/> 위치에 가로 <paramref name="width"/>, 세로
-        /// <paramref name="height"/>인 글 상자를 만들어 <paramref name="label"/>을 최대 크기 <paramref name="size"/>로 표시한다.</summary>
-        private TextMeshProUGUI MakeText(Transform parent, string label, float x, float y, float width, float height, float size)
-        {
-            TextMeshProUGUI text = MakeRect(parent, label, x, y, width, height).gameObject.AddComponent<TextMeshProUGUI>();
-            if (_font != null)
-            {
-                text.font = _font;
-            }
-            text.text = label;
-            text.alignment = TextAlignmentOptions.Center;
-            text.enableAutoSizing = true;
-            text.fontSizeMax = size;
-            text.fontSizeMin = 17f;
-            text.color = Ink;
-            text.raycastTarget = false;
-            return text;
-        }
-
-        /// <summary>부모 <paramref name="parent"/>의 <paramref name="x"/>, <paramref name="y"/>에 이름 <paramref name="label"/>, 너비
-        /// <paramref name="width"/>, 색 <paramref name="color"/>인 버튼을 만들고 클릭 동작 <paramref name="onClick"/>을 연결한다.</summary>
-        private Button MakeButton(Transform parent, string label, float x, float y, float width, Color color, UnityAction onClick)
-        {
-            RectTransform rect = MakeRect(parent, label, x, y, width, 63);
-            Image background = rect.gameObject.AddComponent<Image>();
-            Button button = rect.gameObject.AddComponent<Button>();
-            button.targetGraphic = background;
-            ColorBlock colors = button.colors;
-            colors.normalColor = color;
-            colors.highlightedColor = Color.Lerp(color, Color.white, 0.12f);
-            colors.selectedColor = color;
-            colors.pressedColor = Color.Lerp(color, Color.black, 0.2f);
-            colors.disabledColor = new Color32(122, 118, 108, 255);
-            button.colors = colors;
-            button.onClick.AddListener(onClick);
-            MakeText(rect, label, 0, 0, width - 12, 53, 24).color = Color.white;
-            return button;
-        }
+        /// <summary>탭을 떠나면 진행 중인 상세 요청과 선택을 해제한다.</summary>
+        private void OnDisable() => Dismiss();
     }
 }

@@ -11,6 +11,9 @@ namespace LobbyDefense.View
     /// <summary>전체 경로와 확대 지도를 함께 보여 주고 배치·고용·회수 입력을 로비 컨트롤러에 전달한다.</summary>
     public sealed class LobbyDefenseView : MonoBehaviour
     {
+        private const float StatusHeight = 132f;
+        private const float ControlsHeight = 236f;
+        private const float MapGap = 4f;
         private static readonly Color Panel = new Color32(19, 44, 49, 255);
         private static readonly Color Trim = new Color32(44, 86, 89, 255);
         private static readonly Color Ink = new Color32(242, 248, 237, 255);
@@ -67,15 +70,20 @@ namespace LobbyDefense.View
             _preview = new bool[board.CellCount];
             RectTransform panel = Rect("DefensePanel", transform, 0f, 0f, 1f, 1f);
             Paint(panel, Panel);
-            _wave = Label("Wave", panel, 0.035f, 0.942f, 0.33f, 0.997f, "", 30f, TextAlignmentOptions.Left);
-            _spawn = Label("Spawn", panel, 0.33f, 0.942f, 0.56f, 0.997f, "", 22f, TextAlignmentOptions.Center);
-            _gold = Label("Gold", panel, 0.56f, 0.942f, 0.77f, 0.997f, "", 28f, TextAlignmentOptions.Right);
+            RectTransform status = Rect("DefenseStatus", panel, 0f, 1f, 1f, 1f);
+            status.offsetMin = Vector2.down * StatusHeight;
+            _wave = Label("Wave", status, 0.035f, 0.50f, 0.33f, 1f, "", 36f, TextAlignmentOptions.Left);
+            _spawn = Label("Spawn", status, 0.33f, 0.50f, 0.56f, 1f, "", 34f, TextAlignmentOptions.Center);
+            _gold = Label("Gold", status, 0.56f, 0.50f, 0.77f, 1f, "", 36f, TextAlignmentOptions.Right);
             _gold.color = Gold;
-            _overview = Grid(Rect("Overview", panel, 0.79f, 0.884f, 0.965f, 0.994f));
+            _overview = Grid(Rect("Overview", status, 0.79f, 0f, 0.965f, 1f));
             _overview.Initialize(board, _columns, true, FocusOverview, MoveWindow);
-            _window = Label("VisibleColumns", panel, 0.035f, 0.884f, 0.77f, 0.94f, "", 21f, TextAlignmentOptions.Left);
+            _window = Label("VisibleColumns", status, 0.035f, 0f, 0.77f, 0.49f, "", 34f, TextAlignmentOptions.Left);
 
-            RectTransform mapArea = Rect("PlacementArea", panel, 0.035f, 0.164f, 0.965f, 0.879f);
+            // 상태와 조작 영역의 높이를 먼저 확보하고 남은 공간에 정사각형 칸 10행을 맞춘다.
+            RectTransform mapArea = Rect("PlacementArea", panel, 0.035f, 0f, 0.965f, 1f);
+            mapArea.offsetMin = Vector2.up * (ControlsHeight + MapGap);
+            mapArea.offsetMax = Vector2.down * (StatusHeight + MapGap);
             RectTransform map = Rect("PlacementMap", mapArea, 0f, 0f, 1f, 1f);
             AspectRatioFitter fit = map.gameObject.AddComponent<AspectRatioFitter>();
             fit.aspectRatio = (float)_columns / _height;
@@ -86,13 +94,14 @@ namespace LobbyDefense.View
             _units = new DefenseUnitMarkers(_detail, this, _width, false);
             Motions = new DefenseMotionLibrary(_detail.transform);
             _projectiles = new DefenseProjectileView(_detail, _width);
-            _hint = Label("Hint", panel, 0.035f, 0.122f, 0.965f, 0.163f, "", 22f, TextAlignmentOptions.Center);
-
-            Control("Previous", panel, 0.035f, 0.066f, 0.15f, 0.119f, "이전", Previous, out _);
-            _choice = Label("Choice", panel, 0.155f, 0.066f, 0.845f, 0.119f, "", 27f, TextAlignmentOptions.Center);
-            Control("Next", panel, 0.85f, 0.066f, 0.965f, 0.119f, "다음", Next, out _);
-            _recall = Control("Recall", panel, 0.035f, 0.008f, 0.35f, 0.061f, "회수", Recall, out _);
-            _confirm = Control("Confirm", panel, 0.365f, 0.008f, 0.965f, 0.061f, "배치 확정", Confirm, out _confirmText);
+            RectTransform controls = Rect("PlacementControls", panel, 0.035f, 0f, 0.965f, 0f);
+            controls.offsetMax = Vector2.up * ControlsHeight;
+            _hint = Label("Hint", controls, 0f, 0.795f, 1f, 1f, "", 36f, TextAlignmentOptions.Center);
+            _choice = Label("Choice", controls, 0f, 0.59f, 1f, 0.795f, "", 36f, TextAlignmentOptions.Center);
+            Control("Previous", controls, 0f, 0.02f, 0.18f, 0.59f, "이전", Previous, out _);
+            Control("Next", controls, 0.19f, 0.02f, 0.37f, 0.59f, "다음", Next, out _);
+            _recall = Control("Recall", controls, 0.395f, 0.02f, 0.62f, 0.59f, "회수", Recall, out _);
+            _confirm = Control("Confirm", controls, 0.63f, 0.02f, 1f, 0.59f, "배치 확정", Confirm, out _confirmText);
             _confirm.targetGraphic.color = new Color32(46, 118, 100, 255);
             FocusOverview(_entrance);
         }
@@ -374,7 +383,7 @@ namespace LobbyDefense.View
             Button button = rect.gameObject.AddComponent<Button>();
             button.targetGraphic = image;
             button.onClick.AddListener(click);
-            label = Label("Label", rect, 0.03f, 0.03f, 0.97f, 0.97f, value, 26f, TextAlignmentOptions.Center);
+            label = Label("Label", rect, 0.03f, 0.03f, 0.97f, 0.97f, value, 34f, TextAlignmentOptions.Center);
             return button;
         }
     }

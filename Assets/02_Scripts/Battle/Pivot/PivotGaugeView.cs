@@ -36,10 +36,11 @@ namespace Battle.Pivot
             root.sizeDelta = new Vector2(source.sizeDelta.x, 62f);
 
             RectTransform labelRect = CreateRect("State", root);
-            labelRect.anchorMin = new Vector2(0f, 0.57f);
+            labelRect.anchorMin = new Vector2(0f, 1f);
             labelRect.anchorMax = Vector2.one;
-            labelRect.offsetMin = Vector2.zero;
-            labelRect.offsetMax = Vector2.zero;
+            labelRect.pivot = new Vector2(0.5f, 1f);
+            labelRect.anchoredPosition = Vector2.zero;
+            labelRect.sizeDelta = new Vector2(0f, 26f);
             _label = labelRect.gameObject.AddComponent<TextMeshProUGUI>();
             _label.font = template.font;
             _label.fontSharedMaterial = template.fontSharedMaterial;
@@ -76,8 +77,13 @@ namespace Battle.Pivot
         {
             RectTransform root = (RectTransform)_root.transform;
             PuzzleHudPlacement.Place(root, area);
+            // 높이가 부족하면 게이지 이미지를 먼저 줄여 상태와 충전량을 한 줄로 읽을 수 있게 합니다.
+            float height = root.rect.height;
+            float labelHeight = Mathf.Min(height, Mathf.Max(height * 0.43f, 19f / root.lossyScale.y));
+            _label.rectTransform.sizeDelta = new Vector2(0f, labelHeight);
             RectTransform track = (RectTransform)_fillImage.transform.parent;
-            float width = Mathf.Min(root.rect.width, root.rect.height * 0.50f * 264f / 34f);
+            float trackHeight = Mathf.Min(height * 0.50f, (height - labelHeight) * 0.92f);
+            float width = Mathf.Min(root.rect.width, trackHeight * 264f / 34f);
             track.sizeDelta = new Vector2(width, width * 34f / 264f);
             PuzzleHudPlacement.FitText(_label, fontSize, TextAlignmentOptions.MidlineLeft);
         }

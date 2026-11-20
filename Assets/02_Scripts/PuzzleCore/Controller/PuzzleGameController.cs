@@ -285,7 +285,7 @@ public class PuzzleGameController : MonoBehaviour
         }
         if (hasOpponent)
         {
-            PuzzleHudPlacement.PlaceText(replayController.StatusText, layout.ReplayStatus, 20f * layout.Unit / _hudCanvas.scaleFactor);
+            PuzzleHudPlacement.PlaceText(replayController.StatusText, layout.ReplayStatus, layout.GetFontSize(20f, _hudCanvas.scaleFactor));
             if (boardView != null && _mainCamera != null)
             {
                 replayController.FitBoard(_mainCamera, layout.ReplayBoard, boardView.transform.lossyScale.x);
@@ -316,28 +316,28 @@ public class PuzzleGameController : MonoBehaviour
         }
         else
         {
-            LayoutPlayerHud(layout.PlayerHud, layout.Unit, _hudCanvas.scaleFactor);
+            LayoutPlayerHud(layout, _hudCanvas.scaleFactor);
         }
     }
 
-    /// <summary><paramref name="area"/> 안에서 점수·시간·피벗·안내 순서로 배치합니다.
-    /// <paramref name="unit"/>은 화면 픽셀 배율, <paramref name="canvasScale"/>은 캔버스 단위의 배율입니다.</summary>
-    private void LayoutPlayerHud(Rect area, float unit, float canvasScale)
+    /// <summary><paramref name="layout"/>의 플레이어 영역 안에 점수·시간·피벗·안내를 놓고 <paramref name="canvasScale"/>에 맞춰 글자 크기를 설정합니다.</summary>
+    private void LayoutPlayerHud(PuzzleHudPlacement layout, float canvasScale)
     {
-        float textScale = unit / canvasScale;
-        float row = Mathf.Min(38f * unit, area.height * 0.18f);
-        float gap = 4f * unit;
+        Rect area = layout.PlayerHud;
+        float unit = layout.Unit;
+        float row = Mathf.Min(Mathf.Max(19f, 38f * unit), area.height * 0.18f);
+        float gap = 3f * unit;
         Rect score = PuzzleHudPlacement.TakeTop(ref area, row, gap);
         Rect timer = PuzzleHudPlacement.TakeTop(ref area, row, gap);
-        PuzzleHudPlacement.PlaceText(_scoreText, score, 32f * textScale);
-        PuzzleHudPlacement.PlaceText(_timerText, timer, 26f * textScale);
+        PuzzleHudPlacement.PlaceText(_scoreText, score, layout.GetFontSize(32f, canvasScale));
+        PuzzleHudPlacement.PlaceText(_timerText, timer, layout.GetFontSize(26f, canvasScale));
         if (_pivotGaugeView != null)
         {
-            Rect gauge = PuzzleHudPlacement.TakeTop(ref area, Mathf.Min(58f * unit, area.height * 0.46f), gap);
-            gauge.width = Mathf.Min(gauge.width, 290f * unit);
-            _pivotGaugeView.SetLayout(gauge, 22f * textScale);
+            Rect gauge = PuzzleHudPlacement.TakeTop(ref area, Mathf.Min(Mathf.Max(31f, 58f * unit), area.height * 0.46f), gap);
+            gauge.width = Mathf.Min(gauge.width, Mathf.Max(145f, 290f * unit));
+            _pivotGaugeView.SetLayout(gauge, layout.GetFontSize(22f, canvasScale));
         }
-        PuzzleHudPlacement.PlaceText(_resultText, area, 23f * textScale);
+        PuzzleHudPlacement.PlaceText(_resultText, area, layout.GetFontSize(23f, canvasScale));
     }
 
     /// <summary>고정 간격으로 플레이어와 상대 보드를 각자의 종료 틱까지 진행합니다.</summary>
@@ -695,6 +695,9 @@ internal readonly struct PuzzleHudPlacement
         float unit = Mathf.Min(safe.width, safe.height) / 720f;
         float edge = 20f * unit;
         float gap = 16f * unit;
+        // 작은 화면에서는 상대 상태 세 줄이 차지할 높이만 더 확보해 상대 보드 크기를 유지합니다.
+        float statusHeight = 106f * unit;
+        float extraStatusHeight = result ? 0f : Mathf.Max(0f, 60f - statusHeight);
         Rect main = Rect.MinMaxRect(safe.xMin + edge, safe.yMin + edge, safe.xMax - edge, safe.yMax - edge);
         Rect hud;
         Rect opponent = default;
@@ -705,7 +708,8 @@ internal readonly struct PuzzleHudPlacement
             hud = TakeRight(ref main, width, gap);
             if (hasOpponent)
             {
-                opponent = TakeTop(ref hud, hud.height * 0.52f, gap);
+                float height = Mathf.Min(hud.height * 0.52f + extraStatusHeight, hud.height * 0.60f);
+                opponent = TakeTop(ref hud, height, gap);
             }
         }
         else if (result)
@@ -718,8 +722,8 @@ internal readonly struct PuzzleHudPlacement
         }
         else
         {
-            float header = hasOpponent ? 320f : 235f;
-            hud = TakeTop(ref main, Mathf.Min(header * unit, main.height * 0.42f), gap);
+            float header = hasOpponent ? 320f * unit + extraStatusHeight : 235f * unit;
+            hud = TakeTop(ref main, Mathf.Min(header, main.height * 0.42f), gap);
             if (hasOpponent)
             {
                 opponent = TakeRight(ref hud, hud.width * 0.45f, gap);
@@ -735,7 +739,8 @@ internal readonly struct PuzzleHudPlacement
             }
             else
             {
-                status = TakeBottom(ref opponent, Mathf.Min(106f * unit, opponent.height * 0.44f), gap * 0.5f);
+                float height = Mathf.Min(statusHeight, opponent.height * 0.44f) + extraStatusHeight;
+                status = TakeBottom(ref opponent, Mathf.Min(height, opponent.height * 0.50f), gap * 0.5f);
             }
         }
         PlayerBoard = main;
@@ -745,6 +750,8 @@ internal readonly struct PuzzleHudPlacement
         Unit = unit;
     }
 
+    /// <summary>기준 크기 <paramref name="size"/>에 작은 화면의 목표 글자 크기를 적용하고 <paramref name="canvasScale"/>로 캔버스 단위를 구합니다.</summary>
+    internal float GetFontSize(float size, float canvasScale) => Mathf.Max(13f, size * Unit) / canvasScale;
 
     /// <summary><paramref name="area"/> 위의 <paramref name="height"/> 높이를 떼고 남은 영역에 <paramref name="gap"/> 간격을 둡니다.</summary>
     internal static Rect TakeTop(ref Rect area, float height, float gap)
