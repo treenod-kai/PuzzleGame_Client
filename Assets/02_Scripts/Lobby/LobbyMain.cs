@@ -2,12 +2,88 @@
 using System.IO;
 using Puzzle.Core;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 /// <summary>로비에서 대전 준비 팝업을 열고 추첨된 퍼즐 규칙에 맞는 상대 기록을 선택합니다.</summary>
 public class LobbyMain : MonoBehaviour
 {
+    [SerializeField] private RectTransform _navigationRoot;
+    [SerializeField] private CanvasGroup _mainControls;
+    [SerializeField] private CanvasGroup _lobbyControls;
+    private GameObject _previousSelection;
+
+    /// <summary>메인 로비와 팝업 사이에 하단 탭 UI를 불러온다.</summary>
+    private void Start()
+    {
+        AssetManager.Instance.LoadAssetAsync(new AssetManager.AssetArguments<GameObject>
+        {
+            address = "Lobby/Navigation",
+            successCallback = AttachNavigation,
+            failedCallback = () => Debug.LogError("[LobbyMain] 로비 탭 UI를 불러오지 못했습니다.")
+        });
+    }
+
+    /// <summary>로비가 여전히 열려 있으면 <paramref name="prefab"/>을 전용 UI 루트에 배치한다.</summary>
+    private void AttachNavigation(GameObject prefab)
+    {
+        if (this != null && _navigationRoot != null)
+        {
+            GameObject navigation = Instantiate(prefab, _navigationRoot, false);
+            navigation.GetComponent<LobbyNavigation>().BindMainControls(_mainControls, _lobbyControls);
+        }
+    }
+
     /// <summary>90초 대전용 준비 팝업을 엽니다.</summary>
-    private void OnClickBattle() => DomainManager.Instance.OpenPopup("PopupReady");
+    private void OnClickBattle()
+    {
+        DomainManager manager = DomainManager.Instance;
+        if (manager == null || _lobbyControls == null || !_lobbyControls.interactable ||
+            !_mainControls.interactable || manager.Peek() is PopupBase || (Main.Instance != null && Main.Instance.IsMovingScene))
+        {
+            return;
+        }
+
+        EventSystem events = EventSystem.current;
+        if (events != null)
+        {
+            _previousSelection = events.currentSelectedGameObject;
+            events.SetSelectedGameObject(null);
+        }
+        _lobbyControls.interactable = false;
+        _lobbyControls.blocksRaycasts = false;
+        manager.OpenPopup("PopupReady", OnReadyCreated, RestoreLobbyInput);
+    }
+
+    /// <summary>생성된 <paramref name="popup"/>이 닫힘 연출을 마칠 때까지 로비 입력을 잠근다.</summary>
+    private void OnReadyCreated(PopupBase popup)
+    {
+        popup.OnClosed += OnReadyClosed;
+    }
+
+    /// <summary>닫힌 <paramref name="popup"/>의 구독을 해제하고 로비 입력을 다시 연다.</summary>
+    private void OnReadyClosed(PopupBase popup)
+    {
+        popup.OnClosed -= OnReadyClosed;
+        RestoreLobbyInput();
+    }
+
+    /// <summary>팝업 로드 실패 또는 닫힘 완료 시 이전 로비 버튼에 키보드 포커스를 돌려준다.</summary>
+    private void RestoreLobbyInput()
+    {
+        if (this == null || _lobbyControls == null || (Main.Instance != null && Main.Instance.IsMovingScene))
+        {
+            return;
+        }
+        _lobbyControls.interactable = true;
+        _lobbyControls.blocksRaycasts = true;
+        EventSystem events = EventSystem.current;
+        if (events != null)
+        {
+            GameObject selected = _previousSelection != null && _previousSelection.activeInHierarchy ? _previousSelection : null;
+            events.SetSelectedGameObject(selected);
+        }
+        _previousSelection = null;
+    }
 
     /// <summary>추첨된 규칙에 맞는 최신 완주 기록을 찾아 같은 조건의 대전을 준비합니다.</summary>
     /// <param name="ruleAddress">준비 팝업에서 확정한 퍼즐 규칙 주소입니다.</param>

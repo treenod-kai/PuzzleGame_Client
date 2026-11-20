@@ -29,6 +29,14 @@ public class PopupReady : PopupHandler
         _previewSize = _reel.rectTransform.sizeDelta;
         _selectedMode = UnityEngine.Random.Range(0, RulePaths.Length);
         RefreshLives(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+        _popup.OnOpened += popup => FocusAvailableButton();
+    }
+
+    /// <summary>대전을 시작할 수 있으면 시작 버튼에, 라이프가 없으면 닫기 버튼에 포커스를 맞춘다.</summary>
+    private void FocusAvailableButton()
+    {
+        Button target = _startButton.IsInteractable() ? _startButton : _closeButton;
+        target.Select();
     }
 
     /// <summary>팝업이 열린 동안 초 단위로 다음 회복 시각과 버튼 상태를 갱신합니다.</summary>
@@ -117,6 +125,7 @@ public class PopupReady : PopupHandler
         _statusText.text = message;
         _closeButton.interactable = true;
         RefreshLives(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+        FocusAvailableButton();
     }
 
     /// <summary>추첨 전에는 라이프를 소모하지 않고 팝업을 닫습니다.</summary>

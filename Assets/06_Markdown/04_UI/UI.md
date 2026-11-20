@@ -22,7 +22,9 @@ UI, 팝업, 탭 관련 작업 시 이 문서를 참고.
 | Shared 공용 팝업 등록 | [SharedPopupController.cs](../../02_Scripts/Manager/SharedPopupController.cs) | `ControllerName` |
 | 로비 팝업 등록·로비 직접 실행 시 매니저 대기 | [LobbyPopupController.cs](../../02_Scripts/Lobby/LobbyPopupController.cs) | `ControllerName`, `RegisterWhenReady` |
 | 게임 팝업 등록 | [GamePopupController.cs](../../02_Scripts/PuzzleCore/Controller/GamePopupController.cs) | `ControllerName` |
-| 로비 탭 컴포넌트 (TabBase 상속) | [LobbyTabController.cs](../../02_Scripts/Lobby/LobbyTabController.cs) | `LobbyTabController` |
+| 하단 다섯 탭·스와이프·모달 입력 | [LobbyNavigation.cs](../../02_Scripts/Lobby/LobbyNavigation.cs) | `SelectTab`, `OnEndDrag`, `SwitchBySwipe` |
+| 오버레이 패널의 가로 전환 | [LobbyOverlayTab.cs](../../02_Scripts/Lobby/LobbyOverlayTab.cs) | `Bind`, `ActivateAnimation`, `DeactivateAnimation` |
+| 메인 화면의 상주 탭 컴포넌트 | [LobbyTabController.cs](../../02_Scripts/Lobby/LobbyTabController.cs) | `LobbyTabController` |
 | 대전 전용 피벗 충전·활성 게이지 | [PivotGaugeView.cs](../../02_Scripts/Battle/Pivot/PivotGaugeView.cs) | `PivotGaugeView`, `Refresh`, `Dispose` |
 
 피벗 게이지는 대전 시작 시 기존 타이머 아래에 생성하며 같은 한글 폰트를 사용한다. 게임 종료 시 숨기고 컨트롤러 제거 시 UI를 정리한다. 상태 및 설정 규칙은 [INGAME-VIEW-AND-BATTLE.md](../02_Ingame/INGAME-VIEW-AND-BATTLE.md#대전-전용-피벗-모드)를 참고한다.
@@ -47,8 +49,8 @@ DomainManager (SharedScene 싱글톤)
 ### 열기
 | 메서드 | 동작 |
 |--------|------|
-| `OpenPopup(name, callback?)` | 팝업 프리팹 로드 → 스택에 추가 → Open 애니메이션 |
-| `OpenTab(name, callback?)` | 이전 탭 위의 팝업 모두 닫기 → 이전 탭 비활성화 → 새 탭 활성화 |
+| `OpenPopup(name, onOpened?, onFailed?)` | 프리팹 생성 후 스택에 등록하고 연다. 로드 실패나 요청 취소 시 onFailed 호출 |
+| `OpenTab(name, callback?)` | 활성 컨트롤러의 CanOpenTab 확인 → 기존 탭과 위쪽 팝업 정리 → 새 탭 활성화 |
 
 ### 닫기
 | 메서드 | 동작 |
@@ -75,8 +77,8 @@ DomainManager (SharedScene 싱글톤)
 ```
 DomainManager.OpenPopup("ItemDetail")
   → _activePopupController.CreatePopup("ItemDetail")
-    → AssetManager.LoadGameObject("Popup/ItemDetail")  ← Addressable 주소 패턴
-      → 인스턴스 생성 → PopupBase 컴포넌트 확보
+    → AssetManager.LoadAssetAsync<GameObject>로 "Popup/ItemDetail" 주소 로드
+      → Instantiate → PopupBase 컴포넌트 확보
         → _domainStack에 추가
           → PopupBase.Open()
             → dim 페이드인 + content 스케일 (0→1, OutBack, 0.3초)
@@ -85,10 +87,9 @@ DomainManager.OpenPopup("ItemDetail")
 
 ```
 PopupHandler.ClosePopup() 또는 DomainManager.Close(name)
-  → PopupBase.Close()
+  → PopupController.DestroyPopup() → PopupBase.Close()
     → content 스케일 (1→0, InBack) + dim 페이드아웃
-      → OnClosed 이벤트
-        → PopupController.DestroyPopup() → GameObject 파괴
+      → OnClosed 이벤트 → GameObject 파괴
 ```
 
 ### PopupBase 주요 멤버
@@ -105,20 +106,18 @@ PopupHandler.ClosePopup() 또는 DomainManager.Close(name)
 
 ## 팝업 핸들러 (PopupHandler)
 
-팝업별 로직을 구현하는 추상 클래스. PopupBase와 같은 GameObject에 부착.
-
-```csharp
-// 예: PopupReady.cs
-public class PopupReady : PopupHandler
-{
-    private void OnClickStart() { /* 게임 데이터 준비 → GameScene 이동 */ }
-    private void OnClickClose() { ClosePopup(); }
-}
-```
+각 팝업은 PopupBase와 같은 객체에 PopupHandler 서브클래스를 둔다.
 
 - `ClosePopup()`: `DomainManager.Close(PopupName)` (IsAnimating 중이면 차단)
 - `BackPopup()`: `DomainManager.Back()` (IsAnimating 중이면 차단)
 - 메서드는 `UIButton`의 `SendMessage`로 호출됨
+
+## 로비 하단 탭
+
+상점 · 인벤토리 · **메인** · 소셜 · 옵션 순서이며 로비에 들어오면 메인을 표시한다. `MainTab`과 방치 화면은 씬에 계속 남는다. 나머지 네 탭은 별도 UI 레이어에 열리고, 대전 준비 팝업은 그 위에 열린다. 탭 이동은 라이프를 사용하지 않는다.
+버튼을 누르거나 좌우로 스와이프해 이동한다. 세로 드래그는 무시하고 양 끝에서 멈춘다. 메인 선택 또는 도메인 뒤로 가기는 패널을 닫는다. 이동 중에는 패널 콘텐츠 입력을 막는다. 대전 준비를 요청하면 팝업이 닫힐 때까지 메인과 하단 탭의 포인터·키보드 입력을 잠그고, 닫거나 로드에 실패하면 이전 입력을 복원한다. 패널의 콘텐츠와 각 탭의 선택 표시는 [로비 탭 프리팹](../../03_Prefab/UI/LobbyNavigation.prefab)에서 편집한다. [탭 아이콘 원화](../../04_Resources/Images/LobbyTabIcons.png)
+
+<details><summary>내장 ImageGen에 사용한 아이콘 생성 프롬프트</summary>Game asset, a single transparent horizontal sprite atlas for the bottom navigation of a Korean mobile puzzle game. Precisely five separate equal-sized icons in ONE straight row, centered in five equal-width cells, left to right: a tiny shop kiosk with a coral-and-cream striped awning; a golden ochre adventurer backpack with a teal clasp; a small cream house with a seafoam/teal roof and a warm golden doorway; two overlapping coral and turquoise speech bubbles; a blue-silver eight-tooth settings gear with an open circular hole. Cheerful polished enamel toy sculptures, soft bevels, sculpted detail, broad highlights from upper left, crisp legible silhouettes at 44px, near-frontal slight perspective. Coordinated colors and consistent outline weight, same optical size. Wide landscape canvas, generous entirely transparent gutters between each silhouette and around outer edges. Background genuine alpha transparency. Objects floating individually, no cast shadows outside silhouettes, no plates or button tiles, no lettering, no symbols other than the five described, no numbers, no borders, no captions.</details>
 
 ## 탭 생명주기
 
@@ -171,7 +170,7 @@ Inspector에서 설정하는 범용 버튼 컴포넌트.
 | SharedPopupController | `"Shared"` | SharedScene (공용 팝업: 네트워크 에러 등) |
 | LobbyPopupController | `"Lobby"` | LobbyScene |
 | GamePopupController | `"Game"` | GameScene |
-| LobbyTabController | — | Lobby/ (TabBase 상속) |
+| LobbyNavigation | `"Lobby"` | LobbyNavigationRoot 아래에 생성되는 하단 바와 네 패널 |
 
 ## 팝업 추가 방법 (체크리스트)
 

@@ -27,6 +27,9 @@ public class DomainManager : MonoBehaviour
     /// <summary> 현재 활성화된 팝업 컨트롤러 </summary>
     private PopupController _activePopupController;
 
+    /// <summary>도메인 전체를 닫은 뒤 도착한 이전 팝업 로드를 구별한다.</summary>
+    private ulong _popupGeneration;
+
     /// <summary> 현재 활성화된 탭 컨트롤러 </summary>
     private TabController _activeTabController;
 
@@ -93,28 +96,36 @@ public class DomainManager : MonoBehaviour
 
     #region 도메인 열기 / 닫기 / 뒤로가기
 
-    /// <summary>
-    /// 팝업을 이름으로 엽니다. 활성 PopupController를 통해 프리팹을 생성합니다.
-    /// 도메인 스택에 팝업이 추가되어 경로가 확장됩니다.
-    /// </summary>
-    /// <param name="popupName">팝업 이름 (Addressable 주소: "Popup/{popupName}")</param>
-    /// <param name="onOpened">팝업 열림 완료 시 콜백</param>
-    public void OpenPopup(string popupName, Action<PopupBase> onOpened = null)
+    /// <summary><paramref name="popupName"/>을 열고 생성 시 <paramref name="onOpened"/>, 로드 실패나 취소 시 <paramref name="onFailed"/>를 호출한다.</summary>
+    public void OpenPopup(string popupName, Action<PopupBase> onOpened = null, Action onFailed = null)
     {
-        if (_activePopupController == null)
+        PopupController controller = _activePopupController;
+        if (controller == null)
         {
             Debug.LogError("[DomainManager] 활성화된 PopupController가 없습니다.");
+            if (onFailed != null)
+            {
+                onFailed.Invoke();
+            }
             return;
         }
+        ulong generation = _popupGeneration;
 
-        /// <summary> 생성한 팝업을 스택에 등록하고 엽니다. </summary>
-        /// <param name="popup">생성한 팝업</param>
+        /// <summary>요청했던 씬이 계속 열려 있으면 생성된 <paramref name="popup"/>을 도메인에 등록한다.</summary>
         void OnPopupCreated(PopupBase popup)
         {
+            if (this == null || generation != _popupGeneration || controller != _activePopupController)
+            {
+                Destroy(popup.gameObject);
+                if (onFailed != null)
+                {
+                    onFailed.Invoke();
+                }
+                return;
+            }
             _domainStack.Add(popup);
             _pathDirty = true;
             popup.Open();
-
             Debug.Log($"[DomainManager] 팝업 열림: {popupName} | 경로: {CurrentPath}");
             if (onOpened != null)
             {
@@ -122,7 +133,7 @@ public class DomainManager : MonoBehaviour
             }
         }
 
-        _activePopupController.CreatePopup(popupName, OnPopupCreated);
+        controller.CreatePopup(popupName, OnPopupCreated, onFailed);
     }
 
     /// <summary>
@@ -136,6 +147,11 @@ public class DomainManager : MonoBehaviour
         if (_activeTabController == null)
         {
             Debug.LogError("[DomainManager] 활성화된 TabController가 없습니다.");
+            return;
+        }
+
+        if (!_activeTabController.CanOpenTab)
+        {
             return;
         }
 
@@ -204,6 +220,7 @@ public class DomainManager : MonoBehaviour
     /// </summary>
     public void CloseAll()
     {
+        _popupGeneration++;
         for (int i = _domainStack.Count - 1; i >= 0; i--)
         {
             RemoveDomainAt(i);

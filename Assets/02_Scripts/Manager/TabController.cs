@@ -10,6 +10,9 @@ public abstract class TabController : MonoBehaviour
     /// <summary> 컨트롤러 식별 이름 (씬 이름과 대응) </summary>
     public abstract string ControllerName { get; }
 
+    /// <summary>현재 다른 도메인을 닫고 이 컨트롤러의 탭으로 전환할 수 있는지 반환한다.</summary>
+    public virtual bool CanOpenTab => true;
+
     /// <summary> 이 씬에서 탭이 위치하는 부모 Transform </summary>
     [SerializeField]
     protected Transform _tabRoot;

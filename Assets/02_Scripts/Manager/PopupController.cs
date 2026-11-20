@@ -32,25 +32,25 @@ public abstract class PopupController : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 팝업 프리팹을 Addressables에서 로드하여 _popupRoot 하위에 생성합니다.
-    /// </summary>
-    /// <param name="popupName">팝업 이름 (Addressable 주소: "Popup/{popupName}")</param>
-    /// <param name="onCreated">생성 완료 시 PopupBase 인스턴스를 전달하는 콜백</param>
-    public void CreatePopup(string popupName, Action<PopupBase> onCreated)
+    /// <summary><paramref name="popupName"/> 프리팹을 불러와 <paramref name="onCreated"/>로 전달하고, 실패하거나 씬을 떠났으면 <paramref name="onFailed"/>를 호출한다.</summary>
+    public void CreatePopup(string popupName, Action<PopupBase> onCreated, Action onFailed = null)
     {
         string address = $"Popup/{popupName}";
 
-        /// <summary> 로드한 팝업을 초기화하고 완료를 알립니다. </summary>
-        /// <param name="instance">생성한 팝업 오브젝트</param>
-        void OnPopupLoaded(GameObject instance)
+        /// <summary>비동기로 받은 <paramref name="prefab"/>을 요청한 팝업 루트에 생성한다.</summary>
+        void OnPrefabLoaded(GameObject prefab)
         {
+            if (this == null || !isActiveAndEnabled || prefab == null)
+            {
+                OnLoadFailed();
+                return;
+            }
+            GameObject instance = Instantiate(prefab, transform);
             PopupBase popup = instance.GetComponent<PopupBase>();
             if (popup == null)
             {
                 popup = instance.AddComponent<PopupBase>();
             }
-
             popup.SetPopupName(popupName);
             if (onCreated != null)
             {
@@ -58,15 +58,25 @@ public abstract class PopupController : MonoBehaviour
             }
         }
 
-        AssetManager.Instance.LoadGameObjectAsync(
-            new AssetManager.AssetArguments<GameObject>
+        /// <summary>로드 실패를 기록하고 요청자에게 입력을 복구할 기회를 준다.</summary>
+        void OnLoadFailed()
+        {
+            if (this != null && isActiveAndEnabled)
             {
-                address = address,
-                successCallback = OnPopupLoaded,
-                failedCallback = () => Debug.LogError($"[{ControllerName}PopupController] 팝업 로드 실패: {popupName} (주소: {address})")
-            },
-            this.transform
-        );
+                Debug.LogError($"[{ControllerName}PopupController] 팝업 로드 실패: {popupName} (주소: {address})");
+            }
+            if (onFailed != null)
+            {
+                onFailed.Invoke();
+            }
+        }
+
+        AssetManager.Instance.LoadAssetAsync(new AssetManager.AssetArguments<GameObject>
+        {
+            address = address,
+            successCallback = OnPrefabLoaded,
+            failedCallback = OnLoadFailed
+        });
     }
 
     /// <summary>
@@ -89,6 +99,21 @@ public abstract class PopupController : MonoBehaviour
             }
         }
 
-        popup.Close(OnPopupClosed);
+        // 열림 연출 중의 뒤로 가기도 닫힘 완료 이벤트를 거치게 한다.
+        if (popup.IsAnimating)
+        {
+            popup.OnOpened += CloseAfterOpen;
+        }
+        else
+        {
+            popup.Close(OnPopupClosed);
+        }
+
+        /// <summary>열림 연출을 마친 <paramref name="opened"/>의 닫힘 연출을 시작한다.</summary>
+        void CloseAfterOpen(PopupBase opened)
+        {
+            opened.OnOpened -= CloseAfterOpen;
+            opened.Close(OnPopupClosed);
+        }
     }
 }

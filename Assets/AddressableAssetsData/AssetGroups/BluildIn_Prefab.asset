@@ -15,6 +15,11 @@ MonoBehaviour:
   m_GroupName: BluildIn_Prefab
   m_GUID: 9aecbb2535c142a45893e4221ea2c4c6
   m_SerializeEntries:
+  - m_GUID: 61e7ffa420205a9688eeba51c71ff96e
+    m_Address: Lobby/Navigation
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: ffae52dfe27a60a44b2f0610dd4dc7a6
     m_Address: Popup/PopupReady
     m_ReadOnly: 0
