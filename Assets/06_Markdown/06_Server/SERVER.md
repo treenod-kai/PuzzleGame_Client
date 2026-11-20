@@ -6,8 +6,6 @@
 
 [전체 작업 지도](../MAP.md) · [문서 목록](../README.md)
 
-파일 링크는 이 문서 기준 상대 경로이며, 마지막 열의 이름을 파일 안에서 검색하면 구현 위치를 찾을 수 있습니다.
-
 | 찾는 콘텐츠 | 담당 C# 파일 | 주요 메서드·타입·멤버 |
 |---|---|---|
 | 서버 URL·HTTP 초기화·GET/POST 진입점 | [NetworkManager.cs](../../02_Scripts/Manager/NetworkManager.cs) | `Initialize`, `Get`, `Post` |
@@ -15,169 +13,34 @@
 | 유저 데이터 레이어 초기화·로드·초기화 해제 | [UserDataManager.cs](../../02_Scripts/Manager/UserDataManager.cs) | `Initialize`, `LoadIdentity`, `ClearAll` |
 | 인증 로그인·계정 연동 | [AuthLayer.cs](../../02_Scripts/Manager/UserData/AuthLayer.cs) | `Login`, `Link` |
 | auth/login 게스트 로그인·실패 시 더미 데이터 | [IdentityLayer.cs](../../02_Scripts/Manager/UserData/IdentityLayer.cs) | `Request`, `CreateDummyData`, `Clear` |
+| 계정별 디펜스 파일·게스트 진행 이전 | [DefenseProgressStore.cs](../../02_Scripts/Manager/UserData/DefenseProgressStore.cs) | `CurrentOwner`, `Open`, `Save` |
 
-공유 DTO의 소스는 이 저장소의 C# 파일에 없습니다. 클라이언트는 [PuzleBattleShared.dll](../../Plugins/PuzleBattleShared.dll)을 참조하며, DTO 수정은 서버의 공유 프로젝트에서 진행합니다.
+## 시작과 통신
 
----
+현재 타이틀과 로비는 로그인 없이 시작한다. 대전 상대는 기기에 저장된 퍼즐 리플레이에서 고른다. [게임 흐름](../01_Architecture/ARCHITECTURE_FLOW.md)
 
-## 환경
+서버 연결을 사용하는 호출자가 SharedScene의 매니저를 다음 순서로 초기화한다.
 
-| 항목 | 값 |
-|------|-----|
-| 서버 프레임워크 | ASP.NET Core Web API (.NET 10) |
-| 클라이언트 HTTP | `UnityWebRequest` (코루틴 기반) |
-| 통신 형식 | REST JSON |
-| 기본 base URL | `http://localhost:7777` |
-| 공유 DLL | `Assets/Plugins/PuzleBattleShared.dll` |
+1. `NetworkManager.Initialize(baseUrl)`로 HTTP 클라이언트를 만든다. 인자를 생략할 때의 기본 주소는 `http://localhost:7777`이다.
+2. `UserDataManager.Initialize()`로 Identity와 Auth 레이어를 생성한다. 재호출하면 두 인스턴스를 교체한다.
+3. 설치 게스트 정보는 `LoadIdentity`, 제공자 로그인은 `Login`, 현재 계정 연동은 `LinkAuthAccount`를 호출한다.
 
----
+| 진입점 | HTTP 요청 | 결과 |
+|---|---|---|
+| `LoadIdentity` | `POST auth/login`, 설치 게스트 ID | 서버 유저를 Identity에 담는다. 실패하면 `dummy_user`를 넣고 완료 콜백을 호출한다. 두 경우 모두 `IsLoaded`가 참이므로 다시 요청하려면 `forceRefresh`가 필요하다. |
+| `Login` | `POST auth/login`, 제공자 ID와 현재 UID | 인증 결과를 Auth에 저장하고 Identity를 갱신한다. |
+| `LinkAuthAccount` | `POST auth/link`, 현재 UID와 제공자 ID | 응답받은 유저를 Identity에 적용한다. |
+| `ClearAll` | 로컬 처리 | Identity와 Auth의 메모리 상태를 비운다. 설치 게스트 식별자와 저장 파일은 유지한다. |
 
-## 공유 DLL (PuzleBattleShared.dll)
+`HttpNetworkClient`는 `UnityWebRequest` 코루틴과 UTF-8 JSON을 사용한다. 모델을 추가할 때는 서버 공유 프로젝트에서 `JsonUtility`가 읽을 수 있는 필드명과 타입을 맞추고 DLL을 갱신한다. [공유 DTO 명세](SERVER_DTO.md) · [클라이언트 참조 DLL](../../Plugins/PuzleBattleShared.dll)
 
-서버와 클라이언트가 동일한 DTO를 사용하기 위한 공유 어셈블리.
-네임스페이스: `PuzleBattleShared.Models`.
+## 디펜스의 로컬 계정 저장
 
-DTO 필드 정의(UserData / RewardData / RewardType / AuthProvider / AuthLoginRequest / AuthLoginResponse)는 [`SERVER_DTO.md`](SERVER_DTO.md) 참고.
+- 저장 주체는 현재 유효한 UID, 이 설치에서 확인한 서버 게스트 UID, 설치 게스트 ID 순으로 선택한다.
+- 카드·종류별 에너지·골드·배치·전투 진행을 `persistentDataPath/LobbyDefense/<소유자 키의 SHA-256>/progress.json`에 함께 저장한다. 임시 파일을 기록한 뒤 기존 파일을 교체하며 이전 저장본은 `.bak`에 보관한다.
+- 해당 설치의 게스트 로그인이 확인되고 UID 폴더가 처음 생성될 때 기존 게스트 폴더를 옮긴다. 이미 진행이 있는 계정의 파일은 유지한다. [보유 카드와 계정](../01_Architecture/LOBBY-DEFENSE-ARCHITECTURE.md#유저-데이터와-보유-유닛)
 
----
+## 계정 UI 연결 전 확인할 문제
 
-## 네트워크 레이어 구조
-
-```
-NetworkManager (MonoBehaviour 싱글톤, SharedScene)
-└─ HttpNetworkClient (순수 C# 클래스)
-    ├─ Get<TResponse>(endpoint, onSuccess, onFailed)
-    └─ Post<TRequest, TResponse>(endpoint, body, onSuccess, onFailed)
-```
-
-### NetworkManager API
-
-| 메서드 | 용도 |
-|--------|------|
-| `Initialize(baseUrl?)` | HTTP 클라이언트 생성 (기본 `localhost:7777`) |
-| `Get<TResponse>(endpoint, onSuccess, onFailed)` | GET 요청 |
-| `Post<TRequest, TResponse>(endpoint, body, onSuccess, onFailed)` | POST 요청 |
-| `BaseUrl` | 현재 서버 URL |
-| `IsInitialized` | 클라이언트 생성 여부 |
-
-### HttpNetworkClient 내부 동작
-- `UnityWebRequest` + 코루틴 기반 비동기 통신
-- 요청: `JsonUtility.ToJson(body)` → UTF-8 바이트 → `UploadHandlerRaw`
-- 응답: `JsonUtility.FromJson<TResponse>(responseJson)` → 콜백 전달
-- 에러: HTTP 실패 또는 JSON 파싱 실패 시 `onFailed(errorMessage)` 호출
-
----
-
-## 유저 데이터 레이어
-
-```
-UserDataManager (MonoBehaviour 싱글톤, SharedScene)
-├─ IdentityLayer (순수 C# 클래스)
-│  └─ UserData (PuzleBattleShared.Models.UserData)
-└─ AuthLayer (순수 C# 클래스)
-   └─ AuthLoginResponse (PuzleBattleShared.Models.AuthLoginResponse)
-```
-
-로비 디펜스는 현재 UID 또는 설치 게스트에 연결된 로컬 파일에 보유 카드·종류별 에너지·골드·진행 틱을 함께 저장한다. 게스트 로그인이 성공하면 확인된 UID로 같은 설치의 진행을 이어받는다. [DefenseProgressStore.cs](../../02_Scripts/Manager/UserData/DefenseProgressStore.cs) · [보유 유닛과 계정](../01_Architecture/LOBBY-DEFENSE-ARCHITECTURE.md#유저-데이터와-보유-유닛)
-
-### UserDataManager API
-
-| 메서드 | 용도 |
-|--------|------|
-| `Initialize()` | 레이어 인스턴스 생성 |
-| `LoadIdentity(onComplete, onFailed, forceRefresh?)` | 설치별 게스트 ID로 서버 로그인 |
-| `Login(provider, providerUserId, nickname, email, onComplete, onFailed)` | provider 계정 로그인 |
-| `LinkAuthAccount(provider, providerUserId, email, onComplete, onFailed)` | 현재 유저에 provider 계정 연동 |
-| `ClearAll()` | 전체 데이터 초기화 (로그아웃) |
-| `Identity` | IdentityLayer 프로퍼티 접근 |
-| `Auth` | AuthLayer 프로퍼티 접근 |
-
-### IdentityLayer
-- 엔드포인트: `POST auth/login`
-- 요청 DTO: `AuthLoginRequest` (`provider=Guest`, `providerUserId=PlayerPrefs` 저장값)
-- 응답 DTO: `AuthLoginResponse`
-- 서버 연결 실패 시 더미 데이터로 폴백 (uid=`"dummy_user"`, nickname=`"Guest"`)
-- `Data`: 로드된 `UserData` 인스턴스
-- `IsLoaded`: 서버 로드 완료 여부
-
-### AuthLayer
-- 엔드포인트: `POST auth/login`, `POST auth/link`
-- `Login`: provider 계정 로그인. 기존 게스트 uid가 있으면 요청에 포함해 연동 가능
-- `Link`: 현재 uid에 provider 계정 연결
-- 실제 소셜 SDK 단계에서는 클라이언트 provider ID를 그대로 믿지 않고 서버 토큰 검증으로 교체해야 함
-
----
-
-## API 엔드포인트 목록
-
-| 메서드 | 경로 | 요청 DTO | 응답 DTO | 사용처 |
-|--------|------|----------|----------|--------|
-| POST | `auth/login` | `AuthLoginRequest` | `AuthLoginResponse` | `IdentityLayer.Request()`, `AuthLayer.Login()` |
-| POST | `auth/link` | `AuthLoginRequest` | `AuthLoginResponse` | `AuthLayer.Link()` |
-
----
-
-## 새 API 연동 추가 방법
-
-### 1. 공유 DTO 추가 (서버 ↔ 클라이언트 공용)
-1. 서버 프로젝트의 `PuzleBattleShared` 프로젝트에 모델 클래스 추가
-2. 네임스페이스: `PuzleBattleShared.Models`
-3. 빌드 후 `PuzleBattleShared.dll`을 `Assets/Plugins/`에 복사
-4. **주의**: `JsonUtility` 호환을 위해 **public 필드** 사용 (프로퍼티 X)
-
-### 2. 새 데이터 레이어 추가
-1. `02_Scripts/Manager/UserData/`에 레이어 클래스 작성
-```csharp
-public class NewLayer
-{
-    private const string ENDPOINT = "api/endpoint";
-    public ResponseDto Data { get; private set; }
-    public bool IsLoaded { get; private set; }
-
-    public void Request(Action onComplete, Action<string> onFailed)
-    {
-        NetworkManager.Instance.Get<ResponseDto>(
-            ENDPOINT,
-            (data) => { Data = data; IsLoaded = true; onComplete?.Invoke(); },
-            (error) => { onFailed?.Invoke(error); }
-        );
-    }
-
-    public void Clear() { Data = default; IsLoaded = false; }
-}
-```
-2. `UserDataManager`에 레이어 프로퍼티 + `Initialize()`에 생성 + `ClearAll()`에 초기화 추가
-
-### 3. POST 요청이 필요한 경우
-```csharp
-NetworkManager.Instance.Post<RequestDto, ResponseDto>(
-    "api/endpoint",
-    requestBody,
-    (response) => { /* 성공 */ },
-    (error) => { /* 실패 */ }
-);
-```
-
----
-
-## 주의사항
-
-### JsonUtility 호환
-- `JsonUtility`는 **public 필드**만 직렬화/역직렬화. 프로퍼티(`{ get; set; }`)는 무시됨.
-- 공유 DLL의 DTO 클래스는 반드시 public 필드로 선언해야 함.
-- 서버 측 `System.Text.Json`의 네이밍 정책(camelCase)과 클라이언트 필드명이 일치해야 함.
-- 서버에서 `PascalCase`로 직렬화하면 클라이언트에서 파싱 실패 → 서버 직렬화 설정 확인 필수.
-
-### 네트워크 초기화 순서
-- 유저 정보를 요청하려면 `NetworkManager.Initialize()` → `UserDataManager.Initialize()` → `LoadIdentity()` 순서로 호출한다. 현재 타이틀·로비 시작 코드에는 이 호출이 연결되어 있지 않으며, 로컬 대전 상대는 `LobbyMain`이 저장된 리플레이에서 고른다.
-- `Initialize()` 전 API 호출 시 에러 콜백으로 안내 메시지 반환.
-
-### 서버 연결 실패 폴백
-- `IdentityLayer`는 서버 실패 시 더미 데이터로 폴백하여 게임 진행 가능.
-- 새 레이어 추가 시 폴백 정책 결정 필요 (더미 데이터 / 에러 표시 / 재시도).
-
-### 공유 DLL 갱신 절차
-1. 서버 프로젝트에서 `PuzleBattleShared` 빌드
-2. 빌드된 `PuzleBattleShared.dll`을 `Assets/Plugins/`에 덮어쓰기
-3. Unity 에디터 리프레시 (`Ctrl+R` 또는 자동 감지)
-4. 클라이언트 코드에서 새 타입 참조 가능
+- 로그인 진행 중 `ClearAll()`을 호출해도 나중에 도착한 성공 응답이 이전 UID를 복원한다. 로그인 두 건의 응답 순서가 바뀌어도 마지막에 도착한 응답의 계정이 남는다.
+- 게스트 로드에 실패한 후 `LinkAuthAccount`를 호출하면 임시 UID `dummy_user`가 연동 요청에 들어간다.

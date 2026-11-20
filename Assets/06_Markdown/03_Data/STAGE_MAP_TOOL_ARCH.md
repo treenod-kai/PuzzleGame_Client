@@ -1,7 +1,7 @@
 # 스테이지 맵 툴 아키텍처
 
 ToolScene(에디터 전용)의 스테이지 맵 편집기 아키텍처와 구현 순서.
-클래스 레퍼런스는 `DATA_STAGE.md`, 진행 상태/작업 메모는 `STAGE_MAP_TOOL.md` 참고.
+[현재 씬 연결 상태](STAGE_MAP_TOOL.md) · [저장소와 검증 규칙](DATA_STAGE.md)
 
 ---
 
@@ -18,13 +18,13 @@ ToolScene(에디터 전용)의 스테이지 맵 편집기 아키텍처와 구현
 ```
 ToolScene (에디터 전용 씬)
 └─ StageMapToolController : MonoBehaviour          [Runtime]  UI 입력 → 상태/뷰 오케스트레이션
-   ├─ StageMapBoardView : MonoBehaviour            [Runtime]  ★신규 — StageData를 그리드로 렌더, 셀 클릭 발화
-   │   └─ StageMapCellView : MonoBehaviour         [Runtime]  ★신규 — 단일 셀 시각(타입/블럭/패널) + 클릭(x,y)
+   ├─ StageMapBoardView : MonoBehaviour            [Runtime]  StageData 격자 표시, 셀 클릭 전달
+   │   └─ StageMapCellView : MonoBehaviour         [Runtime]  셀 타입 색·블럭 ID 표시, 클릭 좌표 전달
    ├─ StageMapToolState                            [Core]     편집 상태 모델 (PuzzleType/StageId/Rule/StageData/Brush)
    ├─ StageMapCellBrush                            [Core]     칠할 값 (cellType/blockId/panelId/generatorIds)
    ├─ StageMapJsonRepository                       [Core]     StageData JSON Load/Save (UnityEditor 의존)
    ├─ StageMapValidator → StageMapValidationResult [Core]     저장 전 정합성 검증
-   └─ StageMapRuleProvider                         [Core]     ★신규 — RuleAddress로 현재 규칙 BlockData 목록 로드
+   └─ StageMapRuleProvider                         [Core]     구현 예정. RuleAddress로 BlockData 목록 로드
 ```
 
 | 레이어 | 책임 | 비고 |
@@ -60,12 +60,12 @@ ToolScene (에디터 전용 씬)
 ## 4. 전용 그리드 뷰 설계 (신규)
 
 - `StageMapBoardView`
-  - `Build(StageData)`: 기존 셀 뷰 제거 후 `stage_width × stage_height`만큼 `StageMapCellView` 생성·배치.
+  - `Build(StageData)`는 기존 셀 뷰를 제거한 뒤 목록에서 좌표가 유효한 셀마다 뷰를 생성한다.
   - `RefreshCell(x, y)`: 한 셀만 다시 그림(브러시 적용 직후 부분 갱신).
   - `event Action<int,int> OnCellClicked`: 셀 클릭을 Controller로 전달.
   - 좌표/셀 크기는 인게임 `GetLocalPos`를 쓰지 않고 툴 자체 규칙(좌하단 원점, 고정 셀 크기)으로 단순화.
 - `StageMapCellView`
-  - 셀 타입(Normal/Close/Lock/Generator) 틴트, 초기 블럭 스프라이트, 패널 표시, 좌표 라벨.
+  - 셀 타입(Normal/Close/Lock/Generator)은 배경색으로, 초기 블럭 ID는 텍스트로 표시한다.
   - 클릭 시 자신의 `(x, y)`로 `OnCellClicked` 발화.
 - Controller가 `OnCellClicked` 구독 → `state.PaintCell` → `RefreshCell`.
 

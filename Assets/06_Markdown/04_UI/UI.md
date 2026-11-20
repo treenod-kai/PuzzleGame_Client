@@ -29,92 +29,33 @@ UI, 팝업, 탭 관련 작업 시 이 문서를 참고.
 
 대전의 점수·타이머·피벗 게이지와 퍼즐 안내는 화면의 안전 영역 안에서 보드와 따로 배치한다. 피벗 게이지는 타이머와 같은 폰트를 사용한다. 게임 종료 시 숨기고 컨트롤러 제거 시 UI를 정리한다. 상태 및 설정 규칙은 [INGAME-VIEW-AND-BATTLE.md](../02_Ingame/INGAME-VIEW-AND-BATTLE.md#대전-전용-피벗-모드)를 참고한다.
 
-대전 시작은 콤보·수치 계산·보드 판정과 피벗 설정이 맞는 완주 기록을 상대로 선택한다. 호환되는 상대가 없으면 첫 기록 도전으로 진입한다. 탭 매치는 판정이 같은 이전 보드 규칙의 기록도 상대로 선택한다.
+대전 시작은 콤보·수치 계산·보드 판정과 피벗 설정이 맞는 완주 기록을 상대로 선택한다. 특수 블록을 정의한 규칙은 일반 블록 대전이 도입된 버전 2 기록부터 선택한다. 호환되는 상대가 없으면 첫 기록 도전으로 진입한다. [리플레이 호환 조건](../02_Ingame/INGAME_REPLAY.md#재생-흐름)
 
 상대 탐색 중 동일 Rule/Stage 데이터는 요청 내에서 재사용하며, 캐시된 후보를 선택하면 실제 씬 주입 데이터도 해당 후보로 맞춘다. 상대 상태 UI는 재생 상태·남은 초·점수·피벗 수치가 바뀔 때만 갱신한다. 양쪽 점수와 피벗 수치는 재사용하는 텍스트 버퍼에 정수로 기록해 큰 점수까지 정확히 표시한다.
 
 ## 도메인 시스템 개요
 
-URL 방식 경로로 UI 상태를 추적 (예: `/Lobby/Shop/ItemDetail`).
-
-```
-DomainManager (SharedScene 싱글톤)
-├─ 팝업: 스택 방식 (생성/파괴)
-│   PopupController → PopupBase (프리팹) → PopupHandler (로직)
-└─ 탭: 전환 방식 (활성/비활성)
-    TabController → TabBase (UI)
-```
+`DomainManager`는 열린 탭과 팝업을 스택에 쌓고 `CurrentPath`로 경로를 표시한다. 예를 들어 인벤토리에서 카드 상세 창을 열면 뒤로 가기로 인벤토리에 돌아올 수 있다. [DomainManager.cs](../../02_Scripts/Manager/DomainManager.cs)
 
 ## DomainManager API
-### 열기
+
 | 메서드 | 동작 |
-|--------|------|
-| `OpenPopup(name, onOpened?, onFailed?)` | 프리팹 생성 후 스택에 등록하고 연다. 로드 실패나 요청 취소 시 onFailed 호출 |
-| `OpenTab(name, callback?)` | 활성 컨트롤러의 CanOpenTab 확인 → 기존 탭과 위쪽 팝업 정리 → 새 탭 활성화 |
-
-### 닫기
-| 메서드 | 동작 |
-|--------|------|
-| `Close(name)` | 해당 도메인 + 그 위의 모든 도메인 닫기 |
-| `Back()` | 최상위 도메인 하나 닫기 |
-| `CloseAll()` | 전체 도메인 닫기 (씬 전환 시 Main에서 호출) |
-
-### 조회
-| 메서드 | 반환 |
-|--------|------|
-| `Peek()` | 최상위 IDomainNode |
-| `IsOpen(name)` | bool |
-| `GetDomain<T>(name)` | 타입 캐스팅된 도메인 인스턴스 |
-| `CurrentPath` | URL 문자열 (예: "/Lobby/Shop") |
-
-### 컨트롤러 등록
-- `Register(PopupController)` / `Unregister(PopupController)`
-- `Register(TabController)` / `Unregister(TabController)`
-- OnEnable/OnDisable에서 자동 호출됨
+|---|---|
+| `OpenPopup(name, onOpened?, onFailed?)` | 활성 팝업 컨트롤러가 프리팹을 생성한다. 생성 콜백과 열림 애니메이션 완료 이벤트는 별도다. 실패·취소 시 실패 콜백을 호출한다. |
+| `OpenTab(name, callback?)` | 활성 탭 컨트롤러가 전환을 허용하면 기존 탭과 그 위의 팝업을 정리하고 새 탭을 연다. |
+| `Back()`, `Close(name)`, `CloseAll()` | 각각 최상위 하나, 지정한 도메인부터 위쪽 전체, 스택 전체를 닫는다. |
+| `Peek()`, `IsOpen(name)`, `GetDomain<T>(name)` | 최상위 노드, 열림 여부, 이름으로 찾은 지정 타입 노드를 반환한다. |
 
 ## 팝업 생명주기
 
-```
-DomainManager.OpenPopup("ItemDetail")
-  → _activePopupController.CreatePopup("ItemDetail")
-    → AssetManager.LoadAssetAsync<GameObject>로 "Popup/ItemDetail" 주소 로드
-      → Instantiate → PopupBase 컴포넌트 확보
-        → _domainStack에 추가
-          → PopupBase.Open()
-            → dim 페이드인 + content 스케일 (0→1, OutBack, 0.3초)
-              → OnOpened 이벤트
-```
-
-```
-PopupHandler.ClosePopup() 또는 DomainManager.Close(name)
-  → PopupController.DestroyPopup() → PopupBase.Close()
-    → content 스케일 (1→0, InBack) + dim 페이드아웃
-      → OnClosed 이벤트 → GameObject 파괴
-```
-
-### PopupBase 주요 멤버
-| 멤버 | 용도 |
-|------|------|
-| `PopupName` / `DomainName` | 식별 이름 |
-| `IsAnimating` | 애니메이션 중 여부 (true일 때 조작 차단) |
-| `_dimBackground` (Image) | 딤 배경 (alpha 0→0.5) |
-| `_contentPanel` (RectTransform) | 콘텐츠 패널 (스케일 애니메이션) |
-| `_animationDuration` | 기본 0.3초 |
-| `Open()` / `Close(callback?)` | 열기/닫기 애니메이션 |
-| `RequestClose()` | `DomainManager.Close(PopupName)` 호출 |
-| `RequestBack()` | `DomainManager.Back()` 호출 |
-
-## 팝업 핸들러 (PopupHandler)
-
-각 팝업은 PopupBase와 같은 객체에 PopupHandler 서브클래스를 둔다.
-
-- `ClosePopup()`: `DomainManager.Close(PopupName)` (IsAnimating 중이면 차단)
-- `BackPopup()`: `DomainManager.Back()` (IsAnimating 중이면 차단)
-- 메서드는 `UIButton`의 `SendMessage`로 호출됨
+1. `PopupController.CreatePopup`이 `AssetManager`를 통해 `Popup/{이름}` 프리팹을 로드한다. `DomainManager`가 인스턴스를 스택에 등록하고 `PopupBase.Open`을 호출한다.
+2. 열고 닫을 때 딤 배경의 알파와 본문 크기를 보간한다. 안전 영역 프레임이 있는 준비·카드 팝업은 프레임 안에서 Cubic 곡선으로 움직인다. 다른 팝업은 Back 곡선을 사용한다.
+3. `PopupHandler.ClosePopup`과 `BackPopup`은 닫기·뒤로 가기를 도메인에 전달한다. 열림 도중 도메인이 닫힘을 요청하면 컨트롤러가 열림 완료 후 닫고 인스턴스를 파괴한다. [PopupBase.cs](../../02_Scripts/Manager/PopupBase.cs) · [PopupController.cs](../../02_Scripts/Manager/PopupController.cs)
 
 ## 로비 하단 탭
 
 대전 버튼·디펜스 전장·하단 탭은 같은 기기 안전 영역을 기준으로 배치한다.
+로비는 `Lobby/Navigation` 로드가 성공하면 디펜스를 초기화한다. 로드 실패 시 해당 로비에는 재시도 경로가 없어 디펜스와 대전 시작이 막힌다. [로비 초기화](../../02_Scripts/Lobby/LobbyMain.cs)
 상점 · 인벤토리 · **메인** · 소셜 · 옵션 순서이며 로비에 들어오면 메인을 표시한다. 다른 네 탭은 메인을 완전히 덮고 하단 바는 계속 표시한다. 메인의 디펜스에서 배치·고용한다. 인벤토리의 [카드 목록](../../03_Prefab/UI/DefenseCardCollection.prefab)을 세로로 스크롤하고 카드를 누르면 [상세 창](../../03_Prefab/UI/Popup/PopupDefenseCard.prefab)에서 개별 강화와 종류별 에너지 변환을 할 수 있다. 탭을 열어 두어도 전투는 진행된다. 대전 준비 팝업은 탭 위에 열린다. [디펜스 화면과 카드 인벤토리](../01_Architecture/LOBBY-DEFENSE-ARCHITECTURE.md#콘텐츠와-c-매핑)
 버튼을 누르거나 좌우로 스와이프해 이동한다. 세로 드래그는 무시하고 양 끝에서 멈춘다. 메인 선택 또는 도메인 뒤로 가기는 패널을 닫는다. 이동 중에는 패널 콘텐츠 입력을 막는다. 대전 준비를 요청하면 팝업이 닫힐 때까지 메인과 하단 탭의 포인터·키보드 입력을 잠그고, 닫거나 로드에 실패하면 이전 입력을 복원한다. 패널의 콘텐츠와 각 탭의 선택 표시는 [로비 탭 프리팹](../../03_Prefab/UI/LobbyNavigation.prefab)에서 편집한다. [탭 아이콘 원화](../../04_Resources/Images/LobbyTabIcons.png)
 
@@ -122,47 +63,11 @@ PopupHandler.ClosePopup() 또는 DomainManager.Close(name)
 
 ## 탭 생명주기
 
-```
-DomainManager.OpenTab("ShopTab")
-  → 이전 탭 위의 팝업 전부 Close
-    → 이전 탭 Deactivate
-      → _activeTabController.ActivateTab("ShopTab")
-        → _tabRoot 하위에서 TabBase 검색 (비활성 포함)
-          → TabBase.Activate()
-            → OnActivateStart() → ActivateAnimation() → OnActivateComplete()
-              → OnActivated 이벤트
-```
-
-### TabBase 주요 멤버
-| 멤버 | 용도 |
-|------|------|
-| `TabName` / `DomainName` | 식별 이름 (기본값: GameObject.name) |
-| `IsAnimating` | 애니메이션 중 여부 |
-| `Activate()` | 활성화 (SetActive(true) + 애니메이션) |
-| `Deactivate(callback?)` | 비활성화 (애니메이션 → SetActive(false)) |
-
-### 오버라이드 포인트 (protected virtual)
-```csharp
-OnActivateStart()       // 활성화 시작 전
-ActivateAnimation()     // IEnumerator - 커스텀 애니메이션
-OnActivateComplete()    // 활성화 완료 후
-OnDeactivateStart()     // 비활성화 시작 전
-DeactivateAnimation()   // IEnumerator - 커스텀 애니메이션
-OnDeactivateComplete()  // 비활성화 완료 후
-```
+`TabController`는 자신의 `_tabRoot` 안에서 이름이 일치하는 `TabBase`를 찾아 활성화한다. 전환 시작·완료 훅과 `ActivateAnimation`·`DeactivateAnimation`을 재정의할 수 있다. 로비 오버레이는 이 경로에서 가로 전환을 실행한다.
 
 ## UIButton (입력 연결)
 
-Inspector에서 설정하는 범용 버튼 컴포넌트.
-
-| 필드 | 용도 |
-|------|------|
-| `_root` (MonoBehaviour) | 메시지를 받을 대상 (PopupHandler, TabBase 등) |
-| `_unityButton` (Button) | Unity Button 컴포넌트 |
-| `_callbackName` (string) | 호출할 메서드 이름 |
-| `_callbackValue` (string) | 선택적 문자열 인자 |
-
-**동작**: `Button.onClick` → `UIButton.OnClickEvent()` → `_root.SendMessage(_callbackName, _callbackValue?)`
+프리팹 Inspector에서 `_unityButton`, 메시지를 받을 `_root`, 메서드 이름 `_callbackName`을 연결한다. `_callbackValue`를 채우면 클릭할 때 문자열 인자도 함께 전달한다. [UIButton.cs](../../02_Scripts/UI/UIButton.cs)
 
 ## 씬별 컨트롤러
 
@@ -193,7 +98,7 @@ Inspector에서 설정하는 범용 버튼 컴포넌트.
 
 - 로비의 시작 버튼 `Battle 90s`를 누르면 준비 팝업이 열리고 링크·3매치·탭 매치 중 하나를 미리 선택한다. 닫기(×)는 무료다. START를 누르면 릴이 3초간 회전하며 감속한다. 선택된 그림과 모드 이름을 2초간 보여준 뒤 추첨된 Rule로 대전을 준비한다. [릴 이미지](../../04_Resources/Images/ReadyReel.png)
 - 라이프는 최초 5개이며 최대 5개까지 30분마다 1개씩 회복한다. 완충 예정 UTC 시각을 PlayerPrefs에 보관해 앱 종료 중에도 충전한다. 대전 준비가 끝나면 라이프 1개를 쓰고 게임 씬으로 이동한다. 잔량이 0이면 START를 비활성화하고 다음 충전까지 남은 시간을 표시한다.
-- 대전 준비 시 추첨된 Rule과 점수·보드 판정·피벗 설정이 맞는 최근 90초 완주 기록을 상대로 선택해 게임 씬에서 자동 재생한다. 호환 기록이 없으면 혼자 첫 대전 기록에 도전한다.
+- 실제 출발 순서는 상대 기록·퍼즐 준비, 로비 디펜스의 통행 확인과 저장, 라이프 한 개 차감, 게임 씬 전환이다. 통행 또는 저장을 확인할 수 없으면 팝업에서 다시 시도할 수 있다.
 - 대전 결과의 `다시 도전`은 라이프 1개를 사용해 같은 규칙·시드·상대로 새 판을 시작한다. 대전 라이프가 0개면 `로비로`를 누르거나 충전 후 다시 도전할 수 있다. 에디터에서 직접 실행한 스테이지의 시작과 재도전은 무료다.
 - 로비와 게임 캔버스는 가로·세로 화면 모두에서 800×1422의 기준 영역을 확보한다. 준비·카드 상세 팝업은 기기 안전 영역의 중앙에 표시하고 딤 배경으로 화면 전체의 뒤쪽 입력을 막는다. 닫기 버튼의 터치 영역은 기준 캔버스에서 132×132이며 두 줄 안내와 라이프 잔량은 영역을 나눠 표시한다. 팝업 버튼은 `PopupReady.prefab`의 `UIButton` 메시지로 연결한다.
 - 대전 점수 비교와 상대 상태 표시는 `GameScene.unity`에 연결된 TMP UI이며 상세는 [INGAME-VIEW-AND-BATTLE.md](../02_Ingame/INGAME-VIEW-AND-BATTLE.md#스테이지와-90초-대전)를 참고한다.

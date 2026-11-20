@@ -1,7 +1,6 @@
 # PuzleBattleGame 공유 DTO 상세
 
-`SERVER.md`의 공유 DLL(`PuzleBattleShared.dll`) DTO 정의 문서.
-네임스페이스: `PuzleBattleShared.Models`. 서버와 클라이언트가 동일 DTO를 공유한다.
+클라이언트는 `PuzleBattleShared.Models` 네임스페이스를 참조한다. [서버 통신](SERVER.md) · [공유 DLL](../../Plugins/PuzleBattleShared.dll)
 
 > `JsonUtility` 호환을 위해 모든 DTO는 **public 필드**로 선언한다(프로퍼티 X).
 
@@ -64,7 +63,7 @@
 | 필드 | 타입 | 설명 |
 |------|------|------|
 | `user` | UserData | 로그인된 유저 데이터 |
-| `accessToken` | string | 서버 토큰 자리. 현재는 빈 문자열 |
+| `accessToken` | string | 서버가 반환하는 토큰. 현재 클라이언트 HTTP 요청에는 사용하지 않는다 |
 | `isNewUser` | bool | 신규 생성 여부 |
 | `isLinked` | bool | 계정 연결 여부 |
 | `provider` | AuthProvider | 로그인 제공자 |

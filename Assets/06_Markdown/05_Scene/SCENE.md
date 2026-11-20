@@ -19,174 +19,42 @@
 
 게임 씬의 Controller는 [INGAME.md](../02_Ingame/INGAME.md), 팝업/탭 매니저는 [UI.md](../04_UI/UI.md), 네트워크/유저 데이터 매니저는 [SERVER.md](../06_Server/SERVER.md)에 매핑되어 있습니다.
 
-## 씬 구성
+## 씬 구성과 수명
 
-| 씬 | 역할 | 메인 스크립트 |
-|----|------|-------------|
-| SharedScene | 영구 상주 (매니저, 카메라, EventSystem) | Main.cs |
-| TitleScene | CI 연출 후 로비로 이동 | TitleMain.cs |
-| LoadingScene | 씬 전환 시 로딩 화면 | — |
-| LobbyScene | 90초 대전 진입 | LobbyMain.cs |
-| GameScene | 인게임 퍼즐 플레이 | PuzzleGameController.cs, ReplayController.cs |
-| ToolScene | 스테이지 맵 편집 도구 (에디터 전용) | StageMapToolController.cs |
+[빌드 씬 목록](../../../ProjectSettings/EditorBuildSettings.asset)은 Title, Shared, Loading, Lobby, Game 순서다. 맵 편집용 ToolScene은 에디터에서 직접 연다. [스테이지 맵 툴](../03_Data/DATA_STAGE.md)
 
-플레이어 빌드에는 TitleScene, SharedScene, LoadingScene, LobbyScene, GameScene이 포함된다. 맵 편집용 ToolScene은 에디터에서 직접 연다. [스테이지 맵 툴](../03_Data/DATA_STAGE.md)
+| 씬 | 실행 중 역할 |
+|---|---|
+| TitleScene | CI 연출 후 로비로 전환한다. 전체 흐름을 확인할 때 이 씬에서 시작한다. |
+| SharedScene | 첫 씬 로드 뒤 `Main.AutoCreate`가 추가하고 활성 씬으로 지정한다. 공용 Canvas·팝업 루트, EventSystem, ManagerRoot를 유지한다. |
+| LoadingScene | 콘텐츠 씬을 교체하는 동안 표시한다. |
+| LobbyScene | 방어 규칙·계정별 카드를 불러오고 대전 준비 팝업에서 상대 기록을 선택한다. |
+| GameScene | 본인 퍼즐과 상대 리플레이를 진행하고 결과 화면에서 재도전 또는 로비 복귀를 처리한다. |
 
-## SharedScene (영구 상주)
-### 자동 로드
-- `Main`의 `[RuntimeInitializeOnLoadMethod(AfterSceneLoad)]`로 앱 시작 시 자동 Additive 로드.
-- Active Scene으로 설정 → 다른 씬의 언로드 보장.
-- `SceneEnum` enum: None, TitleScene, LoadingScene, LobbyScene, GameScene (Main 클래스 외부 선언).
-### 에디터에서 시작할 씬
-- 전체 흐름을 확인하려면 `TitleScene`에서 Play를 누른다. `Main.AutoCreate()`는 현재 씬에 `Main`이 없으면 `SharedScene`을 추가 로드한다. 타이틀에서 로비로 이동하는 호출은 `TitleMain.Start()`의 CI 연출 끝에 있다.
+`Main`과 메인 `CameraController`는 직접 `DontDestroyOnLoad`를 호출한다. 네트워크·유저 데이터·스텁 매니저는 `Awake`에서 싱글톤을 등록하며 상주하는 SharedScene이 수명을 보장한다. 콘텐츠 씬에 중복 배치한 EventSystem·입력 모듈·AudioListener는 `Main`이 정리한다. 정리 전에 EventSystem 두 개가 활성화되면 로드 중 중복 경고가 출력된다.
 
-### 포함 오브젝트
-- Main (씬 전환 싱글톤)
-- CameraController (카메라 싱글톤, 중복 카메라 자동 제거)
-- EventSystem (중복 자동 제거: `Main.OnSceneLoaded`)
-- 모든 매니저 (DontDestroyOnLoad)
-- SharedPopupController (공용 팝업)
+## 씬 전환
 
-## 씬 전환 (Main.MoveScene)
+1. `Main.MoveScene(pre, next)`가 중복 요청을 막고 `DomainManager.CloseAll()`로 팝업과 탭을 닫는다.
+2. LoadingScene을 추가 로드하고 이전 콘텐츠 씬을 언로드한다.
+3. `PoolManager.ClearIfCreated()`로 대기 객체를 정리한 뒤 `AssetManager.ReleaseAll()`로 비영구 에셋을 해제한다.
+4. 다음 씬의 로드 진행률이 0.9에 도달하면 활성화를 허용한다. LoadingScene 언로드가 끝나면 전환 잠금을 푼다.
 
-```
-Main.MoveScene(preScene, nextScene)
-  → DomainManager.CloseAll()  ← 모든 팝업/탭 닫기
-    → LoadingScene Additive 로드
-      → preScene 언로드 후 기존 풀 정리 및 비영구 에셋 해제
-        → nextScene 비동기 로드 (allowSceneActivation = false)
-          → 90% 대기
-            → nextScene 활성화
-              → LoadingScene 언로드
-```
+타이틀·대전 입장·재도전 순서는 [게임 흐름](../01_Architecture/ARCHITECTURE_FLOW.md)에서 확인할 수 있다.
 
-- `_isMovingScene` 플래그로 중복 호출 방지.
-- `CoMoveScene` 코루틴 기반.
+## 에셋과 풀
 
-## 매니저 시스템
+| API | 수명과 실패 처리 |
+|---|---|
+| `LoadAsset<T>`, `LoadAssetAsync<T>` | 같은 주소의 동기·비동기 요청이 핸들을 공유한다. 타입이 다르면 오류를 전달하고 실패한 요청은 다시 시도할 수 있다. |
+| `LoadGameObject`, `LoadGameObjectAsync` | 로드한 프리팹을 지정한 부모 아래에 생성한다. |
+| `MarkPersistent`, `ReleaseAll` | 영구 주소는 전환 후에도 유지한다. 진행 중인 비영구 요청은 해제하고 실패 콜백을 호출한다. |
+| `PoolManager.Get`, `Release` | 프리팹별로 대여·반환한다. 파괴된 대기 인스턴스는 건너뛰고 중복 반환은 무시한다. |
 
-공통 매니저는 상주하는 `SharedScene` 또는 `DontDestroyOnLoad` 오브젝트에서 접근한다. 예를 들어 `Main.Awake()`는 직접 `DontDestroyOnLoad`를 호출하고 `UserDataManager.Awake()`는 싱글톤 참조를 등록한다.
+Addressables 에셋은 `AssetManager`에서 로드한다. 대표 주소는 `Lobby/Navigation`, `Popup/PopupReady`, `LobbyDefense/Rules`, 기본 대전 맵 `Stage`다.
+번호형 스테이지 키는 `StageStorage`가 다운로드 파일을 우선하고 파일이 없으면 Resources에서 읽는다. 리플레이에 맵 스냅샷이 있으면 그 JSON을 먼저 적용한다. [스테이지 로드](../03_Data/DATA_STAGE.md)
 
-### 구현 완료
-| 매니저 | 역할 | 주요 API |
-|--------|------|----------|
-| Main | 씬 전환, 게임 흐름 | `MoveScene(pre, next)` |
-| AssetManager | Addressables 에셋 로드/캐싱 | 아래 상세 |
-| PoolManager | 오브젝트 풀링 | 아래 상세 |
-| DomainManager | 팝업/탭 도메인 관리 | `UI.md` 참고 |
-| CameraController | 메인 카메라 싱글톤 | `MainCamera` 정적 접근 |
+## 새 씬·매니저 추가
 
-네트워크와 유저 데이터는 구현되어 있습니다. `NetworkManager` → `HttpNetworkClient`, `UserDataManager` → `IdentityLayer`의 API와 초기화 순서는 [SERVER.md](../06_Server/SERVER.md)를 참고하세요.
-
-### 스텁 (미구현)
-| 매니저 | 예정 역할 |
-|--------|----------|
-| SoundManager | 사운드 재생/정지 |
-| GameDataManager | 게임 설정 데이터 관리 |
-| UIManager | 공통 UI 연출 (토스트, 로딩 등) |
-| LocalizationManager | 다국어 지원 |
-
-**스텁 매니저 패턴**: Awake에서 싱글톤 등록 + DontDestroyOnLoad. 구현 시 이 패턴 유지.
-
-## AssetManager 상세
-
-Addressables 래핑 싱글톤. 모든 에셋 로드는 이 매니저를 통해 수행.
-
-| 메서드 | 용도 |
-|--------|------|
-| `LoadAsset<T>(address)` | 동기 로드 (WaitForCompletion) |
-| `LoadAssetAsync<T>(AssetArguments<T>)` | 비동기 로드 (콜백 기반) |
-| `LoadGameObject(address, parent?)` | 동기 프리팹 인스턴스 생성 |
-| `LoadGameObjectAsync(AssetArguments<GameObject>, parent?)` | 비동기 프리팹 인스턴스 생성 |
-| `MarkPersistent(address)` | 씬 전환 시에도 캐시 유지할 에셋 등록 |
-| `ReleaseAll()` | Persistent 제외 전체 에셋 캐시 해제 (씬 전환 시 Main에서 호출) |
-
-- 공유 요청: `_requests` (주소 → 로딩 핸들·완료 결과·대기 콜백). 동기/비동기 호출이 같은 주소의 핸들을 공유하며 타입 불일치는 오류로 반환한다.
-- `AssetArguments<T>`: `address`, `successCallback`, `failedCallback` 구조체
-- `LoadAsset<T>`: 빈 주소 전달 시 `Debug.LogError` 출력 후 `default` 반환
-- `ReleaseAll()`: 영구 주소를 제외한 완료 캐시와 진행 중인 요청을 분리·해제하고, 취소된 요청에는 실패 콜백을 전달한다. 실패한 로드는 핸들을 해제하여 재시도할 수 있다.
-- **직접 `Addressables.LoadAssetAsync` 호출 금지** — 반드시 AssetManager 경유.
-
-### 주요 Addressable 주소 패턴
-| 대상 | 주소 패턴 |
-|------|-----------|
-| 팝업 프리팹 | `Popup/{팝업이름}` |
-| 블럭 스프라이트 | `Block_{blockId}` |
-| 셀 프리팹 | `CellPrefab` |
-| 블럭 프리팹 | `BlockPrefab` |
-| Rule JSON | Addressable에 등록된 이름 |
-| Stage JSON | Addressable에 등록된 이름 |
-
-## PoolManager 상세
-
-오브젝트 풀링 싱글톤. 셀/블럭 프리팹 반복 생성/파괴 최적화.
-
-| 메서드 | 용도 |
-|--------|------|
-| `Get(prefab, parent?)` | 풀에서 꺼내기 (없으면 Instantiate) |
-| `Release(instance)` | 풀로 반환 (SetActive false) |
-| `Clear()` | 전체 풀 정리 |
-
-- 인스턴스 → 프리팹 역참조 딕셔너리로 반환 시 올바른 풀에 배치.
-- 이미 풀에서 대기 중인 인스턴스의 중복 반환은 무시한다. 대여할 때는 큐에서 파괴된 항목을 건너뛰고 남은 인스턴스를 먼저 재사용한다.
-- 이전 씬의 대여 객체가 언로드된 후 `ClearIfCreated()`가 대기 객체를 파괴 예약하고 역참조를 비운다. 이어서 `AssetManager.ReleaseAll()`이 비영구 에셋을 해제한다.
-
-## CameraController 상세
-
-메인 카메라 싱글톤. SharedScene에 배치.
-
-- `CameraController.MainCamera`: 전역 카메라 접근.
-- `_isMainCamera` 플래그 기반으로 중복 카메라 자동 제거.
-- 씬 로드 시 새 카메라가 있으면 SharedScene의 카메라만 유지.
-
-## 씬별 초기화 흐름
-
-### TitleScene
-```
-TitleMain.Start()
-  → DOTween Sequence: CI 텍스트 색상 트윈 (검정 → #00FF80)
-    → 여운 대기
-      → Main.MoveScene(TitleScene, LobbyScene)
-```
-
-### LobbyScene
-```
-Battle 90s → LobbyMain.OnClickBattle() → DomainManager.OpenPopup("PopupReady")
-  → START → PopupReady.OnClickStart() → SpinAndStart() → 슬롯 결과 공개
-    → LobbyMain.PrepareBattle(추첨된 Rule) → 호환 완주 기록 선택 (없으면 단독 대전)
-      → 라이프 1개 사용 → Main.MoveScene(LobbyScene, GameScene)
-```
-
-### GameScene
-```
-PuzzleGameController.Start()
-  → StageInjection.GetGameSpec()
-    → puzzleType에 따라 Board 생성 (ThreeMatch/Link/TapMatch)
-      → board.Initialize(gameSpec) (GameSpec.randomSeed 적용)
-        → boardView.DrawBoard(board)
-          → 게임 루프 시작
-  → StageInjection.GetReplayData()
-    → (리플레이 있으면) ReplayController.Initialize(replayData)
-      → 리플레이 보드 생성 + 상대 전용 영역에 축소 배치 + 자동 재생
-
-PuzzleGameController.Update()
-  → BoardState.Finish 감지
-    → ReplayStorage.Save(replayData) — 모드/시간/완료 틱/점수 포함
-      → 결과 화면에서 선택 → 같은 시드·상대로 GameScene 재시작 또는 LobbyScene 이동
-```
-
-## 새 매니저 구현 시 체크리스트
-
-1. `Manager/` 폴더에 클래스 작성
-2. MonoBehaviour 싱글톤 패턴 적용 (Awake에서 Instance 할당)
-3. DontDestroyOnLoad 설정
-4. SharedScene 하이어라키에 빈 GameObject 추가 후 컴포넌트 부착
-5. 필요 시 AssetManager를 통해 리소스 로드
-
-## 새 씬 추가 시 체크리스트
-
-1. `Assets/01_Scenes/`에 씬 파일 생성
-2. `SceneEnum`에 값 추가 (Main.cs 외부)
-3. Build Settings에 씬 등록
-4. `Main.CoMoveScene`의 로딩 파이프라인 확인
-5. 필요 시 해당 씬용 PopupController/TabController 추가 (`UI.md` 참고)
+- 플레이어에서 전환할 씬은 `Assets/01_Scenes/`에 만들고 `SceneEnum`과 빌드 씬 목록에 등록한다.
+- 상주 매니저는 SharedScene의 ManagerRoot에 배치하고 중복 인스턴스 처리를 확인한다. 팝업과 탭은 [도메인 시스템](../04_UI/UI.md)으로 관리한다.

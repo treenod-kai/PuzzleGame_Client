@@ -4,8 +4,7 @@
 코드(컨트롤러/뷰/브러시 콜백)는 작성 완료 상태이며, 아래 인스펙터 참조 연결과 프리팹/버튼 배치만 남았다.
 
 - 대상 씬: `Assets/01_Scenes/ToolScene.unity` (에디터 전용, `SceneEnum` 미등록)
-- 관련 아키텍처: `STAGE_MAP_TOOL_ARCH.md`
-- 진행 메모: `STAGE_MAP_TOOL.md`
+- [아키텍처와 후속 기능](STAGE_MAP_TOOL_ARCH.md) · [현재 씬 연결 상태](STAGE_MAP_TOOL.md)
 
 ---
 
@@ -16,7 +15,7 @@
 2. 자식 구성:
    - `Image` (배경 틴트용)
    - `Button` (클릭 수신)
-   - (선택) `TMP_Text` (블럭ID/좌표 라벨)
+   - (선택) `TMP_Text` (초기 블럭 ID 라벨)
 3. 프리팹 루트에 `StageMapCellView` 컴포넌트 부착 후 인스펙터 연결:
 
 | 필드 | 연결 대상 |
@@ -53,7 +52,7 @@
 > 브러시 = "셀에 칠할 셀 타입". 버튼으로 타입을 고르고 격자 칸을 클릭하면 그 타입으로 칠해진다.
 
 ### 2-1. 버튼 4개 배치
-- 셀 편집 패널(`_cellEditPanel`) 안에 `UIButton` 4개를 배치한다.
+- 셀·블럭·타일 패널을 컨트롤러의 `_cellEditPanel`, `_blockEditPanel`, `_tileEditPanel`에 연결한다. 셀 편집 패널에 `UIButton` 4개를 배치한다.
 - **버튼 순서(인덱스)와 콜백 값**은 아래 표를 반드시 지킬 것. (enum 값이 아니라 배열 인덱스 기준)
 
 | 버튼 인덱스 (`_callbackValue`) | 셀 타입 | 셀뷰 틴트 색 |

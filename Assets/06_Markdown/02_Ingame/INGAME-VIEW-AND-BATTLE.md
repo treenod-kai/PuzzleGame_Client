@@ -66,8 +66,8 @@ board.FetchActions()
 사각·육각 타일은 각 보드의 모양에 따라 `squareCell` 또는 `hexagonCell` 주소로 불러온다. 피벗 게이지의 별 장식 프레임과 채움 이미지는 별도 스프라이트이며 충전 비율만큼 왼쪽부터 표시한다. [원화와 임포트 기준](../00_Guide/ART-STYLE.md#보드-타일과-피벗-게이지)
 
 ### 좌표 변환 (GetLocalPos)
-- 사각형: 보드 중앙 기준 `(X - width/2, Y - height/2) × cellSize`
-- 육각형 (Even-Q Flat-Top): 짝수 열은 Y에 `cellSize × 0.5f` 오프셋
+- 사각형 좌표는 `(X - (width - 1)/2, Y - (height - 1)/2) × cellSize`로 보드 중앙에 맞춘다.
+- 육각형(Even-Q Flat-Top)은 짝수 열을 반 칸 아래로 내린다.
 - 인게임에서는 퍼즐에 할당된 화면 영역 안에 모든 셀을 맞춘다. 육각형 보드는 짝수 열이 반 칸 내려가는 범위까지 포함한다. 화면을 회전하면 재생 중인 링크·피벗 테두리와 폭탄 충격파도 각 보드의 셀 크기에 맞춰 선 굵기를 조절한다.
 
 ---
@@ -90,38 +90,12 @@ board.FetchActions()
 - `IsAdjacentSquare(a, b)`: 4방향 인접 판정
 - `IsAdjacentHexagon(a, b)`: Even-Q Flat-Top 6방향 인접 판정
 
-### InputRecord / InputEndRecord (PuzzleDefine.cs)
-- `InputRecord`: `ulong frame` + `ulong sequence` + `GridPos position` — 유저 클릭/터치 시점 기록
-- `InputEndRecord`: `ulong frame` + `ulong sequence` — 유저 포인터 릴리즈 시점 기록
-- 모든 보드 구현체에서 입력을 큐에 보관하고 고정 틱에서 처리할 때 기록. `sequence`는 좌표/종료 입력 간 공통 순서
-
----
-
 ## 리플레이 시스템
 
-### 기록 흐름
-```
-게임 시작 → StageInjection이 randomSeed 생성 → Board.Initialize(spec)에 시드 주입
-게임 중   → Board가 InputRecord / InputEndRecord 자동 기록
-게임 종료 → PuzzleGameController가 Finish 감지
-  → board.GetRecordedInputs() + GetRecordedInputEnds()
-    → ReplayData 조립 → ReplayStorage.Save() → JSON 파일 저장
-```
+`PuzzleGameController.FixedUpdate()`가 플레이어와 상대 보드의 논리 틱을 함께 진행한다. 두 보드는 모델·뷰·피벗 상태를 각각 보유한다. 상대 보드는 카메라를 움직이지 않고, 화면 크기나 안전 영역이 바뀌면 플레이어 보드와 함께 재배치한다. 재생 상태·시간, 점수, 피벗은 세 줄로 표시한다.
 
-### 재생 흐름 (ReplayController)
-```
-ReplayData 로드 → GameSpec 복원 (동일 Rule/Stage + 동일 시드)
-  → IPuzzleBoard 생성 + Initialize
-    → 메인 컨트롤러의 공통 틱에서 AdvanceFrame 호출
-      → 0번 프레임부터 Input/InputEnd를 frame + sequence 순서로 큐에 주입
-      → board.FixedUpdate에서 입력과 상태 머신 판정
-        → 프레임 카운터 증가
-```
-
-### ReplayController 배치
-- 별도 모델/뷰를 사용하지만 논리 틱은 `PuzzleGameController.FixedUpdate()`가 함께 진행한다. `ReplayController`는 자체 `FixedUpdate()`를 실행하지 않는다.
-- 상대 보드와 재생 상태 문구는 각각의 표시 영역에 맞춘다. 상대의 재생 상태와 시간, 점수, 피벗을 세 줄에 표시한다. 화면 크기나 안전 영역이 바뀌면 플레이어 보드와 함께 다시 배치한다.
-- `PuzzleBoardView.skipCameraAlign = true`로 카메라 간섭 방지
+- [기록·재생 흐름과 버전별 교환 시점](INGAME_REPLAY.md#재생-흐름)
+- [좌표·해제·취소 입력의 순서와 JSON 필드](../03_Data/DATA_SCHEMA.md#리플레이-입력-순서)
 
 ### 고정 틱 전환과 기존 리플레이
 - 매칭·낙하·입력에 따른 블럭 상태 변경은 모두 모델의 `FixedUpdate()`에서 실행한다. `Update()`에서는 입력 수집과 UI/뷰 연출만 실행한다. 한 프레임 안에 누르고 뗀 클릭·터치도 좌표를 먼저 모델에 보내고 입력 종료를 기록한다.

@@ -1,36 +1,18 @@
-# PuzleBattleGame 게임 흐름 상세
-
-`ARCHITECTURE.md`의 게임 흐름 분리 문서.
-
----
+# 게임 흐름
 
 ## 현재 로비 진입과 게임 종료
 
-```
-[앱 시작]
-  TitleScene 시작 → Main.AutoCreate()가 SharedScene 추가 로드
-    → TitleMain.Start()에서 CI 연출
-      → LoadingScene 경유
-        → LobbyScene 메인 탭 → [Battle 90s] → 대전 준비 팝업
-          → START → 슬롯 정지 → 같은 Rule의 호환 대전 기록 확인
-            → 대전 준비 성공 → 라이프 1개 사용 → LoadingScene → GameScene
-              → Board 생성 + Initialize + View 그리기 → 게임 루프
-              → 상대 기록이 있으면 ReplayController 초기화 → 상대 보드 영역에서 자동 재생
-                → 90초 종료 → 기록 저장 → 같은 조건으로 재도전(라이프 1개) 또는 로비 이동
-```
+| 단계 | 동작 |
+|---|---|
+| 시작 | TitleScene에서 SharedScene을 추가하고 CI 연출 후 LoadingScene을 거쳐 LobbyScene으로 이동한다. |
+| 로비 | 메인 탭에서 계정별 디펜스 진행을 복원한다. 인벤토리 탭의 카드 목록에서 보유 카드를 확인·강화하거나 에너지로 변환할 수 있다. 탭 이동은 무료다. |
+| 대전 준비 | `Battle 90s → START`로 퍼즐 규칙을 추첨한다. 해당 규칙과 호환되는 로컬 완주 기록을 최신순으로 찾고, 상대가 없으면 단독으로 시작한다. |
+| 대전 입장 | 방어선 입구와 출구 사이의 통행을 확인하고 디펜스 진행을 저장·동결한다. 라이프 한 개를 사용한 뒤 GameScene으로 전환한다. 차감 실패 시 로비를 재개한다. |
+| 대전 | 같은 조건에서 본인 보드와 상대 퍼즐 입력 기록을 90초 동안 진행한다. 로비 방어선의 전투를 대전에 반영하는 기능은 기획 단계다. |
+| 종료 | 퍼즐 기록을 로컬에 저장하고 결과를 표시한다. 재도전은 라이프 한 개를 사용해 같은 시드와 상대로 다시 시작한다. 로비로 돌아가면 저장한 디펜스를 이어 간다. |
 
-로비의 상점·인벤토리·소셜·옵션은 방치 메인을 완전히 덮는 전체 화면 탭이다. 하단 바는 고정되고 탭 콘텐츠는 좌우로 전환된다. 메인 복귀와 탭 이동은 무료다. [로비 하단 탭](../04_UI/UI.md#로비-하단-탭)
+[로비 하단 탭](../04_UI/UI.md#로비-하단-탭) · [로비 디펜스](LOBBY-DEFENSE-ARCHITECTURE.md) · [씬 전환](../05_Scene/SCENE.md) · [퍼즐 리플레이](../02_Ingame/INGAME_REPLAY.md)
 
 ## 사이드 스테이지형 콘텐츠 (기획)
 
-```
-[사이드 콘텐츠 진입]
-  LobbyScene 사이드 콘텐츠 버튼
-    → 모드별 스테이지 전체 팝업
-      → 스테이지 번호 선택
-        → StageStorage로 Resources 또는 다운로드 StageData 로드
-        → StageInjection.MakeGameSpec(ruleAddress, puzzleType, stageId)
-          → GameScene 또는 전용 스테이지 씬에서 플레이
-```
-
-씬 전환 상세는 `SCENE.md` 참고.
+로비에서 모드별 목록을 열고 번호를 선택하는 흐름을 계획하고 있다. 구현된 번호형 스테이지 로더는 다운로드 파일을 먼저 확인하고 없으면 Resources의 맵을 읽는다. [사이드 스테이지 UI 기획](../04_UI/UI_SIDE_STAGE.md) · [스테이지 데이터](../03_Data/DATA_STAGE.md)

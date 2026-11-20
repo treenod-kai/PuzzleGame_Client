@@ -24,7 +24,7 @@
 | [SERVER.md](06_Server/SERVER.md) | 서버 통신, 공유 DLL, 네트워크 레이어, API 연동 | 서버 API 작업 시 |
 | [RULES-AND-STAGES.md](03_Data/RULES-AND-STAGES.md) | 규칙·스테이지 JSON과 피벗 설정 | 게임 데이터 추가 시 |
 | [INGAME-VIEW-AND-BATTLE.md](02_Ingame/INGAME-VIEW-AND-BATTLE.md) | 뷰 동기화·리플레이·대전 | 연출과 대전 처리 확인 시 |
-| [CHANGELOG.md](CHANGELOG.md) | 전체 변경 이력 | 이전 작업 맥락 파악 시 |
+| [CHANGELOG.md](CHANGELOG.md) | 주요 변경 이력 | 이전 작업 맥락 파악 시 |
 
 ### 상세 단편 문서 (주제 문서에서 분리)
 
@@ -32,16 +32,17 @@
 |------|----------|------|
 | [로비 디펜스 개별 생성 문구](00_Guide/LOBBY-ART-PROMPTS.md) | `ART-STYLE.md` | 캐릭터별 외형·장기자랑·공격·투사체의 프롬프트 |
 | [침공 몬스터 방향과 봉쇄 공격](00_Guide/INVADER-ART.md) | `ART-STYLE.md` | 시점별 원화, 가로 반전과 접촉 프레임 |
-| `ARCHITECTURE_FLOW.md` | `ARCHITECTURE.md` | 메인 대전/사이드 스테이지 게임 흐름 상세 |
+| [ARCHITECTURE_FLOW.md](01_Architecture/ARCHITECTURE_FLOW.md) | `ARCHITECTURE.md` | 메인 대전/사이드 스테이지 게임 흐름 상세 |
 | [로비 디펜스 아키텍처](01_Architecture/LOBBY-DEFENSE-ARCHITECTURE.md) | `LOBBY-DEFENSE.md` | 방어 모델, 로비 저장, 대전·리플레이 연결 설계와 단계별 인수 기준 |
-| `INGAME_GIMMICK.md` | `INGAME.md` | 기믹 인터페이스/파괴 연쇄/새 기믹 추가 절차 |
-| `INGAME_REPLAY.md` | `INGAME.md` | 리플레이 기록/재생 흐름 상세 |
-| `DATA_SCHEMA.md` | `DATA.md` | GameSpec 전체 필드 스키마 트리 + ReplayData JSON |
-| `DATA_STAGE.md` | `DATA.md` | 스테이지 저장소(StageStorage)·맵 툴(StageMapTool) 레퍼런스 |
-| `STAGE_MAP_TOOL_ARCH.md` | `DATA_STAGE.md` | 맵 툴(ToolScene) 아키텍처·데이터 흐름·구현 순서 |
-| `SERVER_DTO.md` | `SERVER.md` | 공유 DLL DTO 필드 정의 |
-| `UI_SIDE_STAGE.md` | `UI.md` | 사이드 스테이지 팝업 진입 흐름 |
-| `STAGE_MAP_TOOL.md` | `DATA_STAGE.md`/`CHANGELOG.md` | 스테이지 맵 툴 상태·작업 메모 |
+| [INGAME_GIMMICK.md](02_Ingame/INGAME_GIMMICK.md) | `INGAME.md` | 기믹 인터페이스/파괴 연쇄/새 기믹 추가 절차 |
+| [INGAME_REPLAY.md](02_Ingame/INGAME_REPLAY.md) | `INGAME.md` | 리플레이 기록/재생 흐름 상세 |
+| [DATA_SCHEMA.md](03_Data/DATA_SCHEMA.md) | `DATA.md` | GameSpec 전체 필드 스키마 트리 + ReplayData JSON |
+| [DATA_STAGE.md](03_Data/DATA_STAGE.md) | `DATA.md` | 스테이지 저장소(StageStorage)·맵 툴(StageMapTool) 레퍼런스 |
+| [STAGE_MAP_TOOL_ARCH.md](03_Data/STAGE_MAP_TOOL_ARCH.md) | [DATA_STAGE.md](03_Data/DATA_STAGE.md) | 맵 툴(ToolScene) 아키텍처·데이터 흐름·구현 순서 |
+| [SERVER_DTO.md](06_Server/SERVER_DTO.md) | `SERVER.md` | 공유 DLL DTO 필드 정의 |
+| [UI_SIDE_STAGE.md](04_UI/UI_SIDE_STAGE.md) | `UI.md` | 사이드 스테이지 선택 팝업 기획 |
+| [맵 툴 씬 연결](03_Data/STAGE_MAP_TOOL_SCENE_SETUP.md) | `STAGE_MAP_TOOL.md` | ToolScene의 보드·패널 참조를 연결하는 절차 |
+| [STAGE_MAP_TOOL.md](03_Data/STAGE_MAP_TOOL.md) | `DATA_STAGE.md`/`CHANGELOG.md` | 스테이지 맵 툴 상태·작업 메모 |
 
 ---
 
@@ -141,7 +142,7 @@
 | Network | `02_Scripts/Manager/Network/` | `HttpNetworkClient.cs` |
 | UserData | `02_Scripts/Manager/UserData/` | `IdentityLayer.cs`, `AuthLayer.cs` |
 | 스테이지 주입/저장소 | `02_Scripts/StageMapTool/` | `StageInjection.cs`, `StageStorage.cs` |
-| 스테이지 맵 툴 | `02_Scripts/StageMapTool/` | Core: `StageMapToolState.cs`, `StageMapCellBrush.cs`, `StageMapJsonRepository.cs`, `StageMapValidator.cs`, `StageMapValidationResult.cs` / Runtime: `StageMapToolController.cs` |
+| 스테이지 맵 툴 | `02_Scripts/StageMapTool/` | `StageMapToolController`, `StageMapBoardView`, `StageMapCellView`와 편집 상태·검증 코드는 [편집기 구현 상태](03_Data/STAGE_MAP_TOOL.md) 참고 |
 | 공유 DLL | `Plugins/` | `PuzleBattleShared.dll` |
 | UI | `02_Scripts/UI/` | `UIButton.cs`, `PopupReady.cs` |
 | Data | `05_Table/`, `Resources/Stage/` | `Rule/*.json`, `Stage/Stage.json`(레거시), `Resources/Stage/{모드}/Stage_NNN.json`(모드별), `Replay/*.json` |
