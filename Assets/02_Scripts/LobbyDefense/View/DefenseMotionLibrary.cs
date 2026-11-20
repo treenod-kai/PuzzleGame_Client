@@ -45,6 +45,10 @@ namespace LobbyDefense.View
                 {
                     RequestClip(unitId, "Attack", direction);
                 }
+                if (motion == "Idle" && !_motions.ContainsKey((unitId, "Special", direction)))
+                {
+                    RequestClip(unitId, "Special", direction);
+                }
             }
             if (entry.Clip != null && _animator.isActiveAndEnabled)
             {

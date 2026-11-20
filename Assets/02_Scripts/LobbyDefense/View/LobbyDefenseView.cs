@@ -157,6 +157,9 @@ namespace LobbyDefense.View
         /// <summary><paramref name="defender"/>가 확대 지도에서 실제 탄의 표적을 향하도록 좌우 방향을 구한다.</summary>
         internal bool FacesRight(DeployedDefender defender) => _projectiles.FacesRight(defender);
 
+        /// <summary>확대 지도에서 누른 <paramref name="defender"/>의 <paramref name="tick"/> 시점 대기 장기자랑을 요청한다.</summary>
+        internal void RequestShowcase(DeployedDefender defender, long tick) => _units.RequestShowcase(defender, tick);
+
         /// <summary>로비를 떠날 때 현재 전투의 발사 구독을 해제한다.</summary>
         private void OnDestroy()
         {

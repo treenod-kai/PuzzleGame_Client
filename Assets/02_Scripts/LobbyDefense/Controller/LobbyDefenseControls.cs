@@ -99,6 +99,7 @@ namespace LobbyDefense.Controller
             {
                 if (defender.Cell == cell)
                 {
+                    _view.RequestShowcase(defender, _game.Session.Tick);
                     for (int i = 0; i < _game.Cards.Count; i++)
                     {
                         if (_game.Cards[i].Id == defender.Unit.CardInstanceId)

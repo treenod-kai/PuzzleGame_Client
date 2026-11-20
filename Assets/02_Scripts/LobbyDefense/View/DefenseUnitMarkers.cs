@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using LobbyDefense.Model;
 using Puzzle.Core;
 using UnityEngine;
@@ -24,6 +25,19 @@ namespace LobbyDefense.View
         private const int FrameCount = 4;
         private const int IdleFps = 4;
         private const int ActionFps = 8;
+        private const int ShowcaseFps = 6;
+        private const int IdleShowcaseSeconds = 15;
+        private const double ShowcaseTicks = (double)FrameCount * GameSpec.LogicFramesPerSecond / ShowcaseFps;
+        private const int AttackTicks = FrameCount * GameSpec.LogicFramesPerSecond / ActionFps;
+
+        /// <summary>배치 한 건의 대기 시작과 장기자랑 재생을 추적한다. 표시 마커가 재사용되어도 카드별 시계는 유지된다.</summary>
+        private sealed class IdleShowcase
+        {
+            public int Cell = -1;
+            public long LastAttack = -1;
+            public double DueTick;
+            public double StartTick = -1;
+        }
         // 모션 프레임은 256픽셀 원화의 사방에 32픽셀 여백을 포함한다.
         private const float MotionScale = 320f / 256f;
         private static readonly string[,] Directions =
@@ -40,6 +54,7 @@ namespace LobbyDefense.View
         private readonly int _width;
         private readonly bool _overview;
         private readonly List<Marker> _markers = new List<Marker>();
+        private readonly ConditionalWeakTable<DeployedDefender, IdleShowcase> _showcases = new ConditionalWeakTable<DeployedDefender, IdleShowcase>();
         private int _used;
         private float _tileSize;
         private Vector2 _firstCellCenter;
@@ -76,12 +91,13 @@ namespace LobbyDefense.View
                 UnitBase unit = defender.Unit;
                 Marker marker = PlaceMarker(defender.Cell % _width, defender.Cell / _width, DefenderColor,
                     (float)unit.CurrentHealth / unit.MaxHealth);
-                if (marker != null)
+                if (!_overview)
                 {
-                    int attack = AttackFrame(session.Tick, defender.LastAttackTick, tickFraction);
-                    int frame = attack >= 0 ? attack : LoopFrame(session.Tick, tickFraction, IdleFps);
-                    bool targetOnRight = _view.FacesRight(defender);
-                    DrawUnit(marker, unit.UnitTypeId, attack >= 0 ? "Attack" : "Idle", null, frame, targetOnRight);
+                    IdleShowcase showcase = TrackIdle(defender, session.Tick);
+                    if (marker != null)
+                    {
+                        DrawDefender(marker, defender, showcase, session.Tick, tickFraction);
+                    }
                 }
             }
             for (int i = 0; i < session.Enemies.Count; i++)
@@ -98,6 +114,89 @@ namespace LobbyDefense.View
             {
                 _markers[i].Root.gameObject.SetActive(false);
             }
+        }
+
+        /// <summary>배치된 <paramref name="defender"/>가 <paramref name="tick"/>에 대기 중이면 눌렀을 때 한 번 재생하도록 예약한다.</summary>
+        internal void RequestShowcase(DeployedDefender defender, long tick)
+        {
+            if (AttackFrame(tick, defender.LastAttackTick, 0f) >= 0)
+            {
+                return;
+            }
+            IdleShowcase showcase = TrackIdle(defender, tick);
+            if (showcase.StartTick < 0 || tick >= showcase.StartTick + ShowcaseTicks)
+            {
+                showcase.StartTick = -1;
+                showcase.DueTick = tick;
+            }
+        }
+
+        /// <summary><paramref name="defender"/>가 배치·이동하거나 새로 공격했으면 <paramref name="tick"/> 기준으로 대기 시계를 다시 잡는다.</summary>
+        private IdleShowcase TrackIdle(DeployedDefender defender, long tick)
+        {
+            if (!_showcases.TryGetValue(defender, out IdleShowcase showcase))
+            {
+                showcase = new IdleShowcase();
+                _showcases.Add(defender, showcase);
+            }
+            if (showcase.Cell != defender.Cell || showcase.LastAttack != defender.LastAttackTick)
+            {
+                long idleStart = tick;
+                if (defender.LastAttackTick >= 0)
+                {
+                    idleStart = Math.Max(idleStart, defender.LastAttackTick + AttackTicks);
+                }
+                showcase.Cell = defender.Cell;
+                showcase.LastAttack = defender.LastAttackTick;
+                showcase.StartTick = -1;
+                showcase.DueTick = idleStart + IdleShowcaseSeconds * GameSpec.LogicFramesPerSecond;
+            }
+            return showcase;
+        }
+
+        /// <summary><paramref name="marker"/>에 <paramref name="defender"/>의 공격을 우선 표시하고, 대기 중에는
+        /// <paramref name="tick"/>과 <paramref name="fraction"/>에 맞춰 <paramref name="showcase"/>를 한 번 재생한다.</summary>
+        private void DrawDefender(Marker marker, DeployedDefender defender, IdleShowcase showcase, long tick, float fraction)
+        {
+            string id = defender.Unit.UnitTypeId;
+            bool flip = _view.FacesRight(defender);
+            int attack = AttackFrame(tick, defender.LastAttackTick, fraction);
+            if (attack >= 0)
+            {
+                DrawUnit(marker, id, "Attack", null, attack, flip);
+                return;
+            }
+            Sprite sprite = ShowcaseSprite(showcase, id, tick + (double)fraction);
+            if (sprite != null)
+            {
+                SetArt(marker, sprite, Color.white, flip, MotionScale);
+                return;
+            }
+            DrawUnit(marker, id, "Idle", null, LoopFrame(tick, fraction, IdleFps), flip);
+        }
+
+        /// <summary><paramref name="id"/>의 <paramref name="showcase"/>에서 <paramref name="now"/>에 보여 줄 그림을 읽는다.
+        /// 첫 그림을 읽은 시점부터 재생 시간을 센다.</summary>
+        private Sprite ShowcaseSprite(IdleShowcase showcase, string id, double now)
+        {
+            if (now < showcase.DueTick)
+            {
+                return null;
+            }
+            double elapsed = showcase.StartTick < 0 ? 0 : now - showcase.StartTick;
+            if (elapsed >= ShowcaseTicks)
+            {
+                showcase.DueTick = showcase.StartTick + ShowcaseTicks + IdleShowcaseSeconds * GameSpec.LogicFramesPerSecond;
+                showcase.StartTick = -1;
+                return null;
+            }
+            int frame = (int)(elapsed * ShowcaseFps / GameSpec.LogicFramesPerSecond);
+            Sprite sprite = _view.Motions.FindFrame(id, "Special", null, frame, out _);
+            if (sprite != null && showcase.StartTick < 0)
+            {
+                showcase.StartTick = now;
+            }
+            return sprite;
         }
 
         /// <summary>보드 폭 <paramref name="width"/>에서 <paramref name="enemy"/>의 칸을 <paramref name="tick"/>과

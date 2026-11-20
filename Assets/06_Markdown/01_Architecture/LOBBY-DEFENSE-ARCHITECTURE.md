@@ -18,7 +18,7 @@
 | [DefenseSessionState.cs](../../02_Scripts/LobbyDefense/Model/DefenseSessionState.cs) · [DefenseProgressStore.cs](../../02_Scripts/Manager/UserData/DefenseProgressStore.cs) | `Capture`·`Restore`로 완료 틱의 상태를 복원하고 `CaptureForBoard`로 구판 좌표를 변환한다. 계정별 파일 교체와 백업 복구를 담당한다. |
 | [LobbyDefenseController.cs](../../02_Scripts/LobbyDefense/Controller/LobbyDefenseController.cs) · [LobbyDefenseControls.cs](../../02_Scripts/LobbyDefense/Controller/LobbyDefenseControls.cs) | 실제 로비 진입, 계정 전환, 다음 틱의 입력 처리, 지도·인벤토리 표시, 대전 전 저장을 연결한다. |
 | [LobbyDefenseView.cs](../../02_Scripts/LobbyDefense/View/LobbyDefenseView.cs) · [DefenseBoardGraphic.cs](../../02_Scripts/LobbyDefense/View/DefenseBoardGraphic.cs) · [DefenseUnitMarkers.cs](../../02_Scripts/LobbyDefense/View/DefenseUnitMarkers.cs) | 세로 10행을 표시하고, 배치 지도의 좌우 드래그와 미니맵의 열 선택을 같은 좌표로 처리한다. 등장 구역·경로·사거리와 유닛·체력을 그린다. |
-| [DefenseMotionLibrary.cs](../../02_Scripts/LobbyDefense/View/DefenseMotionLibrary.cs) | 확대 지도에서 대기·걷기를 처음 요청할 때 같은 방향의 공격 클립도 준비한다. 클립에서 읽은 네 장의 Sprite와 좌우 반전값을 재사용한다. |
+| [DefenseMotionLibrary.cs](../../02_Scripts/LobbyDefense/View/DefenseMotionLibrary.cs) | 대기·걷기를 처음 표시할 때 공격 클립을, 수비 유닛을 대기 상태로 표시할 때 장기자랑 클립도 준비한다. 각 클립의 네 장과 좌우 반전값을 재사용한다. |
 | [DefenseProjectileView.cs](../../02_Scripts/LobbyDefense/View/DefenseProjectileView.cs) | `DefenderFired`에서 발사 칸과 표적을 기록한다. 사수와 탄은 같은 표적 위치를 바라보고, 세 번째 공격 프레임에 탄이 나온다. 계정 전환 시 진행 중인 탄을 비운다. |
 | [DefenseCardInventoryView.cs](../../02_Scripts/LobbyDefense/View/DefenseCardInventoryView.cs) · [DefenseInventoryTile.cs](../../02_Scripts/LobbyDefense/View/DefenseInventoryTile.cs) | 보유 카드 ID별로 초상·별·배치 상태를 세로 스크롤 목록에 표시한다. 목록 위치를 유지하며 카드 상세를 연다. |
 | [PopupDefenseCard.cs](../../02_Scripts/LobbyDefense/View/PopupDefenseCard.cs) | 선택 카드의 능력치·에너지 잔액을 표시하고 강화 및 변환 확정을 같은 카드 ID로 전달한다. |
@@ -26,6 +26,8 @@
 ## 책임과 수명
 
 [실제 로비 전투 재생](../00_Guide/LobbyDefensePlay.gif) · [카드 인벤토리에서 본 진주 수비병 초상](../00_Guide/LobbyDefenseInventory.png)
+
+확대 지도에서 대기 중인 수비 유닛을 누르면 카드를 선택하면서 해당 유닛의 장기자랑(`Special`)을 한 번 재생한다. 배치·이동 뒤나 공격·장기자랑이 끝난 뒤 15초 동안 계속 대기해도 재생한다. 연속 터치는 재생 중인 동작을 이어가고, 실제 공격은 즉시 장기자랑을 중단한다. 장기자랑은 화면 연출이며 피해·발사·저장 상태를 바꾸지 않는다.
 
 로비 컨트롤러는 활성 계정의 진행 하나를 연다. 순수 C# 모델에서 고정 틱을 계산하고 뷰는 틱 사이의 위치와 동작 프레임을 그린다. 전체 지도는 색상 점으로 진영을 구분한다. 확대 지도는 배치한 수비 유닛의 대기·사격, 침공 몬스터의 이동·봉쇄 공격을 실제 방향으로 표시한다. 마비된 몬스터는 걸음을 멈춘다. [8방향 원화와 클립](../00_Guide/INVADER-ART.md)
 
