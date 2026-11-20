@@ -17,7 +17,7 @@ JSON 규칙, 스테이지, GameSpec, 블럭 데이터 관련 작업 시 참고.
 | 리플레이 저장 형식 | [ReplayData.cs](../../02_Scripts/PuzzleCore/Module/ReplayData.cs) | `ReplayData`, `IsCompleteBattleRecord`, `HasCompatibleBattleRules`, `pivotSettings`, `comboRuleVersion`, `numericRuleVersion`, `boardRuleVersion` |
 | Rule JSON 및 리플레이에 보관하는 피벗 규칙 | [PivotSettings.cs](../../02_Scripts/Battle/Pivot/PivotSettings.cs) | `PivotSettings`, `IsValid`, `CopyValidated`, `HasSameRules` |
 | 리플레이 JSON 저장·로드·저장 경로 | [ReplayStorage.cs](../../02_Scripts/PuzzleCore/Module/ReplayStorage.cs) | `Save`, `Load`, `GetReplayDirectoryPath` |
-| 로비 디펜스 보드·카드 능력치·웨이브·경제 | [DefenseRules.cs](../../02_Scripts/LobbyDefense/Model/DefenseRules.cs) | 어드레서블 `LobbyDefense/Rules`, `Validate`, `GradeFor`. [규칙 JSON](../../05_Table/LobbyDefenseRules.json) |
+| 로비 디펜스 보드·카드 능력치·웨이브·경제 | [DefenseRules.cs](../../02_Scripts/LobbyDefense/Model/DefenseRules.cs) | 어드레서블 `LobbyDefense/Rules`, `Validate`, `GradeFor`. 카드의 선택 필드 `AttackProjectileAddress`는 기본 공격에 표시할 Sprite 주소다. [규칙 JSON](../../05_Table/LobbyDefenseRules.json) |
 
 ---
 

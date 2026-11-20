@@ -18,15 +18,22 @@
 | [DefenseSessionState.cs](../../02_Scripts/LobbyDefense/Model/DefenseSessionState.cs) · [DefenseProgressStore.cs](../../02_Scripts/Manager/UserData/DefenseProgressStore.cs) | `Capture`·`Restore`로 완료 틱의 상태를 복원하고 `CaptureForBoard`로 구판 좌표를 변환한다. 계정별 파일 교체와 백업 복구를 담당한다. |
 | [LobbyDefenseController.cs](../../02_Scripts/LobbyDefense/Controller/LobbyDefenseController.cs) · [LobbyDefenseControls.cs](../../02_Scripts/LobbyDefense/Controller/LobbyDefenseControls.cs) | 실제 로비 진입, 계정 전환, 다음 틱의 입력 처리, 지도·인벤토리 표시, 대전 전 저장을 연결한다. |
 | [LobbyDefenseView.cs](../../02_Scripts/LobbyDefense/View/LobbyDefenseView.cs) · [DefenseBoardGraphic.cs](../../02_Scripts/LobbyDefense/View/DefenseBoardGraphic.cs) · [DefenseUnitMarkers.cs](../../02_Scripts/LobbyDefense/View/DefenseUnitMarkers.cs) | 세로 10행을 표시하고, 배치 지도의 좌우 드래그와 미니맵의 열 선택을 같은 좌표로 처리한다. 등장 구역·경로·사거리와 유닛·체력을 그린다. |
-| [DefenseCardInventoryView.cs](../../02_Scripts/LobbyDefense/View/DefenseCardInventoryView.cs) | 인벤토리 탭에서 카드 탐색, 능력치 선택 강화와 한 장의 변환 확인을 처리한다. |
+| [DefenseMotionLibrary.cs](../../02_Scripts/LobbyDefense/View/DefenseMotionLibrary.cs) | 확대 지도에서 대기·걷기를 처음 요청할 때 같은 방향의 공격 클립도 준비한다. 클립에서 읽은 네 장의 Sprite와 좌우 반전값을 재사용한다. |
+| [DefenseProjectileView.cs](../../02_Scripts/LobbyDefense/View/DefenseProjectileView.cs) | `DefenderFired`에서 발사 칸과 표적을 기록한다. 사수와 탄은 같은 표적 위치를 바라보고, 세 번째 공격 프레임에 탄이 나온다. 계정 전환 시 진행 중인 탄을 비운다. |
+| [DefenseCardInventoryView.cs](../../02_Scripts/LobbyDefense/View/DefenseCardInventoryView.cs) · [DefenseInventoryTile.cs](../../02_Scripts/LobbyDefense/View/DefenseInventoryTile.cs) | 보유 카드 ID별로 초상·별·배치 상태를 세로 스크롤 목록에 표시한다. 목록 위치를 유지하며 카드 상세를 연다. |
+| [PopupDefenseCard.cs](../../02_Scripts/LobbyDefense/View/PopupDefenseCard.cs) | 선택 카드의 능력치·에너지 잔액을 표시하고 강화 및 변환 확정을 같은 카드 ID로 전달한다. |
 
 ## 책임과 수명
 
-로비 컨트롤러는 활성 계정의 진행 하나를 연다. 순수 C# 모델에서 고정 틱을 계산하고 뷰는 두 칸 사이의 이동만 보간한다. 전체 보기와 확대 지도는 자기 표시 객체를 재사용한다. 로비에 돌아오면 계정의 마지막 완료 틱에서 진행을 이어 간다. [AssetManager.cs](../../02_Scripts/Manager/AssetManager.cs) · [씬 전환 순서](../05_Scene/SCENE.md)
+[실제 로비 전투 재생](../00_Guide/LobbyDefensePlay.gif) · [카드 인벤토리에서 본 진주 수비병 초상](../00_Guide/LobbyDefenseInventory.png)
+
+로비 컨트롤러는 활성 계정의 진행 하나를 연다. 순수 C# 모델에서 고정 틱을 계산하고 뷰는 틱 사이의 위치와 동작 프레임을 그린다. 전체 지도는 색상 점으로 진영을 구분한다. 확대 지도는 배치한 수비 유닛의 대기·사격, 침공 몬스터의 이동·봉쇄 공격을 실제 방향으로 표시한다. 마비된 몬스터는 걸음을 멈춘다. [8방향 원화와 클립](../00_Guide/INVADER-ART.md)
+
+현재 규칙에는 진주 수비병·성벽거북과 물방울 젤리·길지기 유령이 등장한다. 진주 수비병은 카드 정의의 `AttackProjectileAddress`로 진주탄을 읽는다. 공격 판정은 모델의 원래 틱에 끝나고 탄은 표적을 따라가며, 그 공격으로 처치하면 발사 당시 위치로 날아간다. 저장 복원 시 진행 중이던 연출은 새로 시작하는 전투 동작부터 표시한다. [규칙표](../../05_Table/LobbyDefenseRules.json) · [AssetManager.cs](../../02_Scripts/Manager/AssetManager.cs)
 
 ## 유저 데이터와 보유 유닛
 
-유저 인벤토리에 카드 탭을 둔다. 같은 종류의 카드도 한 장씩 선택해 등급·태생 점수·전투 능력치·변환 지급량을 확인한다. 선택한 카드를 변환하면 같은 유닛 종류의 에너지 잔액을 보여준다. 잔액은 마지막 카드를 소모한 뒤에도 유지한다.
+로비 두 번째 탭에서 보유 카드를 세로로 스크롤한다. 같은 종류도 한 장씩 표시되며 카드를 누르면 상세 창에서 등급, 태생 점수, 개별 강화값, 최종 전투 능력치와 종류별 에너지를 확인한다. 변환은 카드 한 장을 소모한다는 확인을 거친다. 성공하면 목록으로 돌아와 지급량과 잔액을 표시하며, 그 종류의 마지막 카드를 소모해도 보유 에너지는 목록 아래에 남는다.
 
 보유 카드와 종류별 에너지는 현재 계정 또는 설치 게스트 단위로 보관한다. 기본 능력치·보정치·등급 경계·변환 지급량은 공통 규칙표에서 읽는다. 카드별 강화와 태생 점수는 계정 저장본에 담는다. [UserDataManager.cs](../../02_Scripts/Manager/UserDataManager.cs) · [규칙표](../../05_Table/LobbyDefenseRules.json)
 

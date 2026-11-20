@@ -1,16 +1,19 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using LobbyDefense.Model;
+using Puzzle.Core;
 using UnityEngine;
 using UnityEngine.UI;
 
 namespace LobbyDefense.View
 {
-    /// <summary>지도 하나의 유닛·트랩 표시 객체를 재사용하고 확대 지도에서 이동 보간과 잔여 체력을 표시한다.</summary>
+    /// <summary>지도 하나의 유닛·트랩 표시 객체를 재사용하고 확대 지도에서 이동·공격 동작과 잔여 체력을 표시한다.</summary>
     internal sealed class DefenseUnitMarkers
     {
         /// <summary>지도에 표시할 스프라이트와 체력 막대를 함께 보관한다.</summary>
         private sealed class Marker
         {
+            public RectTransform Root;
             public Image Icon;
             public RectTransform Health;
             public RectTransform Fill;
@@ -18,6 +21,17 @@ namespace LobbyDefense.View
             public float LastSize;
         }
 
+        private const int FrameCount = 4;
+        private const int IdleFps = 4;
+        private const int ActionFps = 8;
+        // 모션 프레임은 256픽셀 원화의 사방에 32픽셀 여백을 포함한다.
+        private const float MotionScale = 320f / 256f;
+        private static readonly string[,] Directions =
+        {
+            { "NorthWest", "North", "NorthEast" },
+            { "West",      "East",  "East" },
+            { "SouthWest", "South", "SouthEast" }
+        };
         private static readonly Color DefenderColor = new Color32(116, 230, 192, 255);
         private static readonly Color EnemyColor = new Color32(246, 157, 126, 255);
         private static readonly Color TrapColor = new Color32(184, 159, 241, 255);
@@ -49,84 +63,170 @@ namespace LobbyDefense.View
             {
                 DefenseTrap trap = session.Traps[i];
                 Color tint = trap.ReadyTick <= session.Tick ? Color.white : Color.gray;
-                Show(trap.Cell % _width, trap.Cell / _width, "Trap", null, TrapColor, tint, 1f);
+                Marker marker = PlaceMarker(trap.Cell % _width, trap.Cell / _width, TrapColor * tint, 1f);
+                if (marker != null)
+                {
+                    Sprite sprite = _view.FindSprite("Trap", null);
+                    SetArt(marker, sprite, sprite == null ? TrapColor * tint : tint, false, 1f);
+                }
             }
             for (int i = 0; i < session.Defenders.Count; i++)
             {
                 DeployedDefender defender = session.Defenders[i];
                 UnitBase unit = defender.Unit;
-                Show(defender.Cell % _width, defender.Cell / _width, "Defenders", unit.UnitTypeId,
-                    DefenderColor, Color.white, (float)unit.CurrentHealth / unit.MaxHealth);
+                Marker marker = PlaceMarker(defender.Cell % _width, defender.Cell / _width, DefenderColor,
+                    (float)unit.CurrentHealth / unit.MaxHealth);
+                if (marker != null)
+                {
+                    int attack = AttackFrame(session.Tick, defender.LastAttackTick, tickFraction);
+                    int frame = attack >= 0 ? attack : LoopFrame(session.Tick, tickFraction, IdleFps);
+                    bool targetOnRight = _view.FacesRight(defender);
+                    DrawUnit(marker, unit.UnitTypeId, attack >= 0 ? "Attack" : "Idle", null, frame, targetOnRight);
+                }
             }
             for (int i = 0; i < session.Enemies.Count; i++)
             {
                 InvadingMonster enemy = session.Enemies[i];
-                float column = enemy.Cell % _width;
-                float row = enemy.Cell / _width;
-                if (enemy.NextCell >= 0 && enemy.MoveTicks > 0)
+                Vector2 position = EnemyPosition(enemy, _width, session.Tick, tickFraction);
+                Marker marker = PlaceMarker(position.x, position.y, EnemyColor, (float)enemy.Unit.CurrentHealth / enemy.Unit.MaxHealth);
+                if (marker != null)
                 {
-                    float progress = 1f - (enemy.ArrivalTick - session.Tick - tickFraction) / enemy.MoveTicks;
-                    column = Mathf.Lerp(column, enemy.NextCell % _width, progress);
-                    row = Mathf.Lerp(row, enemy.NextCell / _width, progress);
+                    DrawMonster(marker, session, enemy, tickFraction);
                 }
-                UnitBase unit = enemy.Unit;
-                Show(column, row, "Monsters", unit.UnitTypeId, EnemyColor, Color.white, (float)unit.CurrentHealth / unit.MaxHealth);
             }
-            for (int i = _used; i < _markers.Count && _markers[i].Icon.gameObject.activeSelf; i++)
+            for (int i = _used; i < _markers.Count && _markers[i].Root.gameObject.activeSelf; i++)
             {
-                _markers[i].Icon.gameObject.SetActive(false);
+                _markers[i].Root.gameObject.SetActive(false);
             }
         }
 
-        /// <summary>좌표 <paramref name="column"/>·<paramref name="row"/>에 종류 <paramref name="group"/>·<paramref name="id"/>를
-        /// 대체색 <paramref name="fallback"/>, 상태색 <paramref name="tint"/>, 체력비 <paramref name="health"/>로 나타낸다.</summary>
-        private void Show(float column, float row, string group, string id, Color fallback, Color tint, float health)
+        /// <summary>보드 폭 <paramref name="width"/>에서 <paramref name="enemy"/>의 칸을 <paramref name="tick"/>과
+        /// 보간 비율 <paramref name="tickFraction"/>에 맞춰 연속 열·행 좌표로 구한다.</summary>
+        internal static Vector2 EnemyPosition(InvadingMonster enemy, int width, long tick, float tickFraction)
+        {
+            Vector2 position = new Vector2(enemy.Cell % width, enemy.Cell / width);
+            if (enemy.NextCell < 0 || enemy.MoveTicks <= 0)
+            {
+                return position;
+            }
+            float progress = 1f - (enemy.ArrivalTick - tick - tickFraction) / enemy.MoveTicks;
+            Vector2 next = new Vector2(enemy.NextCell % width, enemy.NextCell / width);
+            return Vector2.Lerp(position, next, progress);
+        }
+
+        /// <summary><paramref name="session"/>의 <paramref name="enemy"/>를 공격 대상이나 이동 방향에 맞춰
+        /// <paramref name="marker"/>에 표시한다. <paramref name="tickFraction"/>은 현재 틱 사이의 진행률이다.</summary>
+        private void DrawMonster(Marker marker, DefenseSession session, InvadingMonster enemy, float tickFraction)
+        {
+            bool stunned = session.Tick < enemy.StunUntilTick;
+            int attack = stunned ? -1 : AttackFrame(session.Tick, enemy.LastAttackTick, tickFraction);
+            int target = attack >= 0 ? enemy.LastAttackTargetCell : enemy.NextCell;
+            if (target < 0)
+            {
+                target = session.Board.GetNextCell(enemy.Cell);
+            }
+            int dx = target < 0 ? 0 : Math.Sign(target % _width - enemy.Cell % _width);
+            int dy = target < 0 ? 0 : Math.Sign(target / _width - enemy.Cell / _width);
+            string direction = Directions[dy + 1, dx + 1];
+            int frame = attack;
+            if (attack < 0)
+            {
+                frame = !stunned && enemy.NextCell >= 0 ? LoopFrame(session.Tick, tickFraction, ActionFps) : 0;
+            }
+            DrawUnit(marker, enemy.Unit.UnitTypeId, attack >= 0 ? "Attack" : "Walk", direction, frame, dx < 0);
+        }
+
+        /// <summary>마지막 타격 <paramref name="start"/>부터 현재 <paramref name="tick"/>과 <paramref name="fraction"/>까지
+        /// 진행한 공격 프레임을 구한다. 재생 구간 밖에서는 -1이다.</summary>
+        private static int AttackFrame(long tick, long start, float fraction)
+        {
+            if (start < 0 || start > tick)
+            {
+                return -1;
+            }
+            double frame = (tick - start + (double)fraction) * ActionFps / GameSpec.LogicFramesPerSecond;
+            return frame < FrameCount ? (int)frame : -1;
+        }
+
+        /// <summary>장시간 실행해도 <paramref name="tick"/>과 틱 사이 비율 <paramref name="fraction"/>을
+        /// <paramref name="fps"/>의 반복 프레임으로 정밀하게 환산한다.</summary>
+        private static int LoopFrame(long tick, float fraction, int fps) =>
+            (int)((tick % GameSpec.LogicFramesPerSecond + fraction) * fps / GameSpec.LogicFramesPerSecond) % FrameCount;
+
+        /// <summary><paramref name="marker"/>에 <paramref name="id"/>의 <paramref name="motion"/>·<paramref name="direction"/>·
+        /// <paramref name="frame"/>을 표시한다. 수비 원화와 정적 대체 그림은 <paramref name="mirrorBase"/>를 따른다.</summary>
+        private void DrawUnit(Marker marker, string id, string motion, string direction, int frame, bool mirrorBase)
+        {
+            bool defender = direction == null;
+            Sprite sprite = _view.Motions.FindFrame(id, motion, direction, frame, out bool clipFlip);
+            bool animated = sprite != null;
+            if (!animated)
+            {
+                sprite = _view.FindSprite(defender ? "Defenders" : "Monsters", id);
+            }
+            Color fallback = defender ? DefenderColor : EnemyColor;
+            bool flipX = animated && !defender ? clipFlip : mirrorBase;
+            SetArt(marker, sprite, sprite == null ? fallback : Color.white, flipX, animated ? MotionScale : 1f);
+        }
+
+        /// <summary><paramref name="marker"/>의 그림 <paramref name="sprite"/>에 <paramref name="tint"/>·
+        /// <paramref name="flipX"/>·<paramref name="scale"/>을 적용하고 체력 막대의 방향은 유지한다.</summary>
+        private static void SetArt(Marker marker, Sprite sprite, Color tint, bool flipX, float scale)
+        {
+            Image image = marker.Icon;
+            image.sprite = sprite;
+            image.color = tint;
+            Vector3 artScale = new Vector3(flipX ? -scale : scale, scale, 1f);
+            if (image.rectTransform.localScale != artScale)
+            {
+                image.rectTransform.localScale = artScale;
+            }
+        }
+
+        /// <summary><paramref name="column"/>·<paramref name="row"/>의 위치와 <paramref name="health"/>를 갱신하고
+        /// 상세 그림이 필요할 때 마커를 반환한다. 전체 지도는 <paramref name="overviewColor"/> 점으로 표시한다.</summary>
+        private Marker PlaceMarker(float column, float row, Color overviewColor, float health)
         {
             if (!_grid.Shows(column, row))
             {
-                return;
+                return null;
             }
             if (_used == _markers.Count)
             {
                 _markers.Add(CreateMarker());
             }
             Marker marker = _markers[_used++];
-            Image image = marker.Icon;
-            if (!image.gameObject.activeSelf)
+            if (!marker.Root.gameObject.activeSelf)
             {
-                image.gameObject.SetActive(true);
+                marker.Root.gameObject.SetActive(true);
             }
-            Sprite sprite = null;
-            if (!_overview)
-            {
-                sprite = _view.FindSprite(group, id);
-            }
-            image.sprite = sprite;
-            image.color = sprite == null ? fallback * tint : tint;
             Vector2 position = _firstCellCenter + new Vector2(column, -row) * _tileSize;
             float size = _tileSize * (_overview ? 0.8f : 1f);
             if (marker.LastPosition != position)
             {
                 marker.LastPosition = position;
-                image.rectTransform.anchoredPosition = position;
+                marker.Root.anchoredPosition = position;
             }
             if (marker.LastSize != size)
             {
                 marker.LastSize = size;
-                image.rectTransform.sizeDelta = Vector2.one * size;
+                marker.Root.sizeDelta = Vector2.one * size;
             }
-            if (marker.Health != null)
+            if (_overview)
             {
-                bool damaged = health < 1f;
-                if (marker.Health.gameObject.activeSelf != damaged)
-                {
-                    marker.Health.gameObject.SetActive(damaged);
-                }
-                if (damaged && marker.Fill.anchorMax.x != health)
-                {
-                    marker.Fill.anchorMax = new Vector2(health, 1f);
-                }
+                marker.Icon.color = overviewColor;
+                return null;
             }
+            bool damaged = health < 1f;
+            if (marker.Health.gameObject.activeSelf != damaged)
+            {
+                marker.Health.gameObject.SetActive(damaged);
+            }
+            if (damaged && marker.Fill.anchorMax.x != health)
+            {
+                marker.Fill.anchorMax = new Vector2(health, 1f);
+            }
+            return marker;
         }
 
         /// <summary>지도 아래에 표시 한 개를 만들고 확대 지도에는 체력 막대를 붙인다.</summary>
@@ -134,7 +234,9 @@ namespace LobbyDefense.View
         {
             Marker marker = new Marker();
             RectTransform rect = LobbyDefenseView.Rect("Unit", _grid.transform, 0.5f, 0.5f, 0.5f, 0.5f);
-            marker.Icon = rect.gameObject.AddComponent<Image>();
+            marker.Root = rect;
+            RectTransform art = _overview ? rect : LobbyDefenseView.Rect("Art", rect, 0f, 0f, 1f, 1f);
+            marker.Icon = art.gameObject.AddComponent<Image>();
             marker.Icon.raycastTarget = false;
             marker.Icon.preserveAspect = true;
             if (!_overview)

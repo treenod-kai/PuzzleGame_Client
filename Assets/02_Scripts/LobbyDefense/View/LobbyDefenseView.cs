@@ -33,6 +33,8 @@ namespace LobbyDefense.View
         private DefenseBoardGraphic _detail;
         private DefenseUnitMarkers _dots;
         private DefenseUnitMarkers _units;
+        private DefenseProjectileView _projectiles;
+        internal DefenseMotionLibrary Motions { get; private set; }
         private int _width;
         private int _height;
         private int _entrance;
@@ -82,6 +84,8 @@ namespace LobbyDefense.View
             _detail.Initialize(board, _columns, false, SelectCell, MoveWindow);
             _dots = new DefenseUnitMarkers(_overview, this, _width, true);
             _units = new DefenseUnitMarkers(_detail, this, _width, false);
+            Motions = new DefenseMotionLibrary(_detail.transform);
+            _projectiles = new DefenseProjectileView(_detail, _width);
             _hint = Label("Hint", panel, 0.035f, 0.122f, 0.965f, 0.163f, "", 22f, TextAlignmentOptions.Center);
 
             Control("Previous", panel, 0.035f, 0.066f, 0.15f, 0.119f, "이전", Previous, out _);
@@ -142,7 +146,24 @@ namespace LobbyDefense.View
         public void RenderUnits(DefenseSession session, float tickFraction)
         {
             _dots.Render(session, tickFraction);
+            _projectiles.UpdateTargets(session.Tick, tickFraction);
             _units.Render(session, tickFraction);
+            _projectiles.Render(session.Tick, tickFraction);
+        }
+
+        /// <summary>계정 교체나 저장 복구 때 <paramref name="game"/>의 발사만 지도에 연결한다.</summary>
+        internal void BindCombat(DefenseCampaign game) => _projectiles.Bind(game);
+
+        /// <summary><paramref name="defender"/>가 확대 지도에서 실제 탄의 표적을 향하도록 좌우 방향을 구한다.</summary>
+        internal bool FacesRight(DeployedDefender defender) => _projectiles.FacesRight(defender);
+
+        /// <summary>로비를 떠날 때 현재 전투의 발사 구독을 해제한다.</summary>
+        private void OnDestroy()
+        {
+            if (_projectiles != null)
+            {
+                _projectiles.Unsubscribe();
+            }
         }
 
         /// <summary>새 경로 <paramref name="path"/>가 이전 경로 <paramref name="old"/>와 달라질 때만 칸 표시 배열 <paramref name="mask"/>을 다시 채운다.</summary>

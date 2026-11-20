@@ -8,6 +8,10 @@
         public int Range { get; }
         public int AttackInterval { get; }
         public long NextAttackTick { get; internal set; }
+        /// <summary>마지막으로 피해를 준 틱이다. 배치나 복원 후 첫 공격 전에는 -1이다.</summary>
+        public long LastAttackTick { get; internal set; } = -1;
+        /// <summary>마지막 공격 당시 몬스터가 있던 칸이다. 첫 공격 전에는 -1이다.</summary>
+        public int LastAttackTargetCell { get; internal set; } = -1;
         internal long LastMissedTargetTick { get; set; } = -1;
 
         /// <summary>배치할 <paramref name="unit"/>의 위치 <paramref name="cell"/>, 사거리 <paramref name="range"/>,
@@ -29,6 +33,10 @@
         public int NextCell { get; internal set; } = -1;
         public long ArrivalTick { get; internal set; }
         public long NextAttackTick { get; internal set; }
+        /// <summary>마지막으로 방어 유닛에 피해를 준 틱이다. 소환이나 복원 후 첫 공격 전에는 -1이다.</summary>
+        public long LastAttackTick { get; internal set; } = -1;
+        /// <summary>마지막 공격 당시 방어 유닛이 있던 칸이다. 첫 공격 전에는 -1이다.</summary>
+        public int LastAttackTargetCell { get; internal set; } = -1;
         public long StunUntilTick { get; internal set; }
         public int MoveTicks { get; }
         public int AttackTicks { get; }

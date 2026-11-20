@@ -15,6 +15,7 @@
   "Units": [
     {
       "Id": "PearlSentry", "Name": "진주 수비병", "Range": 2, "AttackTicks": 50,
+      "AttackProjectileAddress": "LobbyDefense/Projectiles/PearlSentry/Attack",
       "Base": { "Attack": 4, "Health": 12, "Defense": 0 },
       "PerPoint": { "Attack": 1, "Health": 2, "Defense": 1 }
     },

@@ -22,6 +22,8 @@ namespace LobbyDefense.Model
         public IReadOnlyList<InvadingMonster> Enemies => _enemies;
         public IReadOnlyList<DefenseTrap> Traps => _traps;
         public IReadOnlyList<string> DestroyedCards => _destroyedCards;
+        /// <summary>표적이 사라지기 전에 이번 틱에 피해를 준 사수와 몬스터를 연출에 전달한다.</summary>
+        internal event Action<DeployedDefender, InvadingMonster> DefenderFired;
         public long Tick { get; private set; }
         public int Wave { get; private set; }
         public bool HasStarted => Wave > 0;
@@ -273,8 +275,16 @@ namespace LobbyDefense.Model
                 InvadingMonster target = FindTarget(defender);
                 if (target != null)
                 {
-                    target.Unit.QueueHitFrom(defender.Unit);
                     defender.NextAttackTick = Tick + defender.AttackInterval;
+                    if (target.Unit.QueueHitFrom(defender.Unit))
+                    {
+                        defender.LastAttackTick = Tick;
+                        defender.LastAttackTargetCell = target.Cell;
+                        if (DefenderFired != null)
+                        {
+                            DefenderFired(defender, target);
+                        }
+                    }
                 }
                 else
                 {
@@ -323,8 +333,12 @@ namespace LobbyDefense.Model
                 int next = Board.GetNextCell(enemy.Cell);
                 if (next >= 0 && _defendersByCell[next] != null)
                 {
-                    _defendersByCell[next].Unit.QueueHitFrom(enemy.Unit);
                     enemy.NextAttackTick = Tick + enemy.AttackTicks;
+                    if (_defendersByCell[next].Unit.QueueHitFrom(enemy.Unit))
+                    {
+                        enemy.LastAttackTick = Tick;
+                        enemy.LastAttackTargetCell = next;
+                    }
                 }
             }
         }

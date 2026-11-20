@@ -101,6 +101,7 @@ namespace LobbyDefense.Model
     {
         public string Id;
         public string Name;
+        public string AttackProjectileAddress;
         public int Range;
         public int AttackTicks;
         public DefenseStats Base;

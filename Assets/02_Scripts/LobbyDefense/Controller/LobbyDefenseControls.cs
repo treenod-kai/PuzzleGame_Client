@@ -49,6 +49,7 @@ namespace LobbyDefense.Controller
         internal void Bind(DefenseCampaign game)
         {
             _game = game;
+            _view.BindCombat(game);
             _cell = -1;
             _choice = 0;
             _cardIndex = 0;
@@ -61,6 +62,7 @@ namespace LobbyDefense.Controller
         internal void Unbind(string message)
         {
             _game = null;
+            _view.BindCombat(null);
             _view.gameObject.SetActive(false);
             _inventory.ShowCard(null, message, "", false, false, false);
         }

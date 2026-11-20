@@ -53,14 +53,16 @@ namespace LobbyDefense.Model
             CurrentHealth = Math.Max(0, CurrentHealth - resolvedDamage);
         }
 
-        /// <summary><paramref name="attacker"/>의 이번 틱 공격을 방어력으로 경감한 뒤 합산한다.</summary>
-        internal void QueueHitFrom(UnitBase attacker)
+        /// <summary><paramref name="attacker"/>의 이번 틱 공격을 방어력으로 경감한 뒤 합산하고 실제 피해가 추가되었는지 반환한다.</summary>
+        internal bool QueueHitFrom(UnitBase attacker)
         {
-            if (attacker.AttackPower > 0)
+            if (attacker.AttackPower == 0 || _pendingDamage >= CurrentHealth)
             {
-                int damage = Math.Max(1, attacker.AttackPower - DefensePower);
-                _pendingDamage += Math.Min(damage, CurrentHealth - _pendingDamage);
+                return false;
             }
+            int damage = Math.Max(1, attacker.AttackPower - DefensePower);
+            _pendingDamage += Math.Min(damage, CurrentHealth - _pendingDamage);
+            return true;
         }
 
         /// <summary>양쪽 진영이 모두 표적을 정한 뒤 이번 틱에 누적된 피해를 체력에 반영한다.</summary>
