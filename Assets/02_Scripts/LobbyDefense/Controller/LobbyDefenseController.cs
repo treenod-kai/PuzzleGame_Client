@@ -40,9 +40,9 @@ namespace LobbyDefense.Controller
             RectTransform area = (RectTransform)new GameObject("LobbyDefense", typeof(RectTransform)).transform;
             area.SetParent(parent, false);
             area.SetAsFirstSibling();
-            area.anchorMin = new Vector2(0.035f, 0.5f);
+            area.anchorMin = new Vector2(0.035f, 0f);
             area.anchorMax = new Vector2(0.965f, 0.95f);
-            area.offsetMin = new Vector2(0f, -210f);
+            area.offsetMin = new Vector2(0f, 312f);
             area.offsetMax = Vector2.zero;
             _view = area.gameObject.AddComponent<LobbyDefenseView>();
             DefenseCardInventoryView inventory = content.gameObject.AddComponent<DefenseCardInventoryView>();
@@ -95,7 +95,7 @@ namespace LobbyDefense.Controller
                 }
                 _rules.Validate();
                 DefenseBoard board = _rules.CreateBoard();
-                _view.Initialize(board.Width, board.Height, board.Entrance, board.Exit, font);
+                _view.Initialize(board, font);
                 _controls = new LobbyDefenseControls(_view, inventory, Enqueue);
                 _random = new PuzzleRandom(Guid.NewGuid().GetHashCode());
                 SyncAccount();

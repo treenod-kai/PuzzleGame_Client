@@ -82,7 +82,7 @@ namespace LobbyDefense.View
         /// 대체색 <paramref name="fallback"/>, 상태색 <paramref name="tint"/>, 체력비 <paramref name="health"/>로 나타낸다.</summary>
         private void Show(float column, float row, string group, string id, Color fallback, Color tint, float health)
         {
-            if (!_grid.Shows(column))
+            if (!_grid.Shows(column, row))
             {
                 return;
             }

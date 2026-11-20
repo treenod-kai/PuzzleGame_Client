@@ -1,9 +1,11 @@
 {
-  "Version": 1,
-  "Width": 100,
+  "Version": 2,
+  "Width": 10,
   "Height": 10,
   "EntranceRow": 5,
   "ExitRow": 5,
+  "SpawnAreaColumns": 2,
+  "SpawnAreaRowRadius": 1,
   "HireGold": 15,
   "ConversionEnergy": 1,
   "UpgradeCost": 1,

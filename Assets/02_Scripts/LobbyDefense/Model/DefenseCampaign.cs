@@ -28,7 +28,8 @@ namespace LobbyDefense.Model
                 _progress.Cards.Add(Draw(rules.StarterUnitId));
                 return;
             }
-            if (saved.Format != 1 || saved.RuleVersion != rules.Version || saved.Gold < 0 ||
+            bool resizeBoard = saved.RuleVersion == 1 && rules.Version == 2;
+            if (saved.Format != 1 || (saved.RuleVersion != rules.Version && !resizeBoard) || saved.Gold < 0 ||
                 saved.Cards == null || saved.Energy == null || saved.Battle == null)
             {
                 throw new InvalidDataException("디펜스 저장 형식 또는 규칙 버전을 확인해 주세요.");
@@ -55,19 +56,42 @@ namespace LobbyDefense.Model
                     throw new InvalidDataException("유닛 에너지 데이터가 올바르지 않습니다.");
                 }
             }
-            Session = DefenseSession.Restore(rules.CreateBoard(), rules.Combat, saved.Battle);
-            if (Session.Traps.Count > rules.TrapLimit)
+            DefenseBoard board = rules.CreateBoard();
+            // 규칙 1의 입구는 (1, 5), 출구는 (100, 5)였다. 잘려 나갈 칸도 먼저 당시 규칙으로 검사한다.
+            DefenseBoard savedBoard = resizeBoard ? new DefenseBoard(100, 10, 400, 499) : board;
+            DefenseSession restored = DefenseSession.Restore(savedBoard, rules.Combat, saved.Battle);
+            if (restored.Traps.Count > rules.TrapLimit)
             {
                 throw new InvalidDataException("저장된 트랩 수가 설치 한도를 초과합니다.");
             }
-            foreach (DeployedDefender defender in Session.Defenders)
+            foreach (DeployedDefender defender in restored.Defenders)
             {
                 OwnedDefenseCard card = FindCard(defender.Unit.CardInstanceId);
                 if (card == null || card.TypeId != defender.Unit.UnitTypeId)
                 {
                     throw new InvalidDataException("배치된 유닛과 보유 카드가 일치하지 않습니다.");
                 }
+                if (resizeBoard && defender.Unit.CurrentHealth > card.CreateUnit(rules.Find(card.TypeId)).MaxHealth)
+                {
+                    throw new InvalidDataException("배치된 카드의 남은 체력이 최대 체력을 초과합니다.");
+                }
             }
+            if (!resizeBoard)
+            {
+                Session = restored;
+                return;
+            }
+            DefenseSessionState resized = restored.CaptureForBoard(board);
+            Session = DefenseSession.Restore(board, rules.Combat, resized);
+            foreach (DeployedDefender defender in restored.Defenders)
+            {
+                if (!Session.IsCardDeployed(defender.Unit.CardInstanceId))
+                {
+                    FindCard(defender.Unit.CardInstanceId).ReserveHealth = defender.Unit.CurrentHealth;
+                }
+            }
+            saved.Battle = resized;
+            saved.RuleVersion = rules.Version;
         }
 
         /// <summary>카드, 골드와 전투를 같은 틱에서 직렬화하도록 현재 세션을 저장 데이터에 담는다.</summary>

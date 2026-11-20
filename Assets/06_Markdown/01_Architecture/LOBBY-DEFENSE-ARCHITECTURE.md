@@ -11,13 +11,13 @@
 | [UnitBase.cs](../../02_Scripts/LobbyDefense/Model/UnitBase.cs) | 유닛 종류 ID, 전투에 사용할 최종 공격력·최대 체력·방어력, 개체별 현재 체력과 생존 여부. `ApplyDamage`로 방어 계산이 끝난 피해를 반영한다. |
 | [DefenseUnit.cs](../../02_Scripts/LobbyDefense/Model/DefenseUnit.cs) | 방어선에 배치한 보유 카드 한 장. `CardInstanceId`로 같은 종류의 카드도 구분한다. |
 | [AttackUnit.cs](../../02_Scripts/LobbyDefense/Model/AttackUnit.cs) | 방어선을 침공하는 몬스터 한 기. 세션이 부여한 `SpawnNumber`로 같은 종류의 몬스터도 구분한다. |
-| [DefenseBoard.cs](../../02_Scripts/LobbyDefense/Model/DefenseBoard.cs) | 배치·이동 후보와 확정 경로, 봉쇄 시 돌파할 벽과 우회 판정. `TryPreview`, `GetNextCell` |
+| [DefenseBoard.cs](../../02_Scripts/LobbyDefense/Model/DefenseBoard.cs) | `IsSpawnArea`로 등장 구역을 확인한다. `TryPreview`에서 배치 후보의 경로를 계산하고, `GetNextCell`에서 적이 통과하거나 돌파할 다음 칸을 고른다. |
 | [DefenseSession.cs](../../02_Scripts/LobbyDefense/Model/DefenseSession.cs) · [DefenseCombatants.cs](../../02_Scripts/LobbyDefense/Model/DefenseCombatants.cs) | `Step`에서 양 진영의 공격과 이동, 트랩·웨이브·처치를 처리한다. 배치 카드와 소환 개체가 공격·이동 시점을 갖는다. |
-| [DefenseRules.cs](../../02_Scripts/LobbyDefense/Model/DefenseRules.cs) · [DefenseCombatRules.cs](../../02_Scripts/LobbyDefense/Model/DefenseCombatRules.cs) | 보드·고용·카드·적·트랩 설정을 검증한다. 어드레서블 주소는 `LobbyDefense/Rules`다. [규칙표](../../05_Table/LobbyDefenseRules.json) |
+| [DefenseRules.cs](../../02_Scripts/LobbyDefense/Model/DefenseRules.cs) · [DefenseCombatRules.cs](../../02_Scripts/LobbyDefense/Model/DefenseCombatRules.cs) | 전장·등장 구역의 크기와 고용·카드·적·트랩 설정을 검증한다. 등장 구역은 `SpawnAreaColumns`와 입구 위·아래의 `SpawnAreaRowRadius`로 정한다. 어드레서블 주소는 `LobbyDefense/Rules`다. [규칙표](../../05_Table/LobbyDefenseRules.json) |
 | [OwnedDefenseCard.cs](../../02_Scripts/LobbyDefense/Model/OwnedDefenseCard.cs) · [DefenseCampaign.cs](../../02_Scripts/LobbyDefense/Model/DefenseCampaign.cs) | 고유 등급, `TryHire`, `TryPlace`, `TryRecall`, `TryConvert`, `TryUpgrade`. 보유 카드, 에너지, 골드와 웨이브 보상을 관리한다. |
-| [DefenseSessionState.cs](../../02_Scripts/LobbyDefense/Model/DefenseSessionState.cs) · [DefenseProgressStore.cs](../../02_Scripts/Manager/UserData/DefenseProgressStore.cs) | `Capture`·`Restore`로 완료 틱의 상태를 복원한다. 계정별 파일 교체와 백업 복구를 담당한다. |
+| [DefenseSessionState.cs](../../02_Scripts/LobbyDefense/Model/DefenseSessionState.cs) · [DefenseProgressStore.cs](../../02_Scripts/Manager/UserData/DefenseProgressStore.cs) | `Capture`·`Restore`로 완료 틱의 상태를 복원하고 `CaptureForBoard`로 구판 좌표를 변환한다. 계정별 파일 교체와 백업 복구를 담당한다. |
 | [LobbyDefenseController.cs](../../02_Scripts/LobbyDefense/Controller/LobbyDefenseController.cs) · [LobbyDefenseControls.cs](../../02_Scripts/LobbyDefense/Controller/LobbyDefenseControls.cs) | 실제 로비 진입, 계정 전환, 다음 틱의 입력 처리, 지도·인벤토리 표시, 대전 전 저장을 연결한다. |
-| [LobbyDefenseView.cs](../../02_Scripts/LobbyDefense/View/LobbyDefenseView.cs) · [DefenseBoardGraphic.cs](../../02_Scripts/LobbyDefense/View/DefenseBoardGraphic.cs) · [DefenseUnitMarkers.cs](../../02_Scripts/LobbyDefense/View/DefenseUnitMarkers.cs) | 전체·확대 지도의 경로와 사거리, 칸 입력, 개체 이동과 체력을 표시한다. |
+| [LobbyDefenseView.cs](../../02_Scripts/LobbyDefense/View/LobbyDefenseView.cs) · [DefenseBoardGraphic.cs](../../02_Scripts/LobbyDefense/View/DefenseBoardGraphic.cs) · [DefenseUnitMarkers.cs](../../02_Scripts/LobbyDefense/View/DefenseUnitMarkers.cs) | 세로 10행을 표시하고, 배치 지도의 좌우 드래그와 미니맵의 열 선택을 같은 좌표로 처리한다. 등장 구역·경로·사거리와 유닛·체력을 그린다. |
 | [DefenseCardInventoryView.cs](../../02_Scripts/LobbyDefense/View/DefenseCardInventoryView.cs) | 인벤토리 탭에서 카드 탐색, 능력치 선택 강화와 한 장의 변환 확인을 처리한다. |
 
 ## 책임과 수명
@@ -45,9 +45,9 @@
 
 ## 배치 한 건의 처리
 
-1. 기획과 화면의 좌표는 (1, 1)부터 시작한다. 모델 배열의 인덱스는 `(행 - 1) × 100 + 열 - 1`이다. 초안 입구는 (1, 5), 출구는 (100, 5)다. 유닛은 한 칸을 막고, 트랩이 있는 칸은 통행할 수 있다.
-2. 후보 칸을 누르면 미리보기용 배열에 배치를 적용한다. 출구에서 역방향 BFS로 빈칸의 거리를 채우고, 입구부터 거리가 1 작은 이웃을 따라가 경로를 표시한다. 동거리 우선순위 초안은 오른쪽 → 위 → 아래 → 왼쪽이다. 확정 배치가 바뀔 때만 실제 거리표를 갱신해 모든 적이 공유한다.
-3. 확정 입력은 다음 틱 시작에 수신 순서로 처리한다. 보유 유닛을 선택하면 현재 유저 소유인지, 이미 배치된 유닛인지 확인한다. 보드는 입·출구, 점유, 살아 있는 적의 현재 칸과 이동 목적지, 통행 상태를 검사한다. 새 유닛을 고용하면서 배치하는 경우에는 잔액까지 확인한 뒤 골드 차감·보유 등록·배치를 한 건으로 반영한다. 이미 보유한 유닛의 배치는 무료다.
+1. 기획과 화면의 좌표는 (1, 1)부터 시작한다. 모델 배열의 인덱스는 `(행 - 1) × 보드 폭 + 열 - 1`이다. 10×10 전장의 소환 칸은 (1, 5), 출구는 (10, 5)다. 입구를 포함한 1~2열·4~6행의 여섯 칸과 출구에는 유닛·트랩을 놓을 수 없다. 유닛은 한 칸을 막고, 트랩이 있는 칸은 통행할 수 있다.
+2. 배치 가능한 칸을 누르면 미리보기용 배열에 배치를 적용한다. 출구에서 역방향 BFS로 빈칸의 거리를 채우고, 입구부터 거리가 1 작은 이웃을 따라가 경로를 표시한다. 동거리 우선순위 초안은 오른쪽 → 위 → 아래 → 왼쪽이다. 확정 배치가 바뀔 때만 실제 거리표를 갱신해 모든 적이 공유한다.
+3. 확정 입력은 다음 틱 시작에 수신 순서로 처리한다. 보유 유닛을 선택하면 현재 유저 소유인지, 이미 배치된 유닛인지 확인한다. 배치 가능 여부는 등장 구역과 출구, 점유, 살아 있는 적의 현재 칸과 이동 목적지, 통행 상태를 확인해 결정한다. 새 유닛을 고용하면서 배치하는 경우에는 잔액까지 확인한 뒤 골드 차감·보유 등록·배치를 한 건으로 반영한다. 이미 보유한 유닛의 배치는 무료다.
 4. 첫 무료 배치가 확정되면 소환 시계를 시작한다. 전투 중에는 추가 배치, 정비 중에는 이동·회수도 가능하다. 대전에서 모델 상태를 바꾸는 것은 전투 판정뿐이다.
 
 **봉쇄.** 로비에서는 마지막 통로를 막는 배치도 가능하다. 미리보기는 입구와 살아 있는 적 각각의 길을 확인한다. 봉쇄된 적은 출구까지 **돌파해야 할 유닛 수, 총 걸음 수** 순으로 경로를 골라 첫 벽의 인접 칸까지 접근한다. 벽이 무너진 틱에 열린 길로 이동을 예약한다. 대전 출발 때는 입구와 출구가 연결되어야 한다.
@@ -68,6 +68,7 @@
 ## 로비 저장과 퍼즐 진입
 
 - **이어하기 데이터**에는 저장 형식·규칙 버전, 완료 틱, 다음 몬스터 번호, 배치된 보유 유닛 ID·좌표·잔여 체력, 트랩 위치·재충전 틱, 적의 현재·다음 칸과 도착 틱, 마비·공격 타이머, 웨이브·소환 시계를 담는다. 거리표와 화면 좌표는 복원 시 계산한다. 봉쇄 중에도 앱을 닫을 수 있으므로 그 전투 상태를 그대로 보존한다.
+- 규칙 1의 100×10 저장본은 원래 전장에서 유효성을 검사한 뒤 규칙 2의 10×10 좌표로 변환한다. 남은 칸의 유닛·트랩은 같은 열·행과 상태를 유지한다. 사라진 열이나 새 등장 구역·출구에 놓였던 카드는 남은 체력을 보존해 인벤토리로 돌려주고, 그 칸의 트랩은 다시 설치할 수 있다. 새 전장 밖이나 출구에 있던 적은 보상 없이 퇴장한다. 다음 이동 칸만 사라진 적은 현재 칸에서 길을 다시 찾는다. 카드·골드·에너지, 웨이브와 소환 시계는 이어진다.
 - `Application.persistentDataPath/LobbyDefense` 아래에 계정별 파일을 저장한다. 고용·배치·카드 변환·강화, 처치 골드는 즉시 저장하고 전투 진행은 5초마다 기록한다. 임시 파일 교체에 실패하면 카드 입력은 취소하고 저장을 재시도한다. 최신 파일이 잠겨 있으면 다시 읽고, 유실됐거나 내용이 손상됐을 때는 백업에서 복구한다. 복원 시 배치의 소유권·중복을 검사한다.
 - 대전 준비 성공 후에는 틱과 입력을 멈추고 저장한 뒤 라이프를 차감한다. 저장 실패 시 원인을 표시하고 로비를 재개한다. 라이프 차감 실패 시에도 동결을 푼다. 앱 일시정지 시에도 마지막 완료 틱을 저장한다. 시제품에서 로비를 비운 동안의 경과 시간은 전투에 더하지 않는다. [PopupReady.SpinAndStart](../../02_Scripts/UI/Popup/PopupReady.cs) · [LobbyMain.PrepareBattle](../../02_Scripts/Lobby/LobbyMain.cs) · [PlayerLives.TrySpend](../../02_Scripts/Lobby/PlayerLives.cs)
 
@@ -84,7 +85,7 @@
 
 | 순서 | 구현 범위 | 통과 기준 |
 |---|---|---|
-| 1. 보유와 배치 | 최초 카드 지급, 순수 C# 보드, 후보 조회·확정 | 재접속해도 무료 카드는 한 장이다. 미보유 카드 또는 동일한 카드 ID의 이중 배치는 거절한다. 빈 보드 99걸음, (10, 5) 배치 후 101걸음이며 미리보기와 실제 경로가 같다. |
+| 1. 보유와 배치 | 최초 카드 지급, 순수 C# 보드, 후보 조회·확정 | 재접속해도 무료 카드는 한 장이다. 미보유 카드 또는 동일한 카드 ID의 이중 배치는 거절한다. 빈 보드 9걸음, (5, 5) 배치 후 11걸음이며 미리보기와 실제 경로가 같다. |
 | 2. 첫 고용 | 세션 틱, 일반 적, 공격형 방어 유닛, 골드 | 첫 세 마리 처치로 15골드를 얻는다. 고용 후 0골드와 보유 두 기가 함께 복원된다. 중복 확정·저장 실패 재시도·회수 후 재배치로 추가 차감이나 중복 지급이 생기지 않는다. |
 | 3. 봉쇄와 트랩 | 길막 유닛, 5초 주기 유령, 파괴·재탐색, 재충전 | 15초 동안 유령 세 마리 소환, 떨어진 곳에서 벽까지 접근, 유령 둘의 피해 합산, 벽 파괴 후 이동 재개. 트랩은 첫째·셋째 일반 적에게만 발동하고 유령은 통과한다. |
 | 4. 이어하기 | 저장·복원, 확대 조작, 90초 대전 진입 | 처치 직후와 이동 중에 각각 저장한다. 복원 후 같은 틱까지 진행하면 연속 실행과 위치·잔액·웨이브가 같고, 저장 실패 시 라이프가 보존된다. |
@@ -92,6 +93,6 @@
 
 계정 전환 검증에서는 A의 유닛을 배치한 뒤 B로 로그인한다. B는 A의 유닛을 배치할 수 없어야 하며, A로 돌아오면 보유 카드·종류별 에너지·골드·배치를 복원해야 한다. 같은 계정의 궁수 두 장 중 한 장의 공격을 강화한 뒤 다시 열어 공용 잔액이 한 번만 줄고, 선택 카드의 공격 강화값만 바뀌며, 두 카드의 태생 점수와 등급이 보존되는지 확인한다.
 
-**첫 고용의 기준 사례.** (10, 5)에 사거리 2칸, 초당 1회 피해 4의 유닛을 두고 3·6·9초에 체력 12, 초당 1칸인 일반 몬스터를 소환한다. 모델 검증에서는 12·15·18초에 한 마리씩 처치해 15골드를 획득했다. 실제 시작 카드의 공격력은 태생 추첨에 따라 달라진다.
+**첫 고용의 기준 사례.** (5, 5)에 사거리 2칸, 공격력 4, 공격 주기 1초인 진주 수비병을 배치한다. 3·6·9초에 소환된 체력 12의 일반 몬스터를 각각 7·10·13초에 처치해 15골드를 얻는다. 실제 시작 카드의 공격 태생 점수 0~10을 각각 적용했을 때 같은 배치에서 첫 고용에 걸린 시간은 11~13초였다.
 
-**후속 기획 결정.** 로비 플레이테스트에서 파괴 카드의 무료 복구 시점과 에너지 지급·소모량을 조정한다. 대전 연동 전에는 점수당 소환 수·시점, 일반 적 출구 감점, 제한 시간 종료 시 생존 적과 동점 처리를 정한다. 초당 1칸이면 빈 보드를 통과하는 데 99초가 걸리므로 90초 대전용 속도는 별도 시험한다. [기획서의 검증 시나리오](LOBBY-DEFENSE.md)
+**후속 기획 결정.** 로비 플레이테스트에서 파괴 카드의 무료 복구 시점과 에너지 지급·소모량을 조정한다. 대전 연동 전에는 점수당 소환 수·시점, 일반 적 출구 감점, 제한 시간 종료 시 생존 적과 동점 처리를 정한다. 직선 이동 9초를 기준으로, 우회와 트랩이 90초 경기의 도착 수에 미치는 영향을 시험한다. [기획서의 검증 시나리오](LOBBY-DEFENSE.md)

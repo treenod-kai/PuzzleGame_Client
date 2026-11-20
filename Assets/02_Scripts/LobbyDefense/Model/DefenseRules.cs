@@ -13,6 +13,8 @@ namespace LobbyDefense.Model
         public int Height;
         public int EntranceRow;
         public int ExitRow;
+        public int SpawnAreaColumns;
+        public int SpawnAreaRowRadius;
         public int HireGold;
         public int ConversionEnergy;
         public int UpgradeCost;
@@ -22,8 +24,17 @@ namespace LobbyDefense.Model
         public DefenseUnitDefinition[] Units;
         public DefenseCombatRules Combat;
 
-        /// <summary>기획서의 1부터 시작하는 행 번호로 입구와 출구를 지정해 새 보드를 만든다.</summary>
-        public DefenseBoard CreateBoard() => new DefenseBoard(Width, Height, (EntranceRow - 1) * Width, ExitRow * Width - 1);
+        /// <summary>규칙표의 행 번호와 등장 공간 크기로 보드를 만든다. 버전 1은 입구 한 칸을 비운다.</summary>
+        public DefenseBoard CreateBoard()
+        {
+            int entrance = (EntranceRow - 1) * Width;
+            int exit = ExitRow * Width - 1;
+            if (Version == 1)
+            {
+                return new DefenseBoard(Width, Height, entrance, exit);
+            }
+            return new DefenseBoard(Width, Height, entrance, exit, SpawnAreaColumns, SpawnAreaRowRadius);
+        }
 
         /// <summary>발급 시점의 태생 점수 <paramref name="roll"/>로 등급을 결정한다. 금색 3성의 저장값은 4다.</summary>
         internal int GradeFor(DefenseStats roll)
@@ -63,6 +74,10 @@ namespace LobbyDefense.Model
                 GradeMaxTotals[2] != 29 || GradeMaxTotals[3] != 30)
             {
                 throw new ArgumentException("로비 디펜스 규칙표의 보드 또는 경제 설정이 잘못되었습니다.");
+            }
+            if (Version >= 2 && (SpawnAreaColumns < 1 || SpawnAreaColumns > Width || SpawnAreaRowRadius < 0 || SpawnAreaRowRadius >= Height))
+            {
+                throw new ArgumentException("몬스터 등장 공간의 열 수와 위아래 행 범위를 확인해 주세요.");
             }
             HashSet<string> ids = new HashSet<string>(StringComparer.Ordinal);
             foreach (DefenseUnitDefinition unit in Units)

@@ -20,7 +20,7 @@ PuzleBattleGame(Unity URP) 문서 모음. Unity 버전은 [프로젝트 설정](
 | [04_UI/UI.md](04_UI/UI.md) | **UI 시스템.** 도메인 시스템, 팝업/탭 생명주기, UIButton, 팝업·탭 추가 방법. |
 | [05_Scene/SCENE.md](05_Scene/SCENE.md) | **씬/인프라.** 씬 전환, SharedScene, 매니저 구조, AssetManager, PoolManager. 새 씬·매니저 추가. |
 | [06_Server/SERVER.md](06_Server/SERVER.md) | **서버 통신.** 서버 API 연동, 공유 DLL(PuzleBattleShared), 네트워크 레이어, 공유 DTO 추가 방법. |
-| [01_Architecture/LOBBY-DEFENSE.md](01_Architecture/LOBBY-DEFENSE.md) | 100열 × 10행 로비 디펜스 기획, 배치·몬스터·보상·검증 시나리오. |
+| [01_Architecture/LOBBY-DEFENSE.md](01_Architecture/LOBBY-DEFENSE.md) | 10열 × 10행 로비 디펜스 기획, 배치·몬스터·보상·검증 시나리오. |
 | [00_Guide/ART-STYLE.md](00_Guide/ART-STYLE.md) | 게임 이미지의 원화 참고, 생성 예시와 Unity 임포트 기준. |
 | [CHANGELOG.md](CHANGELOG.md) | **변경 이력.** 전체 작업 변경 기록. 이전 작업 맥락 파악 시 참고. |
 
@@ -33,7 +33,7 @@ PuzleBattleGame(Unity URP) 문서 모음. Unity 버전은 [프로젝트 설정](
 | 문서 | 상위 | 요약 |
 |------|------|------|
 | [01_Architecture/ARCHITECTURE_FLOW.md](01_Architecture/ARCHITECTURE_FLOW.md) | ARCHITECTURE | 메인 대전/사이드 스테이지 게임 흐름 상세. |
-| [로비 디펜스 아키텍처](01_Architecture/LOBBY-DEFENSE-ARCHITECTURE.md) | LOBBY-DEFENSE | 100×10 로비 전투, 카드 관리, 이어하기와 이후 퍼즐 대전 연동 설계. |
+| [로비 디펜스 아키텍처](01_Architecture/LOBBY-DEFENSE-ARCHITECTURE.md) | LOBBY-DEFENSE | 10×10 로비 전투, 카드 관리, 이어하기와 이후 퍼즐 대전 연동 설계. |
 | [02_Ingame/INGAME_GIMMICK.md](02_Ingame/INGAME_GIMMICK.md) | INGAME | 기믹 인터페이스/파괴 연쇄/새 기믹 추가 절차. |
 | [02_Ingame/INGAME-VIEW-AND-BATTLE.md](02_Ingame/INGAME-VIEW-AND-BATTLE.md) | INGAME | 게임 결과·리플레이·피벗 게이지와 보드 연출. |
 | [03_Data/RULES-AND-STAGES.md](03_Data/RULES-AND-STAGES.md) | DATA | 규칙·스테이지 JSON과 피벗 설정. |

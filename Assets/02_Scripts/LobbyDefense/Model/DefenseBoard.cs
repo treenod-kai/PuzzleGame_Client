@@ -22,6 +22,7 @@ namespace LobbyDefense.Model
 
         private readonly bool[] _occupied;
         private readonly bool[] _previewOccupied;
+        private readonly bool[] _spawnArea;
         private readonly Routes _current;
         private readonly Routes _preview;
         private readonly Queue<int> _frontier;
@@ -37,7 +38,13 @@ namespace LobbyDefense.Model
 
         /// <summary>가로 <paramref name="width"/>, 세로 <paramref name="height"/>인 빈 보드에
         /// 입구 칸 <paramref name="entrance"/>와 출구 칸 <paramref name="exit"/>를 지정한다.</summary>
-        public DefenseBoard(int width, int height, int entrance, int exit)
+        public DefenseBoard(int width, int height, int entrance, int exit) : this(width, height, entrance, exit, 1, 0)
+        {
+        }
+
+        /// <summary>가로 <paramref name="width"/>·세로 <paramref name="height"/>인 보드의 <paramref name="entrance"/>·<paramref name="exit"/>를 정하고,
+        /// 입구부터 오른쪽 <paramref name="spawnAreaColumns"/>열과 상하 <paramref name="spawnAreaRowRadius"/>행을 몬스터 등장 공간으로 비운다.</summary>
+        public DefenseBoard(int width, int height, int entrance, int exit, int spawnAreaColumns, int spawnAreaRowRadius)
         {
             if (width <= 0 || height <= 0 || (long)width * height > int.MaxValue)
             {
@@ -48,6 +55,12 @@ namespace LobbyDefense.Model
             {
                 throw new ArgumentException("입구와 출구는 보드 안의 서로 다른 칸이어야 합니다.");
             }
+            int entranceColumn = entrance % width;
+            int entranceRow = entrance / width;
+            if (spawnAreaColumns < 1 || spawnAreaColumns > width - entranceColumn || spawnAreaRowRadius < 0 || spawnAreaRowRadius >= height)
+            {
+                throw new ArgumentException("몬스터 등장 공간의 열 수와 위아래 행 범위를 확인해 주세요.");
+            }
 
             Width = width;
             Height = height;
@@ -55,6 +68,13 @@ namespace LobbyDefense.Model
             Exit = exit;
             _occupied = new bool[count];
             _previewOccupied = new bool[count];
+            _spawnArea = new bool[count];
+            int firstRow = Math.Max(0, entranceRow - spawnAreaRowRadius);
+            int lastRow = entranceRow + Math.Min(spawnAreaRowRadius, height - 1 - entranceRow);
+            for (int row = firstRow; row <= lastRow; row++)
+            {
+                Array.Fill(_spawnArea, true, row * width + entranceColumn, spawnAreaColumns);
+            }
             _current = new Routes(count);
             _preview = new Routes(count);
             _frontier = new Queue<int>(count);
@@ -67,8 +87,11 @@ namespace LobbyDefense.Model
         /// <summary>칸 <paramref name="cell"/>에 방어 유닛이 있는지 확인한다.</summary>
         public bool IsOccupied(int cell) => Contains(cell) && _occupied[cell];
 
+        /// <summary>칸 <paramref name="cell"/>이 몬스터가 통행할 수 있는 배치 금지 등장 공간인지 확인한다.</summary>
+        public bool IsSpawnArea(int cell) => Contains(cell) && _spawnArea[cell];
+
         /// <summary>칸 <paramref name="cell"/>이 배치 가능한 빈칸인지 확인한다.</summary>
-        public bool CanPlace(int cell) => Contains(cell) && cell != Entrance && cell != Exit && !_occupied[cell];
+        public bool CanPlace(int cell) => Contains(cell) && !_spawnArea[cell] && cell != Exit && !_occupied[cell];
 
         /// <summary>빈칸 <paramref name="cell"/>을 유닛이 점유한다.</summary>
         public bool TryPlace(int cell)

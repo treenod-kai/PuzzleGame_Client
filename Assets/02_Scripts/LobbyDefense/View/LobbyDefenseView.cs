@@ -34,10 +34,12 @@ namespace LobbyDefense.View
         private DefenseUnitMarkers _dots;
         private DefenseUnitMarkers _units;
         private int _width;
+        private int _height;
         private int _entrance;
         private int _exit;
-        private int _first = -1;
         private int _columns;
+        private float _first = -1f;
+        private Vector2Int _labelColumns;
         private int _shownGold = -1;
         private bool[] _route;
         private bool[] _preview;
@@ -50,39 +52,45 @@ namespace LobbyDefense.View
         public event Action Confirmed;
         public event Action Recalled;
 
-        /// <summary>보드 폭 <paramref name="width"/>와 높이 <paramref name="height"/>, 입구 <paramref name="entrance"/>와 출구 <paramref name="exit"/>,
-        /// 로비 폰트 <paramref name="font"/>로 제공된 사각 영역 안에 전장을 구성한다.</summary>
-        public void Initialize(int width, int height, int entrance, int exit, TMP_FontAsset font)
+        /// <summary>방어 보드 <paramref name="board"/>와 로비 폰트 <paramref name="font"/>로 배치 지도와 미니맵을 구성한다.</summary>
+        public void Initialize(DefenseBoard board, TMP_FontAsset font)
         {
-            _width = width;
-            _columns = Mathf.Min(15, width);
-            _entrance = entrance;
-            _exit = exit;
+            _width = board.Width;
+            _height = board.Height;
+            _columns = Mathf.Min(8, _width);
+            _entrance = board.Entrance;
+            _exit = board.Exit;
             _font = font;
-            _route = new bool[width * height];
-            _preview = new bool[width * height];
+            _route = new bool[board.CellCount];
+            _preview = new bool[board.CellCount];
             RectTransform panel = Rect("DefensePanel", transform, 0f, 0f, 1f, 1f);
             Paint(panel, Panel);
-            _wave = Label("Wave", panel, 0.035f, 0.925f, 0.45f, 0.997f, "", 30f, TextAlignmentOptions.Left);
-            _spawn = Label("Spawn", panel, 0.45f, 0.925f, 0.76f, 0.997f, "", 22f, TextAlignmentOptions.Center);
-            _gold = Label("Gold", panel, 0.76f, 0.925f, 0.965f, 0.997f, "", 28f, TextAlignmentOptions.Right);
+            _wave = Label("Wave", panel, 0.035f, 0.942f, 0.33f, 0.997f, "", 30f, TextAlignmentOptions.Left);
+            _spawn = Label("Spawn", panel, 0.33f, 0.942f, 0.56f, 0.997f, "", 22f, TextAlignmentOptions.Center);
+            _gold = Label("Gold", panel, 0.56f, 0.942f, 0.77f, 0.997f, "", 28f, TextAlignmentOptions.Right);
             _gold.color = Gold;
-            _overview = Grid(panel, "Overview", 0.79f, 0.92f);
-            _overview.Initialize(width, height, entrance, exit, width, FocusOverview, MoveWindow);
-            _window = Label("VisibleColumns", panel, 0.035f, 0.735f, 0.965f, 0.79f, "", 21f, TextAlignmentOptions.Center);
-            _detail = Grid(panel, "PlacementMap", 0.271f, 0.735f);
-            _detail.Initialize(width, height, entrance, exit, _columns, SelectCell, MoveWindow);
-            _dots = new DefenseUnitMarkers(_overview, this, width, true);
-            _units = new DefenseUnitMarkers(_detail, this, width, false);
-            _hint = Label("Hint", panel, 0.035f, 0.202f, 0.965f, 0.267f, "", 22f, TextAlignmentOptions.Center);
+            _overview = Grid(Rect("Overview", panel, 0.79f, 0.884f, 0.965f, 0.994f));
+            _overview.Initialize(board, _columns, true, FocusOverview, MoveWindow);
+            _window = Label("VisibleColumns", panel, 0.035f, 0.884f, 0.77f, 0.94f, "", 21f, TextAlignmentOptions.Left);
 
-            Control("Previous", panel, 0.035f, 0.108f, 0.15f, 0.197f, "이전", Previous, out _);
-            _choice = Label("Choice", panel, 0.155f, 0.108f, 0.845f, 0.197f, "", 27f, TextAlignmentOptions.Center);
-            Control("Next", panel, 0.85f, 0.108f, 0.965f, 0.197f, "다음", Next, out _);
-            _recall = Control("Recall", panel, 0.035f, 0.012f, 0.35f, 0.098f, "회수", Recall, out _);
-            _confirm = Control("Confirm", panel, 0.365f, 0.012f, 0.965f, 0.098f, "배치 확정", Confirm, out _confirmText);
+            RectTransform mapArea = Rect("PlacementArea", panel, 0.035f, 0.164f, 0.965f, 0.879f);
+            RectTransform map = Rect("PlacementMap", mapArea, 0f, 0f, 1f, 1f);
+            AspectRatioFitter fit = map.gameObject.AddComponent<AspectRatioFitter>();
+            fit.aspectRatio = (float)_columns / _height;
+            fit.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
+            _detail = Grid(map);
+            _detail.Initialize(board, _columns, false, SelectCell, MoveWindow);
+            _dots = new DefenseUnitMarkers(_overview, this, _width, true);
+            _units = new DefenseUnitMarkers(_detail, this, _width, false);
+            _hint = Label("Hint", panel, 0.035f, 0.122f, 0.965f, 0.163f, "", 22f, TextAlignmentOptions.Center);
+
+            Control("Previous", panel, 0.035f, 0.066f, 0.15f, 0.119f, "이전", Previous, out _);
+            _choice = Label("Choice", panel, 0.155f, 0.066f, 0.845f, 0.119f, "", 27f, TextAlignmentOptions.Center);
+            Control("Next", panel, 0.85f, 0.066f, 0.965f, 0.119f, "다음", Next, out _);
+            _recall = Control("Recall", panel, 0.035f, 0.008f, 0.35f, 0.061f, "회수", Recall, out _);
+            _confirm = Control("Confirm", panel, 0.365f, 0.008f, 0.965f, 0.061f, "배치 확정", Confirm, out _confirmText);
             _confirm.targetGraphic.color = new Color32(46, 118, 100, 255);
-            MoveWindow(entrance % width - _columns / 2);
+            FocusOverview(_entrance);
         }
 
         /// <summary>골드 <paramref name="gold"/>, 웨이브 문구 <paramref name="wave"/>와 다음 소환 문구 <paramref name="spawn"/>를 갱신한다.</summary>
@@ -192,40 +200,47 @@ namespace LobbyDefense.View
             });
         }
 
-        /// <summary>전체 지도에서 누른 <paramref name="cell"/>의 열을 확대 창 가운데로 옮긴다.</summary>
-        private void FocusOverview(int cell) => MoveWindow(cell % _width - _columns / 2);
+        /// <summary>전체 지도에서 누른 칸 <paramref name="cell"/>의 열을 배치 지도 가운데로 옮긴다.</summary>
+        private void FocusOverview(int cell) => MoveWindow(cell % _width + 0.5f - _columns * 0.5f);
 
-        /// <summary>첫 열 <paramref name="first"/> 기준으로 확대 범위와 화면 밖 입구·출구 방향을 표시한다.</summary>
-        private void MoveWindow(int first)
+        /// <summary>왼쪽 열 좌표 <paramref name="first"/>를 보드 안으로 제한하고 두 지도가 같은 구역을 가리키게 한다.</summary>
+        private void MoveWindow(float first)
         {
-            first = Mathf.Clamp(first, 0, _width - _columns);
-            if (first == _first)
+            first = Mathf.Clamp(first, 0f, _width - _columns);
+            if (Mathf.Approximately(first, _first))
             {
                 return;
             }
             _first = first;
-            _overview.SetWindow(0, first, _columns);
-            _detail.SetWindow(first, 0, 0);
-            UpdateWindowLabel();
+            Rect window = new Rect(first, 0f, _columns, _height);
+            _overview.SetWindow(window);
+            _detail.SetWindow(window);
+            Vector2Int columns = new Vector2Int(Mathf.FloorToInt(first) + 1, Mathf.CeilToInt(window.xMax));
+            if (_labelColumns != columns)
+            {
+                _labelColumns = columns;
+                UpdateWindowLabel();
+            }
         }
 
         /// <summary>확대 창의 열 범위와 입출구 방향, 선택한 칸의 기획 좌표를 보여 준다.</summary>
         private void UpdateWindowLabel()
         {
-            string inlet = GateLabel("입구", _entrance % _width);
-            string outlet = GateLabel("출구", _exit % _width);
-            string selection = _selected < 0 ? "" : $"    선택 ({_selected % _width + 1}, {_selected / _width + 1})";
-            _window.text = $"{inlet}     {_first + 1}~{_first + _columns}열     {outlet}{selection}";
+            string inlet = GateLabel("입구", _entrance);
+            string outlet = GateLabel("출구", _exit);
+            string selection = _selected < 0 ? "" : $"   선택 ({_selected % _width + 1}, {_selected / _width + 1})";
+            _window.text = $"{inlet}   {_labelColumns.x}~{_labelColumns.y}열   {outlet}{selection}";
         }
 
-        /// <summary><paramref name="name"/> 문의 열 <paramref name="column"/>이 확대 창 밖이면 방향을 표시한다.</summary>
-        private string GateLabel(string name, int column)
+        /// <summary>입구 또는 출구 <paramref name="name"/>의 칸 <paramref name="cell"/>이 확대 창 밖이면 방향을 표시한다.</summary>
+        private string GateLabel(string name, int cell)
         {
-            if (column < _first)
+            int column = cell % _width + 1;
+            if (column < _labelColumns.x)
             {
                 return name + " (왼쪽)";
             }
-            if (column >= _first + _columns)
+            if (column > _labelColumns.y)
             {
                 return name + " (오른쪽)";
             }
@@ -277,10 +292,9 @@ namespace LobbyDefense.View
             }
         }
 
-        /// <summary>패널 <paramref name="parent"/>의 세로 구간 <paramref name="bottom"/>~<paramref name="top"/>에 이름 <paramref name="name"/>의 지도를 둔다.</summary>
-        private static DefenseBoardGraphic Grid(RectTransform parent, string name, float bottom, float top)
+        /// <summary>지도 영역 <paramref name="rect"/> 바깥의 표시를 잘라낸다.</summary>
+        private static DefenseBoardGraphic Grid(RectTransform rect)
         {
-            RectTransform rect = Rect(name, parent, 0.035f, bottom, 0.965f, top);
             rect.gameObject.AddComponent<RectMask2D>();
             return rect.gameObject.AddComponent<DefenseBoardGraphic>();
         }

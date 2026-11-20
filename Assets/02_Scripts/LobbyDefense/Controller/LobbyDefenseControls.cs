@@ -241,10 +241,14 @@ namespace LobbyDefense.Controller
             string hint = _message;
             if (string.IsNullOrEmpty(hint))
             {
-                hint = !_game.Session.HasStarted ? "첫 카드를 놓으면 웨이브가 시작됩니다." : "확대 지도에서 배치할 칸을 선택하세요.";
+                hint = !_game.Session.HasStarted ? "등장 구역 밖에 첫 카드를 놓아 웨이브를 시작하세요." : "좌우로 드래그하고 배치할 칸을 누르세요.";
                 if (_cell >= 0)
                 {
-                    if (blocked || _enemyBlocked)
+                    if (board.IsSpawnArea(_cell))
+                    {
+                        hint = "몬스터 등장 구역입니다. 유닛과 트랩은 바깥에 놓으세요.";
+                    }
+                    else if (blocked || _enemyBlocked)
                     {
                         hint = "길이 막히면 침공 몬스터가 방어 유닛을 공격합니다.";
                     }

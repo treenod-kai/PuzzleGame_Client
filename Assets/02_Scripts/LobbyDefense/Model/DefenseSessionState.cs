@@ -104,6 +104,45 @@ namespace LobbyDefense.Model
             return state;
         }
 
+        /// <summary>새 전장 <paramref name="board"/>에 남는 칸으로 배치와 이동 예약을 옮기고 웨이브 시계와 개체 순서를 보존한다.</summary>
+        internal DefenseSessionState CaptureForBoard(DefenseBoard board)
+        {
+            DefenseSessionState state = Capture();
+            foreach (DefenseDefenderState defender in state.Defenders)
+            {
+                defender.Cell = RemapCell(defender.Cell, board);
+            }
+            state.Defenders = Array.FindAll(state.Defenders, defender => board.CanPlace(defender.Cell));
+            foreach (DefenseTrapState trap in state.Traps)
+            {
+                trap.Cell = RemapCell(trap.Cell, board);
+            }
+            state.Traps = Array.FindAll(state.Traps, trap => board.CanPlace(trap.Cell));
+            foreach (DefenseEnemyState enemy in state.Enemies)
+            {
+                enemy.Cell = RemapCell(enemy.Cell, board);
+                enemy.NextCell = RemapCell(enemy.NextCell, board);
+                if (enemy.NextCell < 0)
+                {
+                    enemy.ArrivalTick = 0;
+                }
+            }
+            state.Enemies = Array.FindAll(state.Enemies, enemy => enemy.Cell >= 0 && enemy.Cell != board.Exit);
+            return state;
+        }
+
+        /// <summary>기존 전장의 <paramref name="cell"/>과 행·열이 같은 <paramref name="board"/>의 칸 번호를 반환하고 범위 밖이면 -1을 반환한다.</summary>
+        private int RemapCell(int cell, DefenseBoard board)
+        {
+            if (cell < 0)
+            {
+                return -1;
+            }
+            int column = cell % Board.Width;
+            int row = cell / Board.Width;
+            return column < board.Width && row < board.Height ? row * board.Width + column : -1;
+        }
+
         /// <summary>빈 <paramref name="board"/>에 같은 버전의 <paramref name="rules"/>와 저장값 <paramref name="state"/>를 사용해 복원한다.</summary>
         public static DefenseSession Restore(DefenseBoard board, DefenseCombatRules rules, DefenseSessionState state)
         {
