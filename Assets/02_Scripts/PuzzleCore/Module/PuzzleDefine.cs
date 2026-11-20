@@ -206,6 +206,9 @@ namespace Puzzle.Core
         public List<string> gimmickIds;
         /// <summary>폭탄 또는 별도 기믹이 붙는 특수 블록인지 확인합니다.</summary>
         public bool IsSpecial => destroyType == DestroyType.Bomb || (gimmickIds != null && gimmickIds.Count > 0);
+        /// <summary>파괴 유형이나 부착할 기믹이 원형 폭탄인지 확인합니다.</summary>
+        internal bool IsBomb => destroyType == DestroyType.Bomb ||
+            (gimmickIds != null && gimmickIds.Exists(id => Enum.TryParse(id, true, out GimmickType type) && type == GimmickType.Bomb));
     }
 
     // ==========================================================
@@ -410,16 +413,15 @@ namespace Puzzle.Core
         public ulong frame;
         /// <summary> 같은 프레임의 좌표 입력과 종료 입력 사이의 처리 순서 </summary>
         public ulong sequence;
+        /// <summary>시스템이 조작을 취소했으면 true입니다. 이 필드가 없는 기존 기록은 정상 해제입니다.</summary>
+        public bool canceled;
 
-        /// <summary>
-        /// 입력 종료 기록을 생성합니다.
-        /// </summary>
-        /// <param name="frame">입력 종료가 발생한 프레임</param>
-        /// <param name="sequence">입력 이벤트의 기록 순서</param>
-        public InputEndRecord(ulong frame, ulong sequence = 0)
+        /// <summary><paramref name="frame"/> 틱의 <paramref name="sequence"/>번째 종료와 시스템 취소 여부 <paramref name="canceled"/>를 기록합니다.</summary>
+        public InputEndRecord(ulong frame, ulong sequence = 0, bool canceled = false)
         {
             this.frame = frame;
             this.sequence = sequence;
+            this.canceled = canceled;
         }
     }
 }

@@ -55,8 +55,8 @@ namespace Puzzle.Core
         /// <param name="input">입력한 격자 좌표</param>
         void Input(GridPos input);
 
-        /// <summary> 입력 종료를 대기열에 추가합니다. 반환값은 등록 성공 여부이며 매칭 결과가 아닙니다. </summary>
-        bool InputEnd();
+        /// <summary>종료를 대기열에 등록합니다. <paramref name="canceled"/>이면 매칭을 확정하지 않고 선택을 해제합니다.</summary>
+        bool InputEnd(bool canceled = false);
 
         /// <summary> 고정 프레임 간격으로 논리 프레임 및 결정론적 로직을 업데이트합니다. </summary>
         void FixedUpdate();

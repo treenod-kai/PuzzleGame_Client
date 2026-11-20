@@ -165,6 +165,8 @@ public class ReplayController : MonoBehaviour
         replaySpec.UseLegacyNumericRules = _replayData.numericRuleVersion == 0;
         replaySpec.UseLegacyBoardRules = _replayData.boardRuleVersion == 0;
         replaySpec.UseLegacyBattleBlocks = _replayData.boardRuleVersion < ReplayData.NormalBattleBlocksVersion;
+        replaySpec.UseLegacyImmediateSwap = _replayData.boardRuleVersion < ReplayData.ReleaseToSwapVersion;
+        replaySpec.UseLegacyThreeMatchStageBombs = _replayData.boardRuleVersion < ReplayData.ThreeMatchStageWithoutBombsVersion;
         if (_replayData.formatVersion == ReplayData.CurrentFormatVersion)
         {
             replaySpec.mode = _replayData.mode;
@@ -178,9 +180,10 @@ public class ReplayController : MonoBehaviour
             Debug.LogError("[ReplayController] 제한 시간 또는 스테이지 좌표 범위가 잘못되었습니다.");
             return;
         }
-        if (replaySpec.mode == GameMode.Battle && !replaySpec.UseLegacyBattleBlocks && !replaySpec.HasNormalBlocks)
+        string blockError = replaySpec.GetBlockSpawnError();
+        if (blockError != null)
         {
-            Debug.LogError($"[ReplayController] 대전 리플레이 규칙에 일반 블록이 없습니다: {replayData.ruleAddress}");
+            Debug.LogError($"[ReplayController] {blockError} ({replayData.ruleAddress})");
             return;
         }
 
@@ -287,8 +290,7 @@ public class ReplayController : MonoBehaviour
             }
             else
             {
-                _board.InputEnd();
-                _inputEndIndex++;
+                _board.InputEnd(_replayData.inputEnds[_inputEndIndex++].canceled);
             }
         }
 

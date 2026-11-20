@@ -41,6 +41,8 @@ namespace Puzzle.Core
 
         /// <summary> 현재 유저가 선택(클릭)한 블럭의 좌표 </summary>
         private GridPos? _selectedPos = null;
+        /// <summary>손을 떼면 선택 칸과 교환할 첫 인접 칸입니다.</summary>
+        private GridPos? _swapOnRelease;
 
         /// <summary> 유저 입력 좌표 대기열 </summary>
         private Queue<GridPos> _inputQueue = new Queue<GridPos>();
@@ -59,8 +61,8 @@ namespace Puzzle.Core
 
         /// <summary> 현재 보드 프레임 번호 (리플레이용) </summary>
         private ulong _frameCount;
-        /// <summary> 좌표 입력과 종료 입력을 수신 순서대로 보관합니다. null은 입력 종료입니다. </summary>
-        private readonly Queue<GridPos?> _pendingInputs = new Queue<GridPos?>();
+        /// <summary> 좌표·확정·취소를 입력받은 순서대로 다음 고정 틱에 전달합니다. </summary>
+        private readonly Queue<(GridPos? Position, bool Canceled)> _pendingInputs = new Queue<(GridPos?, bool)>();
         /// <summary> 좌표 입력과 종료 입력에 공통으로 부여하는 기록 순서입니다. </summary>
         private ulong _inputSequence;
         /// <summary> 현재 매칭이 유저의 성공한 교환에서 직접 시작되었는지 여부입니다. </summary>
@@ -110,6 +112,7 @@ namespace Puzzle.Core
             _recordedInputEnds = new List<InputEndRecord>();
             _frameCount = 0;
             _pendingInputs.Clear();
+            _swapOnRelease = null;
             _inputSequence = 0;
             _pendingPlayerMatch = false;
             _currentOrderIndex = 0;
@@ -139,19 +142,18 @@ namespace Puzzle.Core
         {
             if (State != BoardState.Finish)
             {
-                _pendingInputs.Enqueue(input);
+                _pendingInputs.Enqueue((input, false));
             }
         }
 
-        /// <summary> 입력 종료를 다음 고정 틱의 처리 대기열에 추가합니다. </summary>
-        /// <returns>종료 이벤트가 대기열에 등록되었는지 여부입니다. 매칭 결과가 아닙니다.</returns>
-        public bool InputEnd()
+        /// <summary>다음 고정 틱에 입력 종료를 등록합니다. <paramref name="canceled"/>이면 선택을 취소합니다.</summary>
+        public bool InputEnd(bool canceled = false)
         {
             if (State == BoardState.Finish)
             {
                 return false;
             }
-            _pendingInputs.Enqueue(null);
+            _pendingInputs.Enqueue((null, canceled));
             return true;
         }
 
@@ -170,7 +172,7 @@ namespace Puzzle.Core
             }
 
             // 중복 입력 방지 (마지막 입력과 같으면 무시)
-            if (_lastEnqueuedInput.HasValue && _lastEnqueuedInput.Value == input)
+            if (_swapOnRelease.HasValue || (_lastEnqueuedInput.HasValue && _lastEnqueuedInput.Value == input))
             {
                 return;
             }
@@ -197,7 +199,12 @@ namespace Puzzle.Core
                 }
                 else if (IsAdjacent(prev, input))
                 {
-                    // 인접 블럭 클릭 시 즉시 스왑 시도 (Tap-Tap Swap 지원)
+                    // 새 입력은 손을 뗄 때 교환하고, 예전 기록은 당시의 틱에 교환합니다.
+                    if (!gameSpec.UseLegacyImmediateSwap)
+                    {
+                        _swapOnRelease = input;
+                        return;
+                    }
                     ProcessSwapInput(prev, input);
                     _selectedPos = null;
                     _inputQueue.Clear();
@@ -224,10 +231,26 @@ namespace Puzzle.Core
             }
         }
 
-        /// <summary> 고정 틱에서 입력 종료와 매칭 여부를 판정합니다. </summary>
-        private bool ProcessInputEnd()
+        /// <summary>고정 틱에 종료를 기록하고 <paramref name="canceled"/>에 따라 선택을 해제하거나 매칭을 판정합니다.</summary>
+        private bool ProcessInputEnd(bool canceled)
         {
-            _recordedInputEnds.Add(new InputEndRecord(_frameCount, _inputSequence++));
+            _recordedInputEnds.Add(new InputEndRecord(_frameCount, _inputSequence++, canceled));
+
+            if (canceled || !gameSpec.UseLegacyImmediateSwap)
+            {
+                if (canceled)
+                {
+                    ClearSelectedBlock();
+                }
+                else if (State == BoardState.Waiting && _selectedPos.HasValue && _swapOnRelease.HasValue)
+                {
+                    ProcessSwapInput(_selectedPos.Value, _swapOnRelease.Value);
+                }
+                _swapOnRelease = null;
+                _inputQueue.Clear();
+                _lastEnqueuedInput = null;
+                return !canceled;
+            }
 
             if (State != BoardState.Waiting || _inputQueue.Count == 0)
             {
@@ -258,12 +281,9 @@ namespace Puzzle.Core
             return true;
         }
 
-        /// <summary> 선택을 해제한 뒤 두 셀의 교환 가능 여부와 매칭을 판정합니다. </summary>
-        /// <param name="first">첫 번째 셀 좌표</param>
-        /// <param name="second">두 번째 셀 좌표</param>
-        private void ProcessSwapInput(GridPos first, GridPos second)
+        /// <summary>선택한 블록을 대기 상태로 되돌리고 선택 좌표를 비웁니다.</summary>
+        private void ClearSelectedBlock()
         {
-            // 권한이나 셀 상태 때문에 조기 반환해도 이전 선택 표시를 남기지 않습니다.
             if (_selectedPos.HasValue)
             {
                 PuzzleCell selectedCell = GetCell(_selectedPos.Value);
@@ -273,6 +293,15 @@ namespace Puzzle.Core
                 }
                 _selectedPos = null;
             }
+        }
+
+        /// <summary> 선택을 해제한 뒤 두 셀의 교환 가능 여부와 매칭을 판정합니다. </summary>
+        /// <param name="first">첫 번째 셀 좌표</param>
+        /// <param name="second">두 번째 셀 좌표</param>
+        private void ProcessSwapInput(GridPos first, GridPos second)
+        {
+            // 권한이나 셀 상태 때문에 조기 반환해도 이전 선택 표시를 남기지 않습니다.
+            ClearSelectedBlock();
             PuzzleCell cellA = GetCell(first);
             PuzzleCell cellB = GetCell(second);
             if ((cellA == null || cellA.Block == null) || (cellB == null || cellB.Block == null))
@@ -394,14 +423,14 @@ namespace Puzzle.Core
             // 첫 틱은 0번이며, 입력을 기록한 틱의 상태 전환을 마친 뒤 프레임을 증가시킵니다.
             while (_pendingInputs.Count > 0)
             {
-                GridPos? input = _pendingInputs.Dequeue();
-                if (input.HasValue)
+                (GridPos? Position, bool Canceled) input = _pendingInputs.Dequeue();
+                if (input.Position.HasValue)
                 {
-                    ProcessInput(input.Value);
+                    ProcessInput(input.Position.Value);
                 }
                 else
                 {
-                    ProcessInputEnd();
+                    ProcessInputEnd(input.Canceled);
                 }
             }
             if (Objective != null)

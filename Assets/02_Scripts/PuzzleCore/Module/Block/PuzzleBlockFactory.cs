@@ -13,32 +13,40 @@ namespace Puzzle.Core
     {
         /// <summary> 기믹 타입으로부터 기믹 인스턴스를 생성하는 팩토리 </summary>
         private readonly GimmickFactory _gimmickFactory = new GimmickFactory();
-        private readonly List<BlockData> _battleBlocks;
+        private readonly GameSpec _spec;
+        private readonly List<BlockData> _spawnBlocks;
 
         /// <summary>모든 블록 정의를 그대로 사용할 수 있는 팩토리를 만듭니다.</summary>
         public PuzzleBlockFactory()
         {
         }
 
-        /// <summary><paramref name="spec"/>의 대전 규칙에 따라 특수 블록 대신 사용할 일반 블록을 원래 순서로 보관합니다.</summary>
+        /// <summary>고정 배치와 생성기에 사용할 수 있는 블록을 규칙에 정의된 순서로 보관합니다.</summary>
+        /// <param name="spec">현재 모드와 리플레이 버전을 포함한 게임 규칙입니다.</param>
         internal PuzzleBlockFactory(GameSpec spec)
         {
-            if (spec.mode != GameMode.Battle || spec.UseLegacyBattleBlocks)
+            if (!spec.RestrictsBlockSpawns)
             {
                 return;
             }
-            _battleBlocks = spec.HasSpecialBlocks ? spec.blocks.FindAll(block => block != null && !block.IsSpecial) : spec.blocks;
-            if (_battleBlocks == null || _battleBlocks.Count == 0)
+            string error = spec.GetBlockSpawnError();
+            if (error != null)
             {
-                throw new ArgumentException("대전에 사용할 일반 블록이 없습니다.", nameof(spec));
+                throw new ArgumentException(error, nameof(spec));
+            }
+            _spec = spec;
+            _spawnBlocks = spec.blocks;
+            if (!_spawnBlocks.TrueForAll(spec.CanSpawnBlock))
+            {
+                _spawnBlocks = spec.blocks.FindAll(spec.CanSpawnBlock);
             }
         }
 
         /// <summary>현재 모드에서 <paramref name="data"/>로 블록을 생성할 수 있는지 확인합니다.</summary>
-        internal bool CanCreate(BlockData data) => data != null && (_battleBlocks == null || !data.IsSpecial);
+        internal bool CanCreate(BlockData data) => _spec == null ? data != null : _spec.CanSpawnBlock(data);
 
         /// <summary><paramref name="source"/>를 <paramref name="spec"/>에 맞는 보드 셀로 복사하고,
-        /// 대전의 고정 특수 블록은 <paramref name="random"/>으로 고른 일반 블록으로 교체합니다.</summary>
+        /// 생성할 수 없는 고정 블록은 <paramref name="random"/>으로 고른 허용 블록으로 교체합니다.</summary>
         internal PuzzleCell CreateCell(CellData source, GameSpec spec, PuzzleRandom random)
         {
             PuzzleCell cell = new PuzzleCell(new GridPos(source.x, source.y)) { CellType = (CellType)source.cell_type };
@@ -51,7 +59,7 @@ namespace Puzzle.Core
                 BlockData data = spec.GetBlock(source.block_id);
                 if (data != null && !CanCreate(data))
                 {
-                    data = _battleBlocks[random.Next(0, _battleBlocks.Count)];
+                    data = _spawnBlocks[random.Next(0, _spawnBlocks.Count)];
                 }
                 cell.Block = Create(data);
             }
@@ -59,10 +67,10 @@ namespace Puzzle.Core
         }
 
         /// <summary><paramref name="source"/>의 생성 순서와 가중치를 <paramref name="target"/>에 복사하며,
-        /// 대전에서는 <paramref name="spec"/>에서 허용된 블록만 남깁니다.</summary>
+        /// <paramref name="spec"/>에서 허용된 블록만 남깁니다.</summary>
         private void CopyGeneratorBlocks(List<string> source, List<string> target, GameSpec spec)
         {
-            if (_battleBlocks == null || ReferenceEquals(_battleBlocks, spec.blocks))
+            if (_spawnBlocks == null || ReferenceEquals(_spawnBlocks, spec.blocks))
             {
                 target.AddRange(source);
                 return;
@@ -76,8 +84,8 @@ namespace Puzzle.Core
             }
             if (target.Count == 0)
             {
-                // 특수 블록 전용 생성기도 대전에서 해당 열을 계속 채울 수 있게 합니다.
-                foreach (BlockData block in _battleBlocks)
+                // 지정한 후보가 모두 제외되어도 해당 열을 계속 채울 수 있게 합니다.
+                foreach (BlockData block in _spawnBlocks)
                 {
                     target.Add(block.blockId);
                 }

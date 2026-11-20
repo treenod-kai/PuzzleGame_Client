@@ -19,8 +19,12 @@ namespace Puzzle.Core
         public const int CurrentNumericRuleVersion = 1;
         /// <summary>대전에서 일반 블록만 사용하는 첫 보드 규칙 버전입니다.</summary>
         internal const int NormalBattleBlocksVersion = 2;
+        /// <summary>손을 뗄 때 교환하고 시스템 취소를 구분하는 첫 보드 규칙 버전입니다.</summary>
+        internal const int ReleaseToSwapVersion = 3;
+        /// <summary>새 3매치 스테이지에서 원형 폭탄을 제외하는 첫 보드 규칙 버전입니다.</summary>
+        internal const int ThreeMatchStageWithoutBombsVersion = 4;
         /// <summary>새 플레이를 저장할 때 사용하는 보드 규칙 버전입니다.</summary>
-        public const int CurrentBoardRuleVersion = NormalBattleBlocksVersion;
+        public const int CurrentBoardRuleVersion = ThreeMatchStageWithoutBombsVersion;
         /// <summary> 필드가 없는 이전 기록은 보드 규칙 버전 0으로 재생합니다. </summary>
         public int boardRuleVersion;
         /// <summary> 수치 계산 버전입니다. 필드가 없는 기존 기록의 0은 이전 실수 계산을 복원합니다. </summary>
@@ -83,7 +87,8 @@ namespace Puzzle.Core
         {
             // 버전 1에서 링크 배치와 3매치·링크 종료 판정이 바뀌었고, 버전 2에서 대전 특수 블록을 제외했습니다.
             bool compatibleOldLayout = boardRuleVersion == 1 || (boardRuleVersion == 0 && puzzleType == PuzzleType.TapMatch);
-            bool sameBoardRules = boardRuleVersion == CurrentBoardRuleVersion || (compatibleOldLayout && !hasSpecialBlocks);
+            // 버전 2 이후의 완주 기록은 각자 기록된 입력 시점으로 재생하며 보드 구성·점수 규칙은 같습니다.
+            bool sameBoardRules = boardRuleVersion >= NormalBattleBlocksVersion || (compatibleOldLayout && !hasSpecialBlocks);
             if (!IsCompleteBattleRecord() || timeLimit != GameSpec.BattleDurationSeconds || comboRuleVersion != CurrentComboRuleVersion ||
                 numericRuleVersion != CurrentNumericRuleVersion || !sameBoardRules ||
                 currentSettings == null || !currentSettings.IsValid())

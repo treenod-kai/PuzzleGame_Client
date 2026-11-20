@@ -17,7 +17,7 @@
 | 드래그 링크 성립 기준·연결·해제·낙하·막힌 보드 복구·매칭 대상 확장 | [LinkPuzzleBoard.cs](../../02_Scripts/PuzzleCore/Module/Board/LinkPuzzleBoard.cs) | `MinimumLinkLength`, `Input`, `InputEnd`, `FixedUpdate`, `UpdateState`, `ProcessFallingAndFilling`, `FillFromGenerator`, `HasEmptyCell`, `EnsurePossibleLink`, `HasNoPossibleLink`, `MatchTargetsExpanding` |
 | 탭 매치 연결 블럭 탐색·파괴 | [TapMatchPuzzleBoard.cs](../../02_Scripts/PuzzleCore/Module/Board/TapMatchPuzzleBoard.cs) | `Input`, `InputEnd`(큐 등록), `FixedUpdate`, `UpdateState`, `GetConnectedBlocks`, `FillFromGenerator`, `CheckAndShuffleIfNoMoves`, `MatchTargetsExpanding` |
 | 블럭 상태·입력 플래그·기믹 발화 | [Block.cs](../../02_Scripts/PuzzleCore/Module/Block/Block.cs) | `Block`, `GetInputType`, `FireDestroyed`, `IsPivotTarget` |
-| 대전 일반 블록 제한·셀 배치·기믹 부착 | [PuzzleBlockFactory.cs](../../02_Scripts/PuzzleCore/Module/Block/PuzzleBlockFactory.cs) | `CreateCell`, `CopyGeneratorBlocks`, `CanCreate`, `Create` |
+| 모드별 블록 생성 제한·셀 배치·기믹 부착 | [PuzzleBlockFactory.cs](../../02_Scripts/PuzzleCore/Module/Block/PuzzleBlockFactory.cs) | `CreateCell`, `CopyGeneratorBlocks`, `CanCreate`, `Create` |
 | 기믹 계약·호스트·기본 클래스 | [IGimmick.cs](../../02_Scripts/PuzzleCore/Module/Gimmick/IGimmick.cs) | `IGimmick`, `IGimmickHost`, `GimmickBase` |
 | 폭탄 범위·연쇄 파괴 | [BombGimmick.cs](../../02_Scripts/PuzzleCore/Module/Gimmick/BombGimmick.cs) | `Radius`, `OnDestroyed` |
 | 기믹 종류별 생성 | [GimmickFactory.cs](../../02_Scripts/PuzzleCore/Module/Gimmick/GimmickFactory.cs) | `Create` |
@@ -67,7 +67,7 @@ Finish
 |--------|------|
 | `Initialize(GameSpec)` | 보드 초기화 (셀/블럭 생성) |
 | `Input(GridPos)` | 유저 입력 큐에 추가 |
-| `InputEnd()` | 입력 종료를 큐에 등록. 반환값은 등록 성공 여부 |
+| `InputEnd(bool canceled = false)` | 정상 해제 또는 취소를 큐에 등록. 반환값은 등록 성공 여부 |
 | `FixedUpdate()` | 입력 큐 소비 + 타이머/상태 머신 판정 + 논리 프레임 전진 |
 | `Pause(bool)` | 일시정지 |
 | `AddView(BoardViewAction)` | 뷰 액션 기록 |
@@ -104,7 +104,9 @@ Block : IGimmickHost — State: Idle, Selected, Moving, Matched, Falling, None
 ### 기믹 시스템
 기믹 인터페이스/구현 표, 파괴·연쇄 흐름, 새 기믹 추가 절차 상세는 [`INGAME_GIMMICK.md`](INGAME_GIMMICK.md) 참고.
 
-세 퍼즐의 대전에서는 고정 특수 블록을 같은 시드의 일반 블록으로 교체한다. 생성기는 지정된 일반 블록의 순서와 중복 가중치를 유지한다. 특수 블록만 지정한 생성기는 규칙의 일반 블록 전체에서 보충하고, 링크 경로 복구도 일반 블록만 사용한다. 스테이지에서는 원래의 특수 블록과 생성 목록을 사용한다.
+새 3매치 스테이지는 원형 폭탄을 초기 배치와 리필에서 제외한다. 링크·탭 매치 스테이지는 원래 배치와 생성 목록을 따른다. 세 모드의 대전은 일반 블록만 사용한다.
+
+금지된 고정 블록은 시드로 고른 허용 블록으로 바꾼다. 생성기는 허용된 후보의 순서와 중복 가중치를 보존하고, 후보가 모두 제외되면 규칙의 허용 블록 전체에서 보충한다. [리플레이 버전별 생성 규칙](INGAME_REPLAY.md#재생-흐름)
 
 ## 입력 안전성과 초기화
 
@@ -125,8 +127,7 @@ Block : IGimmickHost — State: Idle, Selected, Moving, Matched, Falling, None
 - `ProcessFallingAndFilling()` → `FillFromGenerator()`는 아래에서 위로 생성기를 찾으며, 각 생성기 자신의 목록으로 아래 구간부터 자신의 셀까지 빈칸을 채웁니다. `Close`/`Lock`/누락 셀과 이전 생성기가 공급 구간을 나눕니다. 생성기 없는 구간과 생성기 위쪽은 채우지 않습니다.
 - 단일 최상단 생성기의 생성 순서(열 순서, 아래→위)는 유지합니다. 생성 연출은 해당 생성기 바로 위에서 시작합니다.
 
-1. **탭-탭**: 첫 블럭 선택 → 인접 블럭 선택 → 스왑
-2. **드래그**: 홀드 후 드래그 → 첫-마지막 인접 블럭 스왑
+첫 블럭을 탭한 뒤 이웃 블럭을 탭하거나, 누른 채 이웃 블럭으로 드래그한다. 처음 입력한 이웃 블럭이 교환 후보가 되며 손을 뗀 틱에 교환을 시도한다. 리플레이에 취소 입력이 있으면 그 틱에 선택을 해제한다. [버전별 교환 시점](INGAME_REPLAY.md#재생-흐름)
 
 ### 링크 (Link)
 - 초기 빈칸이 있으면 첫 고정 틱에서 낙하·생성을 한 번 처리한 뒤 입력 대기로 이동합니다. 생성기 없는 빈칸은 반복 재시도하지 않습니다.

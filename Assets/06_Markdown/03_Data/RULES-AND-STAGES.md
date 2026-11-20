@@ -97,11 +97,11 @@ JSON에는 **가독성을 위해 문자열 목록**으로 두고, 게임 로직�
 ### gimmickIds 값 (문자열 목록 → GimmickType → 기믹 부착)
 블럭에 부착할 기믹을 문자열 목록으로 지정한다. `PuzzleBlockFactory`가 `Enum.TryParse`로 `GimmickType`(enum) 변환 후 `GimmickFactory`로 기믹을 생성해 `Block`에 부착한다.
 
-대전에서는 `destroyType`이 `Bomb`이거나 기믹이 지정된 블록을 특수 블록으로 분류한다. 모든 대전 규칙에는 일반 블록이 하나 이상 필요하다. 스테이지와 공용으로 쓰는 배치 파일에는 스테이지용 폭탄을 그대로 둘 수 있다. [대전 보드 생성](../02_Ingame/INGAME.md#기믹-시스템)
-
 | 문자열 | GimmickType | 동작 |
 |--------|:---:|------|
 | `"Bomb"` | 1 | 원형 폭탄. 파괴 시 주변 반경 2칸(유클리드 거리) 블럭 연쇄 파괴 |
+
+새 3매치 스테이지는 `destroyType`이 `Bomb`이거나 `Bomb` 기믹이 붙는 블록을 생성하지 않는다. 공용 `Stage.json`에 남은 폭탄 세 칸은 이전 기록의 재생에 쓰이며, 새 게임은 허용 블록으로 채운다. 새 3매치 스테이지의 수집 목표량이 1개 이상이면 규칙에 등록된 생성 가능 블록을 지정해야 한다. 원형 폭탄이나 미등록 ID를 지정하면 진입할 수 없다. 대전에는 폭탄과 기믹이 없는 일반 블록이 하나 이상 필요하다. [모드별 보드 생성](../02_Ingame/INGAME.md#기믹-시스템)
 
 > **문자열 ↔ enum 변환 정리**: `JsonUtility`는 `inputType`/`gimmickIds`를 `List<string>`으로 역직렬화만 한다. 문자열 → enum 변환은 `Block`(inputType) / `PuzzleBlockFactory`(gimmickIds)에서 `Enum.TryParse`로 수행한다. JsonUtility 자체는 enum 변환을 하지 않으므로, 새 값 추가 시 enum 정의(`PuzzleDefine.cs`)와 팩토리 분기를 함께 갱신해야 한다.
 

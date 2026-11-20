@@ -34,6 +34,12 @@ namespace Puzzle.Core
         /// <summary>일반 블록 전용 규칙을 도입하기 전 대전 기록을 재생할 때 특수 블록을 허용합니다.</summary>
         [NonSerialized]
         public bool UseLegacyBattleBlocks;
+        /// <summary>이전 3매치 스테이지 기록에서 고정 배치와 생성기의 원형 폭탄을 복원합니다.</summary>
+        [NonSerialized]
+        public bool UseLegacyThreeMatchStageBombs;
+        /// <summary>이전 3매치 기록에서 인접 칸에 닿은 틱에 즉시 교환합니다.</summary>
+        [NonSerialized]
+        public bool UseLegacyImmediateSwap;
         /// <summary> Rule JSON에서 주입한 피벗 규칙입니다. 대전 진입 시 검증합니다. </summary>
         public PivotSettings pivotSettings;
         /// <summary> 현재 스테이지의 세부 구성 데이터 </summary>
@@ -49,6 +55,42 @@ namespace Puzzle.Core
         public bool HasSpecialBlocks => blocks != null && blocks.Exists(block => block != null && block.IsSpecial);
         /// <summary>대전 보드를 구성할 일반 블록이 하나 이상 있는지 확인합니다.</summary>
         public bool HasNormalBlocks => blocks != null && blocks.Exists(block => block != null && !block.IsSpecial);
+
+        /// <summary>현재 모드와 기록 버전에서 블록 생성을 제한하는지 확인합니다.</summary>
+        internal bool RestrictsBlockSpawns => mode == GameMode.Battle ? !UseLegacyBattleBlocks :
+            rule.puzzleType == PuzzleType.ThreeMatch && !UseLegacyThreeMatchStageBombs;
+
+        /// <summary>생성 가능한 블록이나 수집 대상이 없는 규칙의 오류를 반환합니다. 유효하면 null입니다.</summary>
+        internal string GetBlockSpawnError()
+        {
+            if (!RestrictsBlockSpawns)
+            {
+                return null;
+            }
+            if (blocks == null || !blocks.Exists(CanSpawnBlock))
+            {
+                return "현재 모드에서 생성할 수 있는 블록이 없습니다.";
+            }
+            if (mode == GameMode.Stage && rule.objectives != null)
+            {
+                foreach (ObjectiveData objective in rule.objectives)
+                {
+                    if (objective.type == ObjectiveType.CollectBlock && objective.count > 0 &&
+                        (string.IsNullOrEmpty(objective.targetId) || !CanSpawnBlock(GetBlock(objective.targetId))))
+                    {
+                        return $"이 스테이지에서 생성할 수 없는 블록이 수집 목표입니다: {objective.targetId}";
+                    }
+                }
+            }
+            return null;
+        }
+
+        /// <summary>현재 모드와 기록 버전에서 지정한 블록을 생성할 수 있는지 확인합니다.</summary>
+        /// <param name="block">생성할 블록의 정의입니다.</param>
+        internal bool CanSpawnBlock(BlockData block)
+        {
+            return block != null && (!RestrictsBlockSpawns || (mode == GameMode.Battle ? !block.IsSpecial : !block.IsBomb));
+        }
 
         /// <summary> 결정론적 리플레이를 위한 난수 시드 </summary>
         public int randomSeed;

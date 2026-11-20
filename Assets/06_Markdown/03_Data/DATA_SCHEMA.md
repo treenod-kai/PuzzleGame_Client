@@ -56,7 +56,7 @@ GameSpec
     "formatVersion": 1,
     "numericRuleVersion": 1,
     "comboRuleVersion": 1,
-    "boardRuleVersion": 2,
+    "boardRuleVersion": 4,
     "mode": 1,
     "timeLimit": 90,
     "frameCount": 4500,
@@ -65,12 +65,14 @@ GameSpec
     "stageAddress": "Stage",
     "randomSeed": 2095364872,
     "inputs": [
-        { "frame": 67, "position": { "X": 3, "Y": 6 } },
-        { "frame": 90, "position": { "X": 3, "Y": 5 } }
+        { "frame": 67, "sequence": 0, "position": { "X": 3, "Y": 6 } },
+        { "frame": 90, "sequence": 1, "position": { "X": 3, "Y": 5 } },
+        { "frame": 115, "sequence": 2, "position": { "X": 3, "Y": 4 } },
+        { "frame": 235, "sequence": 4, "position": { "X": 2, "Y": 3 } }
     ],
     "inputEnds": [
-        { "frame": 115 },
-        { "frame": 240 }
+        { "frame": 115, "sequence": 3, "canceled": false },
+        { "frame": 240, "sequence": 5, "canceled": true }
     ],
     "recordedAt": "2026-04-01T20:37:34+09:00"
 }
@@ -80,7 +82,7 @@ GameSpec
 |------|------|------|
 | `formatVersion` | int | 현재 1. 없으면 이전 형식 0으로 읽음 |
 | `comboRuleVersion` | int | 현재 1은 유저 조작 성공만 콤보로 계산. 없는 기존 기록의 0은 당시 자동 매칭/파괴 포함 규칙을 복원 |
-| `boardRuleVersion` | int | 2부터 대전에 일반 블록만 배치한다. 1은 링크 재배치와 마지막 틱 매칭을 적용한다. 필드가 없는 기록은 0으로 읽는다. |
+| `boardRuleVersion` | int | 현재 4. 3매치 스테이지에서 원형 폭탄을 제외한다. 필드가 없으면 0으로 읽는다. [버전별 규칙](../02_Ingame/INGAME_REPLAY.md#재생-흐름) |
 | `mode` | GameMode | Stage(0), Battle(1) |
 | `timeLimit` | float | 기록 당시 제한 시간(초). 유한·음이 아닌 값이며 정수 틱 범위 이내 |
 | `numericRuleVersion` | int | 현재 1: 시간 표현 오차 보정·정수 점수. 누락된 기존 기록의 0: 이전 float 계산 복원 |
@@ -91,8 +93,8 @@ GameSpec
 | `stageAddress` | string | Addressable 스테이지 주소 또는 모드별 StageStorage 리소스 키 |
 | `stageJson` | string | 기록 시점의 스테이지 배치 스냅샷. 누락된 경우 주소를 사용한다. |
 | `randomSeed` | int | 게임에 사용된 난수 시드 |
-| `inputs` | List | 유저 입력 기록 (프레임 + 그리드 좌표) |
-| `inputEnds` | List | 유저 입력 종료 기록 (프레임) |
+| `inputs` | List | 좌표 입력 틱·순서·그리드 좌표 |
+| `inputEnds` | List | 입력 종료 틱·순서·시스템 취소 여부. `canceled` 누락 시 정상 해제 |
 | `recordedAt` | string | 기록 일시 (ISO 8601) |
 
 ### 리플레이 입력 순서
