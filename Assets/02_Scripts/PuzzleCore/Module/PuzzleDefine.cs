@@ -204,6 +204,8 @@ namespace Puzzle.Core
         public int life;
         /// <summary> 이 블럭에 연동할 기믹 id 목록 (없거나 비어있으면 기믹 없음) </summary>
         public List<string> gimmickIds;
+        /// <summary>폭탄 또는 별도 기믹이 붙는 특수 블록인지 확인합니다.</summary>
+        public bool IsSpecial => destroyType == DestroyType.Bomb || (gimmickIds != null && gimmickIds.Count > 0);
     }
 
     // ==========================================================

@@ -27,6 +27,8 @@ public class ReplayController : MonoBehaviour
     private IPuzzleBoard _board;
     /// <summary> 기록의 보드 규칙 버전이 현재 점수 판정과 호환되는지 확인할 퍼즐 모드입니다. </summary>
     private PuzzleType _puzzleType;
+    /// <summary>상대 기록의 규칙에 대전에서 제외하는 특수 블록 정의가 있는지 나타냅니다.</summary>
+    private bool _hasSpecialBlocks;
 
     /// <summary> 상대 보드의 파괴 통계를 관찰하는 독립 피벗 세션입니다. </summary>
     private BattlePivotSession _pivotSession;
@@ -94,7 +96,7 @@ public class ReplayController : MonoBehaviour
         {
             return false;
         }
-        return _replayData.HasCompatibleBattleRules(settings, _puzzleType);
+        return _replayData.HasCompatibleBattleRules(settings, _puzzleType, _hasSpecialBlocks);
     }
     /// <summary> 현재 리플레이 점수입니다. </summary>
     public int CurrentScore
@@ -161,7 +163,8 @@ public class ReplayController : MonoBehaviour
         replaySpec.randomSeed = _replayData.randomSeed;
         replaySpec.UseLegacyAutomaticCombos = _replayData.comboRuleVersion == 0;
         replaySpec.UseLegacyNumericRules = _replayData.numericRuleVersion == 0;
-        replaySpec.UseLegacyBoardRules = _replayData.boardRuleVersion < ReplayData.CurrentBoardRuleVersion;
+        replaySpec.UseLegacyBoardRules = _replayData.boardRuleVersion == 0;
+        replaySpec.UseLegacyBattleBlocks = _replayData.boardRuleVersion < ReplayData.NormalBattleBlocksVersion;
         if (_replayData.formatVersion == ReplayData.CurrentFormatVersion)
         {
             replaySpec.mode = _replayData.mode;
@@ -175,9 +178,15 @@ public class ReplayController : MonoBehaviour
             Debug.LogError("[ReplayController] 제한 시간 또는 스테이지 좌표 범위가 잘못되었습니다.");
             return;
         }
+        if (replaySpec.mode == GameMode.Battle && !replaySpec.UseLegacyBattleBlocks && !replaySpec.HasNormalBlocks)
+        {
+            Debug.LogError($"[ReplayController] 대전 리플레이 규칙에 일반 블록이 없습니다: {replayData.ruleAddress}");
+            return;
+        }
 
         // 퍼즐 타입에 맞는 보드 생성
         _puzzleType = replaySpec.rule.puzzleType;
+        _hasSpecialBlocks = replaySpec.HasSpecialBlocks;
         switch (_puzzleType)
         {
             case PuzzleType.ThreeMatch:

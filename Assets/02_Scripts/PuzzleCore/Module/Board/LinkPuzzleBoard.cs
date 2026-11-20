@@ -67,7 +67,7 @@ namespace Puzzle.Core
             {
                 throw new ArgumentException("보드 크기와 셀 좌표가 유효한 스테이지가 필요합니다.", nameof(spec));
             }
-            _blockFactory = new PuzzleBlockFactory();
+            _blockFactory = new PuzzleBlockFactory(spec);
             _linkPath = new List<GridPos>();
             _matchTargets.Clear();
             MatchTargetsExpanding = null;
@@ -89,26 +89,8 @@ namespace Puzzle.Core
                 Height = gameSpec.stageData.stage_height;
                 foreach (CellData cellData in gameSpec.stageData.cells)
                 {
-                    GridPos pos = new GridPos(cellData.x, cellData.y);
-                    PuzzleCell cell = new PuzzleCell(pos)
-                    {
-                        CellType = (CellType)cellData.cell_type
-                    };
-
-                    if (cell.CellType == CellType.Generator && cellData.generator_block_ids != null)
-                    {
-                        cell.generatorBlockIds.AddRange(cellData.generator_block_ids);
-                    }
-
-                    if (!string.IsNullOrEmpty(cellData.block_id))
-                    {
-                        BlockData bData = gameSpec.GetBlock(cellData.block_id);
-                        if (bData != null)
-                        {
-                            cell.Block = _blockFactory.Create(bData);
-                        }
-                    }
-                    Cells[pos] = cell;
+                    PuzzleCell cell = _blockFactory.CreateCell(cellData, spec, Random);
+                    Cells[cell.Position] = cell;
                 }
             }
 
@@ -469,7 +451,7 @@ namespace Puzzle.Core
             {
                 foreach (BlockData data in gameSpec.blocks)
                 {
-                    if (data != null && !string.IsNullOrEmpty(data.blockId) && Block.ParseInputType(data).HasFlag(InputType.Link))
+                    if (_blockFactory.CanCreate(data) && !string.IsNullOrEmpty(data.blockId) && Block.ParseInputType(data).HasFlag(InputType.Link))
                     {
                         return data;
                     }

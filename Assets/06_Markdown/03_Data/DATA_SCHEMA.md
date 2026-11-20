@@ -56,7 +56,7 @@ GameSpec
     "formatVersion": 1,
     "numericRuleVersion": 1,
     "comboRuleVersion": 1,
-    "boardRuleVersion": 1,
+    "boardRuleVersion": 2,
     "mode": 1,
     "timeLimit": 90,
     "frameCount": 4500,
@@ -80,7 +80,7 @@ GameSpec
 |------|------|------|
 | `formatVersion` | int | 현재 1. 없으면 이전 형식 0으로 읽음 |
 | `comboRuleVersion` | int | 현재 1은 유저 조작 성공만 콤보로 계산. 없는 기존 기록의 0은 당시 자동 매칭/파괴 포함 규칙을 복원 |
-| `boardRuleVersion` | int | 1은 링크 재배치 및 마지막 틱 매칭을 적용한다. 필드가 없는 기록은 0으로 읽어 당시 보드 판정을 복원한다. |
+| `boardRuleVersion` | int | 2부터 대전에 일반 블록만 배치한다. 1은 링크 재배치와 마지막 틱 매칭을 적용한다. 필드가 없는 기록은 0으로 읽는다. |
 | `mode` | GameMode | Stage(0), Battle(1) |
 | `timeLimit` | float | 기록 당시 제한 시간(초). 유한·음이 아닌 값이며 정수 틱 범위 이내 |
 | `numericRuleVersion` | int | 현재 1: 시간 표현 오차 보정·정수 점수. 누락된 기존 기록의 0: 이전 float 계산 복원 |
@@ -108,7 +108,7 @@ GameSpec
 - `ReplayStorage.Load()`에서 형식 버전, 모드, 시간, 완료 기록을 검사한다. 향후 알 수 없는 버전은 거부한다.
 - 대전 기록의 `pivotSettings`가 존재하면 유효 범위도 검사한다. 잘못된 스냅샷은 상대 선택 전에 제외하며, 필드가 없는 기존 기록은 허용한다.
 - 새 플레이는 `comboRuleVersion: 1`로 저장한다. 버전 0의 3매치 재생은 자동 매칭도 기존 점수 콤보에 포함하며, 피벗 콤보도 기존의 파괴 발생 기준을 사용한다. 이를 위한 `GameSpec.UseLegacyAutomaticCombos`는 재생 시에만 설정하는 비직렬화 필드다. 알 수 없는 콤보 버전은 로드에서 거부한다.
-- `IsCompleteBattleRecord()`는 재생 가능한 완주 기록인지 검사하고, `HasCompatibleBattleRules()`는 현재 점수 조건으로 대전할 수 있는지 별도로 검사한다. `LobbyMain.PrepareBattle()`은 슬롯에서 선택한 Rule의 기록 중 현재 콤보·수치·보드 판정과 피벗 설정이 맞는 상대를 선택한다. 탭 매치는 보드 버전 0과 1의 판정이 동일해 서로 대전할 수 있다. 결과 표시 때도 같은 조건을 검사하므로, 다른 규칙의 기록을 직접 재생해도 승패를 비교하지 않는다.
+- `IsCompleteBattleRecord()`는 재생 가능한 완주 기록인지 검사한다. `HasCompatibleBattleRules()`는 현재 콤보·수치·보드 판정과 피벗 설정을 비교하며, 로비의 상대 선택과 결과의 승패 판정에서 함께 사용한다. 이전 보드 규칙의 직접 재생과 현재 대전의 상대 선택 기준은 [리플레이 재생 흐름](../02_Ingame/INGAME_REPLAY.md#재생-흐름)에 정리했다.
 - 동일 주소의 Rule/Stage가 바뀌면 기존 결과와 달라질 수 있다. 종료 틱/점수 검증 실패 시 승패를 비교하지 않는다. 스테이지 스냅샷이 있는 기록은 저장된 배치를 복원한다. Rule 데이터는 주소로 로드한다.
 - 문서 JSON 예제의 입력과 점수는 필드 설명용이며 실제 대전 상대는 게임에서 완주하여 저장한 기록을 사용한다.
 

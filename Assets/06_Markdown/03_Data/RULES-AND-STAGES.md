@@ -97,6 +97,8 @@ JSON에는 **가독성을 위해 문자열 목록**으로 두고, 게임 로직�
 ### gimmickIds 값 (문자열 목록 → GimmickType → 기믹 부착)
 블럭에 부착할 기믹을 문자열 목록으로 지정한다. `PuzzleBlockFactory`가 `Enum.TryParse`로 `GimmickType`(enum) 변환 후 `GimmickFactory`로 기믹을 생성해 `Block`에 부착한다.
 
+대전에서는 `destroyType`이 `Bomb`이거나 기믹이 지정된 블록을 특수 블록으로 분류한다. 모든 대전 규칙에는 일반 블록이 하나 이상 필요하다. 스테이지와 공용으로 쓰는 배치 파일에는 스테이지용 폭탄을 그대로 둘 수 있다. [대전 보드 생성](../02_Ingame/INGAME.md#기믹-시스템)
+
 | 문자열 | GimmickType | 동작 |
 |--------|:---:|------|
 | `"Bomb"` | 1 | 원형 폭탄. 파괴 시 주변 반경 2칸(유클리드 거리) 블럭 연쇄 파괴 |

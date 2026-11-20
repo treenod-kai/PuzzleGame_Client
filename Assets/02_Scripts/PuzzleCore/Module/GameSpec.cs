@@ -31,6 +31,9 @@ namespace Puzzle.Core
         /// <summary> 이전 기록을 재생할 때 당시의 링크 배치와 마지막 틱 매칭 판정을 사용합니다. </summary>
         [NonSerialized]
         public bool UseLegacyBoardRules;
+        /// <summary>일반 블록 전용 규칙을 도입하기 전 대전 기록을 재생할 때 특수 블록을 허용합니다.</summary>
+        [NonSerialized]
+        public bool UseLegacyBattleBlocks;
         /// <summary> Rule JSON에서 주입한 피벗 규칙입니다. 대전 진입 시 검증합니다. </summary>
         public PivotSettings pivotSettings;
         /// <summary> 현재 스테이지의 세부 구성 데이터 </summary>
@@ -41,6 +44,11 @@ namespace Puzzle.Core
         
         /// <summary> 게임 내에서 사용 가능한 모든 블록의 정의 목록 </summary>
         public List<BlockData> blocks;
+
+        /// <summary>규칙에 특수 블록이 들어 있어 이전 대전과 생성 결과가 달라질 수 있는지 확인합니다.</summary>
+        public bool HasSpecialBlocks => blocks != null && blocks.Exists(block => block != null && block.IsSpecial);
+        /// <summary>대전 보드를 구성할 일반 블록이 하나 이상 있는지 확인합니다.</summary>
+        public bool HasNormalBlocks => blocks != null && blocks.Exists(block => block != null && !block.IsSpecial);
 
         /// <summary> 결정론적 리플레이를 위한 난수 시드 </summary>
         public int randomSeed;

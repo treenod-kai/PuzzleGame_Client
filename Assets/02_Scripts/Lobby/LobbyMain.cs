@@ -134,7 +134,7 @@ public class LobbyMain : MonoBehaviour
                 {
                     continue;
                 }
-                if (candidate.HasCompatibleBattleRules(candidateSpec.pivotSettings, candidateSpec.rule.puzzleType))
+                if (candidate.HasCompatibleBattleRules(candidateSpec.pivotSettings, candidateSpec.rule.puzzleType, candidateSpec.HasSpecialBlocks))
                 {
                     // 다른 후보를 읽은 뒤 캐시된 후보가 선택되면 실제 씬 주입 데이터도 복원합니다.
                     if (!ReferenceEquals(candidateSpec, StageInjection.Instance.GetGameSpec()))

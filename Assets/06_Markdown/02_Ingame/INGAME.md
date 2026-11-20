@@ -17,7 +17,7 @@
 | 드래그 링크 성립 기준·연결·해제·낙하·막힌 보드 복구·매칭 대상 확장 | [LinkPuzzleBoard.cs](../../02_Scripts/PuzzleCore/Module/Board/LinkPuzzleBoard.cs) | `MinimumLinkLength`, `Input`, `InputEnd`, `FixedUpdate`, `UpdateState`, `ProcessFallingAndFilling`, `FillFromGenerator`, `HasEmptyCell`, `EnsurePossibleLink`, `HasNoPossibleLink`, `MatchTargetsExpanding` |
 | 탭 매치 연결 블럭 탐색·파괴 | [TapMatchPuzzleBoard.cs](../../02_Scripts/PuzzleCore/Module/Board/TapMatchPuzzleBoard.cs) | `Input`, `InputEnd`(큐 등록), `FixedUpdate`, `UpdateState`, `GetConnectedBlocks`, `FillFromGenerator`, `CheckAndShuffleIfNoMoves`, `MatchTargetsExpanding` |
 | 블럭 상태·입력 플래그·기믹 발화 | [Block.cs](../../02_Scripts/PuzzleCore/Module/Block/Block.cs) | `Block`, `GetInputType`, `FireDestroyed`, `IsPivotTarget` |
-| 블럭 생성·기믹 부착 | [PuzzleBlockFactory.cs](../../02_Scripts/PuzzleCore/Module/Block/PuzzleBlockFactory.cs) | `PuzzleBlockFactory` |
+| 대전 일반 블록 제한·셀 배치·기믹 부착 | [PuzzleBlockFactory.cs](../../02_Scripts/PuzzleCore/Module/Block/PuzzleBlockFactory.cs) | `CreateCell`, `CopyGeneratorBlocks`, `CanCreate`, `Create` |
 | 기믹 계약·호스트·기본 클래스 | [IGimmick.cs](../../02_Scripts/PuzzleCore/Module/Gimmick/IGimmick.cs) | `IGimmick`, `IGimmickHost`, `GimmickBase` |
 | 폭탄 범위·연쇄 파괴 | [BombGimmick.cs](../../02_Scripts/PuzzleCore/Module/Gimmick/BombGimmick.cs) | `Radius`, `OnDestroyed` |
 | 기믹 종류별 생성 | [GimmickFactory.cs](../../02_Scripts/PuzzleCore/Module/Gimmick/GimmickFactory.cs) | `Create` |
@@ -103,6 +103,8 @@ Block : IGimmickHost — State: Idle, Selected, Moving, Matched, Falling, None
 
 ### 기믹 시스템
 기믹 인터페이스/구현 표, 파괴·연쇄 흐름, 새 기믹 추가 절차 상세는 [`INGAME_GIMMICK.md`](INGAME_GIMMICK.md) 참고.
+
+세 퍼즐의 대전에서는 고정 특수 블록을 같은 시드의 일반 블록으로 교체한다. 생성기는 지정된 일반 블록의 순서와 중복 가중치를 유지한다. 특수 블록만 지정한 생성기는 규칙의 일반 블록 전체에서 보충하고, 링크 경로 복구도 일반 블록만 사용한다. 스테이지에서는 원래의 특수 블록과 생성 목록을 사용한다.
 
 ## 입력 안전성과 초기화
 

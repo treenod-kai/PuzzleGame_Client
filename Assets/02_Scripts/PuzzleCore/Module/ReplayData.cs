@@ -17,8 +17,10 @@ namespace Puzzle.Core
         public const int CurrentComboRuleVersion = 1;
         /// <summary> 시간 표현 오차 보정과 정수 점수를 사용하는 현재 수치 계산 버전입니다. </summary>
         public const int CurrentNumericRuleVersion = 1;
-        /// <summary> 링크 재배치와 마지막 틱의 매칭 점수를 반영하는 보드 규칙 버전입니다. </summary>
-        public const int CurrentBoardRuleVersion = 1;
+        /// <summary>대전에서 일반 블록만 사용하는 첫 보드 규칙 버전입니다.</summary>
+        internal const int NormalBattleBlocksVersion = 2;
+        /// <summary>새 플레이를 저장할 때 사용하는 보드 규칙 버전입니다.</summary>
+        public const int CurrentBoardRuleVersion = NormalBattleBlocksVersion;
         /// <summary> 필드가 없는 이전 기록은 보드 규칙 버전 0으로 재생합니다. </summary>
         public int boardRuleVersion;
         /// <summary> 수치 계산 버전입니다. 필드가 없는 기존 기록의 0은 이전 실수 계산을 복원합니다. </summary>
@@ -75,11 +77,13 @@ namespace Puzzle.Core
             return true;
         }
 
-        /// <summary><paramref name="currentSettings"/>와 <paramref name="puzzleType"/>에서 같은 점수 조건으로 대전할 수 있는 기록인지 검사합니다.</summary>
-        public bool HasCompatibleBattleRules(PivotSettings currentSettings, PuzzleType puzzleType = PuzzleType.None)
+        /// <summary><paramref name="currentSettings"/>와 <paramref name="puzzleType"/>의 판정을 비교하고,
+        /// <paramref name="hasSpecialBlocks"/>로 현재 규칙에 특수 블록 정의가 있는지 확인합니다.</summary>
+        public bool HasCompatibleBattleRules(PivotSettings currentSettings, PuzzleType puzzleType = PuzzleType.None, bool hasSpecialBlocks = true)
         {
-            // 보드 규칙 0과 1에서 탭 매치의 배치와 마지막 틱 판정은 같습니다.
-            bool sameBoardRules = boardRuleVersion == CurrentBoardRuleVersion || (boardRuleVersion == 0 && puzzleType == PuzzleType.TapMatch);
+            // 버전 1에서 링크 배치와 3매치·링크 종료 판정이 바뀌었고, 버전 2에서 대전 특수 블록을 제외했습니다.
+            bool compatibleOldLayout = boardRuleVersion == 1 || (boardRuleVersion == 0 && puzzleType == PuzzleType.TapMatch);
+            bool sameBoardRules = boardRuleVersion == CurrentBoardRuleVersion || (compatibleOldLayout && !hasSpecialBlocks);
             if (!IsCompleteBattleRecord() || timeLimit != GameSpec.BattleDurationSeconds || comboRuleVersion != CurrentComboRuleVersion ||
                 numericRuleVersion != CurrentNumericRuleVersion || !sameBoardRules ||
                 currentSettings == null || !currentSettings.IsValid())

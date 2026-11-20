@@ -57,7 +57,7 @@ namespace Puzzle.Core
             MatchTargetsExpanding = null;
             _originalMatchTargets.Clear();
             _expandedMatchTargets.Clear();
-            _blockFactory = new PuzzleBlockFactory();
+            _blockFactory = new PuzzleBlockFactory(spec);
             _inputQueue = new Queue<GridPos>();
             _lastEnqueuedInput = null;
             Cells = new Dictionary<GridPos, PuzzleCell>();
@@ -78,26 +78,8 @@ namespace Puzzle.Core
                 Height = gameSpec.stageData.stage_height;
                 foreach (CellData cellData in gameSpec.stageData.cells)
                 {
-                    GridPos pos = new GridPos(cellData.x, cellData.y);
-                    PuzzleCell cell = new PuzzleCell(pos)
-                    {
-                        CellType = (CellType)cellData.cell_type
-                    };
-
-                    if (cell.CellType == CellType.Generator && cellData.generator_block_ids != null)
-                    {
-                        cell.generatorBlockIds.AddRange(cellData.generator_block_ids);
-                    }
-
-                    if (!string.IsNullOrEmpty(cellData.block_id))
-                    {
-                        BlockData bData = gameSpec.GetBlock(cellData.block_id);
-                        if (bData != null)
-                        {
-                            cell.Block = _blockFactory.Create(bData);
-                        }
-                    }
-                    Cells[pos] = cell;
+                    PuzzleCell cell = _blockFactory.CreateCell(cellData, spec, Random);
+                    Cells[cell.Position] = cell;
                 }
             }
 

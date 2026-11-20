@@ -108,6 +108,12 @@ public class StageInjection
         _gameSpec.pivotSettings = ruleContainer.pivotSettings;
         if (mode == GameMode.Battle)
         {
+            if (!_gameSpec.HasNormalBlocks)
+            {
+                Debug.LogError($"[StageInjection] 대전에 사용할 일반 블록이 없습니다: {ruleAddress}");
+                _gameSpec = null;
+                return false;
+            }
             if (_gameSpec.pivotSettings == null)
             {
                 Debug.LogError($"[StageInjection] 대전 피벗 설정이 없습니다: {ruleAddress} / pivotSettings");
