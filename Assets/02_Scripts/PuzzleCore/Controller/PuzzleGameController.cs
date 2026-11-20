@@ -100,6 +100,7 @@ public class PuzzleGameController : MonoBehaviour
 
     /// <summary> 점수 텍스트 갱신 빈도 제어용 (이전 표시된 점수 값) </summary>
     private int _lastDisplayedScore = -1;
+    private bool _lastDisplayedFever;
 
     /// <summary>입력 이벤트를 구독하고 첫 컨트롤러가 이동 이벤트 병합을 중지합니다.</summary>
     private void OnEnable()
@@ -565,9 +566,7 @@ public class PuzzleGameController : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 현재 점수를 UI 텍스트에 반영합니다. 값이 변경될 때만 갱신합니다.
-    /// </summary>
+    /// <summary>점수나 피버 상태가 바뀌면 플레이어 점수 문구를 갱신합니다.</summary>
     private void UpdateScoreUI()
     {
         if (_scoreText == null || _board.Objective == null)
@@ -576,12 +575,18 @@ public class PuzzleGameController : MonoBehaviour
         }
 
         int score = _board.Objective.CurrentScore;
-        if (score != _lastDisplayedScore)
+        bool fever = _board.Objective.IsFeverTime;
+        if (score != _lastDisplayedScore || fever != _lastDisplayedFever)
         {
             _lastDisplayedScore = score;
+            _lastDisplayedFever = fever;
             _hudText.Clear();
             _hudText.Append("점수 ");
             PuzzleHudText.AppendNumber(_hudText, score);
+            if (fever)
+            {
+                _hudText.Append("  <nobr>피버 2배</nobr>");
+            }
             _scoreText.SetText(_hudText);
         }
     }

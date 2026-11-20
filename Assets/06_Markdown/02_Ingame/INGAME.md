@@ -11,7 +11,7 @@
 
 | 찾는 콘텐츠 | 담당 C# 파일 | 주요 메서드·타입·멤버 |
 |---|---|---|
-| 입력, 게임 루프, 종료 후 저장, 화면 배치와 안내 | [PuzzleGameController.cs](../../02_Scripts/PuzzleCore/Controller/PuzzleGameController.cs) | `RecordTouch`, `RecordMouse`, `ReadPointer`, `FixedUpdate`(양쪽 공통 틱), `SaveReplay`, `GetStageResult`, `GetBattleResult`, `UpdatePlayHint`, `OnClickRetry`, `OnClickLobby`, `UpdateTimerUI`, `RefreshScreenLayout`, `PuzzleHudPlacement`, `PuzzleHudText` |
+| 입력, 게임 루프, 종료 후 저장, 화면 배치와 안내 | [PuzzleGameController.cs](../../02_Scripts/PuzzleCore/Controller/PuzzleGameController.cs) | `RecordTouch`, `RecordMouse`, `ReadPointer`, `UpdateScoreUI`, `FixedUpdate`(양쪽 공통 틱), `SaveReplay`, `GetStageResult`, `GetBattleResult`, `UpdatePlayHint`, `OnClickRetry`, `OnClickLobby`, `UpdateTimerUI`, `RefreshScreenLayout`, `PuzzleHudPlacement`, `PuzzleHudText` |
 | 보드 공통 계약·매칭과 폭탄 연쇄 파괴의 연출 순서 | [IPuzzleBoard.cs](../../02_Scripts/PuzzleCore/Module/Board/IPuzzleBoard.cs) | `IPuzzleBoard`, `BoardViewAction`, `MatchDestructionGroup.DestroyMatches`, `BoardViewAction.IsPivotNeighbor` |
 | 3매치 스왑·매칭·낙하·셔플 | [ThreeMatchPuzzleBoard.cs](../../02_Scripts/PuzzleCore/Module/Board/ThreeMatchPuzzleBoard.cs) | `ProcessSwapInput`, `FindMatches`, `ProcessFallingAndFilling`, `FillFromGenerator`, `CheckAndShuffleIfNoMoves`, `MatchTargetsExpanding` |
 | 드래그 링크 성립 기준·연결·해제·낙하·막힌 보드 복구·매칭 대상 확장 | [LinkPuzzleBoard.cs](../../02_Scripts/PuzzleCore/Module/Board/LinkPuzzleBoard.cs) | `MinimumLinkLength`, `Input`, `InputEnd`, `FixedUpdate`, `UpdateState`, `ProcessFallingAndFilling`, `FillFromGenerator`, `HasEmptyCell`, `EnsurePossibleLink`, `HasNoPossibleLink`, `MatchTargetsExpanding` |
