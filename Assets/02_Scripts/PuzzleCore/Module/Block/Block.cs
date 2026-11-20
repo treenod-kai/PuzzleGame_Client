@@ -39,7 +39,7 @@ namespace Puzzle.Core
         /// </summary>
         /// <param name="data">블럭 설정 데이터</param>
         /// <returns>합성된 InputType 플래그 (없으면 None)</returns>
-        private static InputType ParseInputType(BlockData data)
+        internal static InputType ParseInputType(BlockData data)
         {
             InputType result = InputType.None;
             if (data != null && data.inputType != null)

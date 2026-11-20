@@ -83,14 +83,8 @@ public class StageInjection
         return MakeGameSpec(ruleAddress, stageKey);
     }
 
-    /// <summary>
-    /// 지정된 규칙과 스테이지 에셋 주소로부터 데이터를 로드하여 게임 사양서를 완성합니다.
-    /// </summary>
-    /// <param name="ruleAddress">Addressable 내 규칙 JSON 에셋 주소</param>
-    /// <param name="stageAddress">Addressable 내 스테이지 JSON 에셋 주소</param>
-    /// <param name="mode">게임 종료 규칙과 대전 전용 데이터 검증 여부</param>
-    /// <param name="stageJson">기록 당시의 스테이지 스냅샷입니다. 없으면 주소에서 읽습니다.</param>
-    /// <returns>사양서 생성 성공 여부</returns>
+    /// <summary><paramref name="ruleAddress"/>의 규칙과 <paramref name="stageJson"/>의 배치로 <paramref name="mode"/>의 게임을 준비합니다.
+    /// 기록된 배치가 없으면 <paramref name="stageAddress"/>에서 읽으며, 데이터를 준비하면 참을 반환합니다.</summary>
     public bool MakeGameSpec(string ruleAddress, string stageAddress, GameMode mode = GameMode.Stage, string stageJson = null)
     {
         _ruleAddress = ruleAddress;
@@ -98,64 +92,40 @@ public class StageInjection
         _gameSpec = new GameSpec();
         _gameSpec.mode = mode;
 
-        // 1. 규칙(Rule) 데이터 로드 및 파싱
-        TextAsset ruleAsset = AssetManager.Instance.LoadAsset<TextAsset>(ruleAddress);
-        if (ruleAsset != null)
+        if (!TryLoadRuleData(ruleAddress, out GameRuleContainer ruleContainer))
         {
-            GameRuleContainer ruleContainer;
-            try
-            {
-                ruleContainer = JsonUtility.FromJson<GameRuleContainer>(ruleAsset.text);
-            }
-            catch (System.ArgumentException exception)
-            {
-                Debug.LogError($"[StageInjection] 규칙 JSON 파싱 실패: {ruleAddress} / {exception.Message}");
-                _gameSpec = null;
-                return false;
-            }
-            if (ruleContainer == null)
-            {
-                Debug.LogError($"[StageInjection] 규칙 JSON 파싱 실패: {ruleAddress}");
-                _gameSpec = null;
-                return false;
-            }
-            if (!ObjectiveManager.IsValidTimeLimit(ruleContainer.rule.timeLimit))
-            {
-                Debug.LogError($"[StageInjection] 제한 시간 범위가 잘못되었습니다: {ruleAddress} / {ruleContainer.rule.timeLimit}");
-                _gameSpec = null;
-                return false;
-            }
-            _gameSpec.rule = ruleContainer.rule;
-            _gameSpec.blocks = ruleContainer.blocks;
-            _gameSpec.pivotSettings = ruleContainer.pivotSettings;
-            if (mode == GameMode.Battle)
-            {
-                if (_gameSpec.pivotSettings == null)
-                {
-                    Debug.LogError($"[StageInjection] 대전 피벗 설정이 없습니다: {ruleAddress} / pivotSettings");
-                    _gameSpec = null;
-                    return false;
-                }
-                try
-                {
-                    _gameSpec.pivotSettings = _gameSpec.pivotSettings.CopyValidated();
-                }
-                catch (System.ArgumentOutOfRangeException exception)
-                {
-                    Debug.LogError($"[StageInjection] 대전 피벗 설정 오류: {ruleAddress} / {exception.Message}");
-                    _gameSpec = null;
-                    return false;
-                }
-            }
-        }
-        else
-        {
-            Debug.LogError($"[StageInjection] 규칙 에셋 로드 실패: {ruleAddress}");
             _gameSpec = null;
             return false;
         }
+        if (!ObjectiveManager.IsValidTimeLimit(ruleContainer.rule.timeLimit))
+        {
+            Debug.LogError($"[StageInjection] 제한 시간 범위가 잘못되었습니다: {ruleAddress} / {ruleContainer.rule.timeLimit}");
+            _gameSpec = null;
+            return false;
+        }
+        _gameSpec.rule = ruleContainer.rule;
+        _gameSpec.blocks = ruleContainer.blocks;
+        _gameSpec.pivotSettings = ruleContainer.pivotSettings;
+        if (mode == GameMode.Battle)
+        {
+            if (_gameSpec.pivotSettings == null)
+            {
+                Debug.LogError($"[StageInjection] 대전 피벗 설정이 없습니다: {ruleAddress} / pivotSettings");
+                _gameSpec = null;
+                return false;
+            }
+            try
+            {
+                _gameSpec.pivotSettings = _gameSpec.pivotSettings.CopyValidated();
+            }
+            catch (System.ArgumentOutOfRangeException exception)
+            {
+                Debug.LogError($"[StageInjection] 대전 피벗 설정 오류: {ruleAddress} / {exception.Message}");
+                _gameSpec = null;
+                return false;
+            }
+        }
 
-        // 2. 스테이지(Stage) 데이터 로드 및 파싱
         if (!TryLoadStageData(stageAddress, stageJson, out _gameSpec.stageData))
         {
             _gameSpec = null;
@@ -164,8 +134,63 @@ public class StageInjection
 
         _replayData = null;
 
-        // 3. 결정론적 리플레이를 위한 랜덤 시드 생성
+        // 결정론적 리플레이를 위한 랜덤 시드 생성
         _gameSpec.randomSeed = new System.Random().Next();
+        return true;
+    }
+
+    /// <summary><paramref name="ruleAddress"/>에서 플레이와 리플레이가 공통으로 사용하는 규칙을 읽어 <paramref name="ruleData"/>에 담습니다.</summary>
+    internal static bool TryLoadRuleData(string ruleAddress, out GameRuleContainer ruleData)
+    {
+        ruleData = null;
+        TextAsset asset = AssetManager.Instance.LoadAsset<TextAsset>(ruleAddress);
+        if (asset == null)
+        {
+            Debug.LogError($"[StageInjection] 규칙 에셋 로드 실패: {ruleAddress}");
+            return false;
+        }
+
+        GameRuleContainer parsed;
+        try
+        {
+            parsed = JsonUtility.FromJson<GameRuleContainer>(asset.text);
+        }
+        catch (System.ArgumentException exception)
+        {
+            Debug.LogError($"[StageInjection] 규칙 JSON 파싱 실패: {ruleAddress} / {exception.Message}");
+            return false;
+        }
+        if (parsed == null || parsed.blocks == null || parsed.blocks.Count == 0)
+        {
+            Debug.LogError($"[StageInjection] 규칙에 블럭 목록이 없습니다: {ruleAddress}");
+            return false;
+        }
+        PuzzleType type = parsed.rule.puzzleType;
+        if (type != PuzzleType.ThreeMatch && type != PuzzleType.Link && type != PuzzleType.TapMatch)
+        {
+            Debug.LogError($"[StageInjection] 지원하지 않는 퍼즐 모드입니다: {ruleAddress} / {type}");
+            return false;
+        }
+        foreach (BlockData block in parsed.blocks)
+        {
+            if (block == null || string.IsNullOrWhiteSpace(block.blockId))
+            {
+                Debug.LogError($"[StageInjection] 규칙에 ID가 없는 블럭이 있습니다: {ruleAddress}");
+                return false;
+            }
+        }
+        if (parsed.rule.objectives != null)
+        {
+            foreach (ObjectiveData objective in parsed.rule.objectives)
+            {
+                if (objective.type == ObjectiveType.CollectBlock && string.IsNullOrWhiteSpace(objective.targetId))
+                {
+                    Debug.LogError($"[StageInjection] 수집 목표의 블럭 ID가 없습니다: {ruleAddress}");
+                    return false;
+                }
+            }
+        }
+        ruleData = parsed;
         return true;
     }
 
@@ -211,6 +236,16 @@ public class StageInjection
             Debug.LogError($"[StageInjection] 스테이지 데이터 또는 셀 좌표 범위 오류: {stageAddress}");
             stageData = null;
             return false;
+        }
+        foreach (CellData cell in stageData.cells)
+        {
+            if (cell.cell_type == (int)CellType.Generator && cell.generator_block_ids != null &&
+                cell.generator_block_ids.Exists(string.IsNullOrWhiteSpace))
+            {
+                Debug.LogError($"[StageInjection] 생성기 목록에 빈 블럭 ID가 있습니다: {stageAddress} / ({cell.x}, {cell.y})");
+                stageData = null;
+                return false;
+            }
         }
         return true;
     }

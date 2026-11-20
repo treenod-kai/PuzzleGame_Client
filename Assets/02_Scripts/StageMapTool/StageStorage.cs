@@ -53,8 +53,16 @@ public static class StageStorage
         string downloadedPath = GetDownloadedPath(resourceKey);
         if (File.Exists(downloadedPath))
         {
-            json = File.ReadAllText(downloadedPath);
-            return true;
+            try
+            {
+                json = File.ReadAllText(downloadedPath);
+                return true;
+            }
+            catch (System.Exception exception) when (exception is IOException || exception is System.UnauthorizedAccessException)
+            {
+                Debug.LogError($"[StageStorage] 다운로드 스테이지를 읽지 못했습니다: {downloadedPath} / {exception.Message}");
+                return false;
+            }
         }
 
         TextAsset textAsset = Resources.Load<TextAsset>(resourceKey);

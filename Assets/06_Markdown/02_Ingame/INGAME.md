@@ -11,10 +11,10 @@
 
 | 찾는 콘텐츠 | 담당 C# 파일 | 주요 메서드·타입·멤버 |
 |---|---|---|
-| 입력, 게임 루프, 종료 후 저장, 점수/타이머 UI | [PuzzleGameController.cs](../../02_Scripts/PuzzleCore/Controller/PuzzleGameController.cs) | `Start`, `Update`(입력 수집/UI), `FixedUpdate`(양쪽 공통 틱), `SaveReplay`, `GetBattleResult`, `UpdatePlayHint`, `OnClickRetry`, `OnClickLobby`, `UpdateTimerUI` |
+| 입력, 게임 루프, 종료 후 저장, 점수/타이머 UI | [PuzzleGameController.cs](../../02_Scripts/PuzzleCore/Controller/PuzzleGameController.cs) | `Start`, `Update`, `ReadPointer`(포인터 좌표·종료 수집), `FixedUpdate`(양쪽 공통 틱), `SaveReplay`, `GetStageResult`, `GetBattleResult`, `UpdatePlayHint`, `OnClickRetry`, `OnClickLobby`, `UpdateTimerUI` |
 | 보드 공통 계약 | [IPuzzleBoard.cs](../../02_Scripts/PuzzleCore/Module/Board/IPuzzleBoard.cs) | `IPuzzleBoard`, `BoardViewAction` |
 | 3매치 스왑·매칭·낙하·셔플 | [ThreeMatchPuzzleBoard.cs](../../02_Scripts/PuzzleCore/Module/Board/ThreeMatchPuzzleBoard.cs) | `ProcessSwapInput`, `FindMatches`, `ProcessFallingAndFilling`, `FillFromGenerator`, `CheckAndShuffleIfNoMoves`, `MatchTargetsExpanding` |
-| 드래그 링크 성립 기준·연결·해제·낙하·매칭 대상 확장 | [LinkPuzzleBoard.cs](../../02_Scripts/PuzzleCore/Module/Board/LinkPuzzleBoard.cs) | `MinimumLinkLength`, `Input`, `InputEnd`(큐 등록), `FixedUpdate`, `UpdateState`, `ProcessFallingAndFilling`, `FillFromGenerator`, `HasEmptyCell`, `MatchTargetsExpanding` |
+| 드래그 링크 성립 기준·연결·해제·낙하·막힌 보드 복구·매칭 대상 확장 | [LinkPuzzleBoard.cs](../../02_Scripts/PuzzleCore/Module/Board/LinkPuzzleBoard.cs) | `MinimumLinkLength`, `Input`, `InputEnd`, `FixedUpdate`, `UpdateState`, `ProcessFallingAndFilling`, `FillFromGenerator`, `HasEmptyCell`, `EnsurePossibleLink`, `HasNoPossibleLink`, `MatchTargetsExpanding` |
 | 탭 매치 연결 블럭 탐색·파괴 | [TapMatchPuzzleBoard.cs](../../02_Scripts/PuzzleCore/Module/Board/TapMatchPuzzleBoard.cs) | `Input`, `InputEnd`(큐 등록), `FixedUpdate`, `UpdateState`, `GetConnectedBlocks`, `FillFromGenerator`, `CheckAndShuffleIfNoMoves`, `MatchTargetsExpanding` |
 | 블럭 상태·입력 플래그·기믹 발화 | [Block.cs](../../02_Scripts/PuzzleCore/Module/Block/Block.cs) | `Block`, `GetInputType`, `FireDestroyed` |
 | 블럭 생성·기믹 부착 | [PuzzleBlockFactory.cs](../../02_Scripts/PuzzleCore/Module/Block/PuzzleBlockFactory.cs) | `PuzzleBlockFactory` |
@@ -116,6 +116,8 @@ Block : IGimmickHost — State: Idle, Selected, Moving, Matched, Falling, None
 
 ## 입력 처리 방식
 
+- 링크와 3매치는 마지막 유효 틱에 확정된 유저 매칭과 그 기믹의 점수를 정산한 뒤 종료합니다. 다음 틱의 자동 낙하·연쇄는 진행하지 않습니다. 이전 보드 규칙으로 기록한 리플레이는 기록 당시의 종료 순서와 링크 배치를 재현합니다.
+
 ### 3매치 (ThreeMatch)
 - `ProcessSwapInput()`은 교환 판정 전에 선택 좌표와 선택 표시를 함께 해제합니다. `Swap` 권한 부족 등으로 거절되어도 이전 선택 표시가 남지 않습니다.
 - `ProcessFallingAndFilling()` → `FillFromGenerator()`는 아래에서 위로 생성기를 찾으며, 각 생성기 자신의 목록으로 아래 구간부터 자신의 셀까지 빈칸을 채웁니다. `Close`/`Lock`/누락 셀과 이전 생성기가 공급 구간을 나눕니다. 생성기 없는 구간과 생성기 위쪽은 채우지 않습니다.
@@ -126,6 +128,8 @@ Block : IGimmickHost — State: Idle, Selected, Moving, Matched, Falling, None
 
 ### 링크 (Link)
 - 초기 빈칸이 있으면 첫 고정 틱에서 낙하·생성을 한 번 처리한 뒤 입력 대기로 이동합니다. 생성기 없는 빈칸은 반복 재시도하지 않습니다.
+- 초기 배치와 낙하 후 사각·육각 인접 규칙으로 같은 색의 `Link` 가능 블럭 세 개를 확인합니다. 가능한 경로가 없으면 기존 블럭을 교환해 세 칸을 잇습니다. 같은 색이 세 개 미만이면 규칙에서 고른 링크 블럭으로 부족한 개수만 교체합니다. 교환과 교체는 점수·콤보·기믹 파괴를 발동하지 않습니다.
+- 복구는 블럭이 있는 일반 셀과 생성기만 사용합니다. 세 칸이 이어지지 않거나 규칙에 링크용 블럭이 없으면 `HasNoPossibleLink`가 켜집니다. 스테이지는 결과를 표시하고 대전은 공통 제한 시간까지 진행합니다.
 - `ProcessFallingAndFilling()` → `FillFromGenerator()`는 3매치와 동일하게 각 생성기 자신의 목록으로 아래 공급 구간을 채웁니다. `Close`/`Lock`/누락 셀과 이전 생성기가 구간을 나눕니다.
 - `PuzzleBoardView.CacheLinkPathIfChanged()`는 전체 경로의 좌표 복사본을 비교합니다. 길이와 끝점이 같아도 중간 경로가 바뀌면 선과 마커를 갱신하며, 보드를 다시 그릴 때 캐시를 비웁니다.
 - 드래그로 같은 종류 블럭 연결 → 릴리즈 시 경로상 블럭 파괴

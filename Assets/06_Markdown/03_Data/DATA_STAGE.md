@@ -16,7 +16,7 @@
 | 다운로드 경로 | `Application.persistentDataPath/Stage/{모드}/Stage_{번호:000}.json` |
 | 스테이지 번호 범위 | `MinStageId(1)` ~ `MaxStageId(100)` |
 
-- `TryLoadStageJson(puzzleType, stageId, out json)`: 다운로드 파일이 있으면 먼저 읽고, 없으면 `Resources.Load<TextAsset>`로 로드.
+- `TryLoadStageJson(puzzleType, stageId, out json)`은 다운로드 파일을 우선하고 파일이 없으면 Resources에서 읽는다. 다운로드 파일을 열거나 읽는 도중 실패하면 경로와 원인을 기록하고 호출자에게 실패를 반환한다.
 - `GetResourceKey` / `TryGetModeFolder` / `GetStageFileName` / `GetDownloadedPath`: 키·경로 생성 헬퍼.
 - 지원하지 않는 퍼즐 타입이나 범위를 벗어난 번호는 `Debug.LogError` 후 실패 반환.
 

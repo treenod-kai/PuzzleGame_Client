@@ -6,6 +6,7 @@ using System.Text;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.Controls;
 
 /// <summary>
 /// 유저의 입력을 감지하고 퍼즐 보드 모델 및 뷰와 통신하여 전체 게임 루프를 제어하는 컨트롤러 클래스입니다.
@@ -179,54 +180,20 @@ public class PuzzleGameController : MonoBehaviour
             return;
         }
 
-        // 1. 마우스/터치를 누르고 있는 중인가?
-        if (_board.State != BoardState.Finish && IsPointerHeld())
+        if (_board.State != BoardState.Finish)
         {
-            // 뷰가 애니메이션 연출 중일 때는 어떠한 입력도 받지 않도록 차단합니다!
-            if (boardView == null || !boardView.IsAnimating)
+            bool hasPosition = ReadPointer(out Vector2 screenPosition, out bool released);
+            if (hasPosition && boardView != null && !boardView.IsAnimating)
             {
-                if (_mainCamera == null)
-                {
-                    _mainCamera = Camera.main;
-                    if (_mainCamera == null)
-                    {
-                        return;
-                    }
-                }
-
-                Vector2 screenPosition = GetPointerPosition();
-                Vector2 worldPosition = _mainCamera.ScreenToWorldPoint(screenPosition);
-
-                // 현재 위치 아래의 콜라이더 감지 (사전 할당 버퍼 사용으로 GC 방지)
-                int hitCount = Physics2D.OverlapPoint(worldPosition, _noFilter, _hitBuffer);
-
-                // 모든 충돌체를 순회하며 PuzzleBlockCollider를 찾습니다.
-                for (int i = 0; i < hitCount; i++)
-                {
-                    Collider2D hitCollider = _hitBuffer[i];
-                    if (hitCollider.TryGetComponent<PuzzleBlockCollider>(out PuzzleBlockCollider blockCollider))
-                    {
-                        GridPos? pos = GetGridPosFromCollider(hitCollider);
-                        // 이전에 머물렀던 블럭과 다른 블럭으로 마우스가 이동했을 때만 입력 처리
-                        if (pos.HasValue && pos.Value != _lastHoveredPos)
-                        {
-                            _lastHoveredPos = pos.Value;
-                            blockCollider.OnClickBlock();
-                            break;
-                        }
-                    }
-                }
+                InputBlockAt(screenPosition);
+            }
+            if (released)
+            {
+                // 한 프레임 안에 끝난 클릭도 좌표를 먼저 기록한 뒤 종료합니다.
+                _board.InputEnd();
+                _lastHoveredPos = null;
             }
         }
-
-        // 2. 마우스/터치를 뗐는가? -> 입력 종료 및 경로 초기화
-        if (_board.State != BoardState.Finish && IsPointerReleased())
-        {
-            _board.InputEnd();
-            _lastHoveredPos = null; // 포인터를 떼면 초기화
-        }
-
-        // 4. UI 갱신
         UpdateTimerUI();
         UpdateScoreUI();
         if (_pivotGaugeView != null)
@@ -237,8 +204,7 @@ public class PuzzleGameController : MonoBehaviour
         if (_board.State == BoardState.Finish)
         {
             _replaySaved = true;
-            _resultSummary = _mode == GameMode.Battle ? GetBattleResult() :
-                $"{(_board.Objective.IsAllObjectivesCleared() ? "스테이지 클리어" : "시간 종료")}\n최종 점수 {_board.Objective.CurrentScore}점";
+            _resultSummary = _mode == GameMode.Battle ? GetBattleResult() : GetStageResult();
             if (!SaveReplay())
             {
                 _resultSummary += "\n리플레이를 저장하지 못했습니다";
@@ -250,27 +216,28 @@ public class PuzzleGameController : MonoBehaviour
         UpdatePlayHint();
     }
 
-    /// <summary>
-    /// 고정 프레임 간격으로 논리 프레임을 업데이트합니다.
-    /// </summary>
+    /// <summary>고정 간격으로 플레이어와 상대 보드를 각자의 종료 틱까지 진행합니다.</summary>
     private void FixedUpdate()
     {
-        if (!_isInitialized || _board == null || _board.State == BoardState.Finish)
+        if (!_isInitialized || _board == null)
         {
             return;
         }
 
-        // Unity의 컴포넌트 실행 순서와 무관하게 두 보드를 같은 공통 틱에서 진행합니다.
-        _board.FixedUpdate();
-        if (_pivotSession != null)
+        if (_board.State != BoardState.Finish)
         {
-            _pivotSession.AdvanceAfterBoardTick();
+            _board.FixedUpdate();
+            if (_pivotSession != null)
+            {
+                _pivotSession.AdvanceAfterBoardTick();
+            }
+            _elapsedFrames++;
         }
+        // 플레이어가 먼저 목표를 달성해도 상대는 기록된 종료 틱까지 재생합니다.
         if (_opponent != null && replayController != null && replayController.IsInitialized)
         {
             replayController.AdvanceFrame();
         }
-        _elapsedFrames++;
     }
 
     /// <summary> 공통 제한 시간이 끝난 뒤 점수와 승패를 표시합니다. </summary>
@@ -294,6 +261,21 @@ public class PuzzleGameController : MonoBehaviour
             result = $"{verdict}\n내 점수 {score} : 상대 점수 {opponentScore}";
         }
         return result;
+    }
+
+    /// <summary> 목표 달성 여부와 종료 원인에 맞는 스테이지 결과를 반환합니다. </summary>
+    private string GetStageResult()
+    {
+        string reason = "시간 종료";
+        if (_board.Objective.IsAllObjectivesCleared())
+        {
+            reason = "스테이지 클리어";
+        }
+        else if (_board is LinkPuzzleBoard link && link.HasNoPossibleLink)
+        {
+            reason = "연결할 수 있는 블록이 없습니다";
+        }
+        return $"{reason}\n최종 점수 {_board.Objective.CurrentScore}점";
     }
 
     /// <summary>같은 조건으로 다시 시작하며, 완료된 대전에 재도전할 때 라이프 한 개를 사용합니다.</summary>
@@ -420,38 +402,62 @@ public class PuzzleGameController : MonoBehaviour
         return null;
     }
 
-    /// <summary>
-    /// 현재 화면 클릭 또는 터치가 유지되고 있는지 확인합니다.
-    /// </summary>
-    private bool IsPointerHeld()
+    /// <summary><paramref name="position"/>에 입력 좌표, <paramref name="released"/>에 같은 장치의 해제 여부를 담고 좌표 입력이 있는지 반환합니다.</summary>
+    private static bool ReadPointer(out Vector2 position, out bool released)
     {
-        if (Mouse.current != null && Mouse.current.leftButton.isPressed)
+        Touchscreen screen = Touchscreen.current;
+        if (screen != null)
         {
-            return true;
+            TouchControl touch = screen.primaryTouch;
+            bool held = touch.press.isPressed;
+            released = touch.press.wasReleasedThisFrame;
+            bool pressed = touch.press.wasPressedThisFrame;
+            if (held || pressed || released)
+            {
+                position = held ? touch.position.ReadValue() : touch.startPosition.ReadValue();
+                return held || pressed;
+            }
         }
-
-        if (Touchscreen.current != null && Touchscreen.current.primaryTouch.press.isPressed)
+        Mouse mouse = Mouse.current;
+        if (mouse != null)
         {
-            return true;
+            position = mouse.position.ReadValue();
+            released = mouse.leftButton.wasReleasedThisFrame;
+            return mouse.leftButton.wasPressedThisFrame || mouse.leftButton.isPressed;
         }
+        position = Vector2.zero;
+        released = false;
         return false;
     }
 
-    /// <summary>
-    /// 현재 화면 클릭 또는 터치가 종료되었는지 확인합니다.
-    /// </summary>
-    private bool IsPointerReleased()
+    /// <summary><paramref name="screenPosition"/>에서 플레이어 보드의 새 블록을 찾아 입력합니다.</summary>
+    private void InputBlockAt(Vector2 screenPosition)
     {
-        if (Mouse.current != null && Mouse.current.leftButton.wasReleasedThisFrame)
+        if (_mainCamera == null)
         {
-            return true;
+            _mainCamera = Camera.main;
+            if (_mainCamera == null)
+            {
+                return;
+            }
         }
-
-        if (Touchscreen.current != null && Touchscreen.current.primaryTouch.press.wasReleasedThisFrame)
+        Vector2 worldPosition = _mainCamera.ScreenToWorldPoint(screenPosition);
+        int hitCount = Physics2D.OverlapPoint(worldPosition, _noFilter, _hitBuffer);
+        for (int i = 0; i < hitCount; i++)
         {
-            return true;
+            Collider2D hit = _hitBuffer[i];
+            if (!hit.TryGetComponent(out PuzzleBlockCollider blockCollider))
+            {
+                continue;
+            }
+            GridPos? pos = GetGridPosFromCollider(hit);
+            if (pos.HasValue && pos.Value != _lastHoveredPos)
+            {
+                _lastHoveredPos = pos.Value;
+                blockCollider.OnClickBlock();
+                break;
+            }
         }
-        return false;
     }
 
     /// <summary>
@@ -471,6 +477,7 @@ public class PuzzleGameController : MonoBehaviour
             formatVersion = ReplayData.CurrentFormatVersion,
             comboRuleVersion = ReplayData.CurrentComboRuleVersion,
             numericRuleVersion = ReplayData.CurrentNumericRuleVersion,
+            boardRuleVersion = ReplayData.CurrentBoardRuleVersion,
             mode = _mode,
             timeLimit = _board.Objective.TotalLimitTime,
             frameCount = _elapsedFrames,
@@ -502,21 +509,5 @@ public class PuzzleGameController : MonoBehaviour
         {
             _pivotGaugeView.Dispose();
         }
-    }
-
-    /// <summary>
-    /// 현재 포인터의 스크린 좌표를 가져옵니다.
-    /// </summary>
-    private Vector2 GetPointerPosition()
-    {
-        if (Touchscreen.current != null && Touchscreen.current.primaryTouch.press.isPressed)
-        {
-            return Touchscreen.current.primaryTouch.position.ReadValue();
-        }
-        if (Mouse.current != null)
-        {
-            return Mouse.current.position.ReadValue();
-        }
-        return Vector2.zero;
     }
 }

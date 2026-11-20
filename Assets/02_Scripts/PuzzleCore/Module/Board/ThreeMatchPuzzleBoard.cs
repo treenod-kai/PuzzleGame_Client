@@ -349,6 +349,11 @@ namespace Puzzle.Core
 
             if (Objective != null && Objective.ShouldFinish())
             {
+                // 마지막 유효 틱의 교환만 정산하고, 그 뒤에 생길 자동 연쇄는 진행하지 않습니다.
+                if (!gameSpec.UseLegacyBoardRules && _pendingPlayerMatch && Objective.IsTimeOver())
+                {
+                    ProcessMatching();
+                }
                 State = BoardState.Finish;
                 return;
             }

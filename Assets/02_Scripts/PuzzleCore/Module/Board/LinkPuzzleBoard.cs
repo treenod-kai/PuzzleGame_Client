@@ -18,6 +18,8 @@ namespace Puzzle.Core
         public Dictionary<GridPos, PuzzleCell> Cells { get; private set; }
         public int Width { get; private set; }
         public int Height { get; private set; }
+        /// <summary>셀 구조 또는 블럭 규칙 때문에 세 칸 링크를 구성할 수 없는 상태입니다.</summary>
+        public bool HasNoPossibleLink { get; private set; }
 
         public Action<string> OnLog { get; set; }
 
@@ -26,6 +28,10 @@ namespace Puzzle.Core
 
         /// <summary> 원래 연결 경로와 외부 효과가 추가한 파괴 대상을 순서대로 보관합니다. </summary>
         private readonly List<GridPos> _matchTargets = new List<GridPos>();
+        /// <summary>링크 검사와 복구에 사용할 셀을 행과 열 순서로 보관합니다.</summary>
+        private readonly List<PuzzleCell> _orderedCells = new List<PuzzleCell>();
+        /// <summary>가운데 셀과 두 이웃으로 구성한 복구 경로입니다.</summary>
+        private readonly PuzzleCell[] _recoveryPath = new PuzzleCell[MinimumLinkLength];
 
         private PuzzleBlockFactory _blockFactory;
         
@@ -108,6 +114,18 @@ namespace Puzzle.Core
 
             // 초기 빈칸이 있으면 첫 고정 틱에서 한 번 낙하·생성한 뒤 입력을 받습니다.
             State = HasEmptyCell() ? BoardState.Falling : BoardState.Waiting;
+            HasNoPossibleLink = false;
+            _orderedCells.Clear();
+            if (!spec.UseLegacyBoardRules)
+            {
+                _orderedCells.AddRange(Cells.Values);
+                _orderedCells.Sort((left, right) => left.Position.Y != right.Position.Y
+                    ? left.Position.Y.CompareTo(right.Position.Y) : left.Position.X.CompareTo(right.Position.X));
+                if (State == BoardState.Waiting)
+                {
+                    EnsurePossibleLink(false);
+                }
+            }
         }
 
         /// <summary> 좌표 입력을 다음 고정 틱의 처리 대기열에 추가합니다. </summary>
@@ -197,17 +215,7 @@ namespace Puzzle.Core
             }
 
             // 인접 여부 체크 (육각형 or 사각형)
-            bool isAdjacent = false;
-            if (gameSpec.rule.boardShape == BoardShape.Hexagon)
-            {
-                isAdjacent = GridPos.IsAdjacentHexagon(currentPos, input);
-            }
-            else
-            {
-                isAdjacent = GridPos.IsAdjacentSquare(currentPos, input);
-            }
-
-            if (!isAdjacent)
+            if (!IsAdjacent(currentPos, input))
             {
                 return;
             }
@@ -274,6 +282,11 @@ namespace Puzzle.Core
 
             if (Objective != null && Objective.ShouldFinish())
             {
+                // 종료 틱의 입력으로 이미 확정된 링크는 기믹 연쇄까지 정산합니다.
+                if (!gameSpec.UseLegacyBoardRules && State == BoardState.Matching && Objective.IsTimeOver())
+                {
+                    ProcessMatching();
+                }
                 State = BoardState.Finish;
                 return;
             }
@@ -299,7 +312,10 @@ namespace Puzzle.Core
 
                 case BoardState.Falling:
                     ProcessFallingAndFilling();
-                    // 링크 게임은 자동 매칭이 없으므로 낙하/보충 후 바로 대기 상태로 전환
+                    if (!gameSpec.UseLegacyBoardRules)
+                    {
+                        EnsurePossibleLink(true);
+                    }
                     State = BoardState.Waiting;
                     _currentOrderIndex = 0;
                     break;
@@ -308,6 +324,171 @@ namespace Puzzle.Core
                     State = BoardState.Waiting;
                     break;
             }
+            if (HasNoPossibleLink && gameSpec.mode == GameMode.Stage)
+            {
+                State = BoardState.Finish;
+            }
+        }
+
+        /// <summary>현재 보드 모양에서 <paramref name="first"/>와 <paramref name="second"/>가 이웃인지 확인합니다.</summary>
+        private bool IsAdjacent(GridPos first, GridPos second)
+        {
+            if (gameSpec.rule.boardShape == BoardShape.Hexagon)
+            {
+                return GridPos.IsAdjacentHexagon(first, second);
+            }
+            return GridPos.IsAdjacentSquare(first, second);
+        }
+
+        /// <summary><paramref name="cell"/>이 재배치할 블럭을 가진 일반 셀 또는 생성기인지 확인합니다.</summary>
+        private static bool CanRearrange(PuzzleCell cell) => cell != null && cell.Block != null &&
+            (cell.CellType == CellType.Normal || cell.CellType == CellType.Generator);
+
+        /// <summary><paramref name="cell"/>의 블럭이 링크 입력을 받을 수 있으면 블럭 ID를 반환합니다.</summary>
+        private static string GetLinkId(PuzzleCell cell)
+        {
+            if (!CanRearrange(cell) || !cell.Block.GetInputType().HasFlag(InputType.Link))
+            {
+                return null;
+            }
+            return cell.Block.GetBlockId();
+        }
+
+        /// <summary><paramref name="matchColor"/>이면 현재 유효한 링크를, 아니면 기존 블럭을 재배치할 세 칸을 찾습니다.</summary>
+        private bool TryFindLinkPath(bool matchColor)
+        {
+            foreach (PuzzleCell center in _orderedCells)
+            {
+                string centerId = GetLinkId(center);
+                if (!CanRearrange(center) || (matchColor && centerId == null))
+                {
+                    continue;
+                }
+                _recoveryPath[0] = center;
+                int count = 1;
+                for (int dy = -1; dy <= 1; dy++)
+                {
+                    for (int dx = -1; dx <= 1; dx++)
+                    {
+                        GridPos pos = new GridPos(center.Position.X + dx, center.Position.Y + dy);
+                        PuzzleCell neighbor = GetCell(pos);
+                        if (!IsAdjacent(center.Position, pos) || !CanRearrange(neighbor) || (matchColor && GetLinkId(neighbor) != centerId))
+                        {
+                            continue;
+                        }
+                        _recoveryPath[count++] = neighbor;
+                        if (count == MinimumLinkLength)
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        /// <summary>링크가 없으면 기존 블럭을 옮기고 부족한 수만 보충합니다. <paramref name="animate"/>이면 변경된 좌표의 연출을 등록합니다.</summary>
+        private void EnsurePossibleLink(bool animate)
+        {
+            if (TryFindLinkPath(true))
+            {
+                return;
+            }
+            BlockData recoveryBlock = null;
+            if (TryFindLinkPath(false))
+            {
+                recoveryBlock = ChooseRecoveryBlock();
+            }
+            if (recoveryBlock == null)
+            {
+                HasNoPossibleLink = true;
+                Log("[LinkPuzzleBoard] 연결 가능한 셀 세 칸 또는 링크용 블럭이 없어 경로를 만들 수 없습니다.");
+                return;
+            }
+
+            uint order = _currentOrderIndex++;
+            foreach (PuzzleCell target in _recoveryPath)
+            {
+                if (GetLinkId(target) == recoveryBlock.blockId)
+                {
+                    continue;
+                }
+                PuzzleCell source = FindRecoverySource(recoveryBlock.blockId);
+                if (source == null)
+                {
+                    target.Block = _blockFactory.Create(recoveryBlock);
+                    if (animate)
+                    {
+                        AddView(new BoardViewAction { type = ViewType.Create, position = target.Position, blockData = target.Block }, order);
+                    }
+                    continue;
+                }
+
+                Block displaced = target.Block;
+                target.Block = source.Block;
+                source.Block = displaced;
+                if (animate)
+                {
+                    AddView(new BoardViewAction { type = ViewType.Move, position = source.Position, targetPosition = target.Position }, order);
+                    AddView(new BoardViewAction { type = ViewType.Move, position = target.Position, targetPosition = source.Position }, order);
+                }
+            }
+        }
+
+        /// <summary>기존 링크 블럭을 가장 많이 재사용할 수 있는 종류를 찾고, 없으면 규칙의 첫 링크 블럭을 고릅니다.</summary>
+        private BlockData ChooseRecoveryBlock()
+        {
+            Dictionary<string, int> counts = new Dictionary<string, int>();
+            string bestId = null;
+            int bestCount = 0;
+            foreach (PuzzleCell cell in _orderedCells)
+            {
+                string id = GetLinkId(cell);
+                if (id == null)
+                {
+                    continue;
+                }
+                counts.TryGetValue(id, out int count);
+                count++;
+                counts[id] = count;
+                if (count > bestCount)
+                {
+                    bestId = id;
+                    bestCount = count;
+                    if (count == MinimumLinkLength)
+                    {
+                        break;
+                    }
+                }
+            }
+            if (bestId != null)
+            {
+                return gameSpec.GetBlock(bestId);
+            }
+            if (gameSpec.blocks != null)
+            {
+                foreach (BlockData data in gameSpec.blocks)
+                {
+                    if (data != null && !string.IsNullOrEmpty(data.blockId) && Block.ParseInputType(data).HasFlag(InputType.Link))
+                    {
+                        return data;
+                    }
+                }
+            }
+            return null;
+        }
+
+        /// <summary>복구 경로 밖에서 <paramref name="blockId"/>와 일치하는 링크 블럭을 찾습니다.</summary>
+        private PuzzleCell FindRecoverySource(string blockId)
+        {
+            foreach (PuzzleCell cell in _orderedCells)
+            {
+                if (Array.IndexOf(_recoveryPath, cell) < 0 && GetLinkId(cell) == blockId)
+                {
+                    return cell;
+                }
+            }
+            return null;
         }
 
         /// <summary> 입력 판정, 상태 전환, 타이머 갱신을 한 논리 틱에서 처리합니다. </summary>

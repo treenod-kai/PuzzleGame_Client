@@ -17,6 +17,10 @@ namespace Puzzle.Core
         public const int CurrentComboRuleVersion = 1;
         /// <summary> 시간 표현 오차 보정과 정수 점수를 사용하는 현재 수치 계산 버전입니다. </summary>
         public const int CurrentNumericRuleVersion = 1;
+        /// <summary> 링크 재배치와 마지막 틱의 매칭 점수를 반영하는 보드 규칙 버전입니다. </summary>
+        public const int CurrentBoardRuleVersion = 1;
+        /// <summary> 필드가 없는 이전 기록은 보드 규칙 버전 0으로 재생합니다. </summary>
+        public int boardRuleVersion;
         /// <summary> 수치 계산 버전입니다. 필드가 없는 기존 기록의 0은 이전 실수 계산을 복원합니다. </summary>
         public int numericRuleVersion;
         /// <summary> 콤보 판정 버전입니다. 없는 기존 기록의 0은 자동 연쇄 포함 규칙을 사용합니다. </summary>
@@ -42,6 +46,7 @@ namespace Puzzle.Core
             if (formatVersion != CurrentFormatVersion || mode != GameMode.Battle ||
                 comboRuleVersion < 0 || comboRuleVersion > CurrentComboRuleVersion ||
                 numericRuleVersion < 0 || numericRuleVersion > CurrentNumericRuleVersion ||
+                boardRuleVersion < 0 || boardRuleVersion > CurrentBoardRuleVersion ||
                 (timeLimit != 60f && timeLimit != GameSpec.BattleDurationSeconds) ||
                 frameCount != (ulong)(timeLimit * GameSpec.LogicFramesPerSecond) ||
                 finalScore < 0 || inputs == null || inputEnds == null ||
@@ -70,13 +75,14 @@ namespace Puzzle.Core
             return true;
         }
 
-        /// <summary> 현재 콤보 및 피벗 규칙과 동일한 조건의 대전 상대인지 검사합니다. </summary>
-        /// <param name="currentSettings">현재 플레이에 적용할 피벗 설정</param>
-        /// <returns>완주 기록이며 현재 규칙으로 점수를 비교할 수 있으면 true</returns>
-        public bool HasCompatibleBattleRules(PivotSettings currentSettings)
+        /// <summary><paramref name="currentSettings"/>와 <paramref name="puzzleType"/>에서 같은 점수 조건으로 대전할 수 있는 기록인지 검사합니다.</summary>
+        public bool HasCompatibleBattleRules(PivotSettings currentSettings, PuzzleType puzzleType = PuzzleType.None)
         {
+            // 보드 규칙 0과 1에서 탭 매치의 배치와 마지막 틱 판정은 같습니다.
+            bool sameBoardRules = boardRuleVersion == CurrentBoardRuleVersion || (boardRuleVersion == 0 && puzzleType == PuzzleType.TapMatch);
             if (!IsCompleteBattleRecord() || timeLimit != GameSpec.BattleDurationSeconds || comboRuleVersion != CurrentComboRuleVersion ||
-                numericRuleVersion != CurrentNumericRuleVersion || currentSettings == null || !currentSettings.IsValid())
+                numericRuleVersion != CurrentNumericRuleVersion || !sameBoardRules ||
+                currentSettings == null || !currentSettings.IsValid())
             {
                 return false;
             }

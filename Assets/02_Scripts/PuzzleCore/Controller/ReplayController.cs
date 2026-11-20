@@ -24,6 +24,8 @@ public class ReplayController : MonoBehaviour
 
     /// <summary> 리플레이용 퍼즐 보드 모델 </summary>
     private IPuzzleBoard _board;
+    /// <summary> 기록의 보드 규칙 버전이 현재 점수 판정과 호환되는지 확인할 퍼즐 모드입니다. </summary>
+    private PuzzleType _puzzleType;
 
     /// <summary> 상대 보드의 파괴 통계를 관찰하는 독립 피벗 세션입니다. </summary>
     private BattlePivotSession _pivotSession;
@@ -83,16 +85,14 @@ public class ReplayController : MonoBehaviour
     public bool IsInitialized => _isInitialized;
     /// <summary> 종료 점수를 비교할 수 있는 완주 기록인지 여부입니다. </summary>
     public bool HasValidResult => _isComplete && _resultValid;
-    /// <summary> 재생 중인 기록이 현재 플레이어와 동일한 대전 점수 조건인지 확인합니다. </summary>
-    /// <param name="settings">플레이어에게 적용된 피벗 설정</param>
-    /// <returns>현재 콤보 및 피벗 규칙과 같으면 true</returns>
+    /// <summary>상대 기록의 퍼즐 모드와 플레이어의 피벗 설정 <paramref name="settings"/>으로 점수를 비교할 수 있는지 확인합니다.</summary>
     public bool HasCompatibleBattleRules(PivotSettings settings)
     {
-        if (_replayData == null)
+        if (!_isInitialized || _replayData == null)
         {
             return false;
         }
-        return _replayData.HasCompatibleBattleRules(settings);
+        return _replayData.HasCompatibleBattleRules(settings, _puzzleType);
     }
     /// <summary> 현재 리플레이 점수입니다. </summary>
     public int CurrentScore
@@ -107,13 +107,11 @@ public class ReplayController : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 리플레이 데이터를 기반으로 보드를 생성하고 재생을 시작합니다.
-    /// </summary>
-    /// <param name="replayData">재생할 리플레이 데이터</param>
+    /// <summary><paramref name="replayData"/>에 기록된 규칙과 스테이지로 상대 보드를 생성하고 재생을 준비합니다.</summary>
     public void Initialize(ReplayData replayData)
     {
         _isInitialized = false;
+        _replayData = replayData;
         _board = null;
         _isComplete = false;
         _resultValid = false;
@@ -133,7 +131,11 @@ public class ReplayController : MonoBehaviour
             Debug.LogError($"[ReplayController] 지원하지 않는 수치 규칙 버전입니다: {replayData.numericRuleVersion}");
             return;
         }
-        _replayData = replayData;
+        if (replayData.boardRuleVersion < 0 || replayData.boardRuleVersion > ReplayData.CurrentBoardRuleVersion)
+        {
+            Debug.LogError($"[ReplayController] 지원하지 않는 보드 규칙 버전입니다: {replayData.boardRuleVersion}");
+            return;
+        }
         _frameCount = 0;
         _inputIndex = 0;
         _inputEndIndex = 0;
@@ -141,23 +143,12 @@ public class ReplayController : MonoBehaviour
         // 리플레이 데이터에서 GameSpec 복원
         GameSpec replaySpec = new GameSpec();
 
-        TextAsset ruleAsset = AssetManager.Instance.LoadAsset<TextAsset>(_replayData.ruleAddress);
-        if (ruleAsset != null)
+        if (!StageInjection.TryLoadRuleData(_replayData.ruleAddress, out GameRuleContainer ruleContainer))
         {
-            GameRuleContainer ruleContainer = JsonUtility.FromJson<GameRuleContainer>(ruleAsset.text);
-            if (ruleContainer == null)
-            {
-                Debug.LogError("[ReplayController] 규칙 데이터가 없습니다.");
-                return;
-            }
-            replaySpec.rule = ruleContainer.rule;
-            replaySpec.blocks = ruleContainer.blocks;
-        }
-        else
-        {
-            Debug.LogError($"[ReplayController] 규칙 에셋 로드 실패: {_replayData.ruleAddress}");
             return;
         }
+        replaySpec.rule = ruleContainer.rule;
+        replaySpec.blocks = ruleContainer.blocks;
 
         if (!StageInjection.TryLoadStageData(_replayData.stageAddress, _replayData.stageJson, out replaySpec.stageData))
         {
@@ -168,6 +159,7 @@ public class ReplayController : MonoBehaviour
         replaySpec.randomSeed = _replayData.randomSeed;
         replaySpec.UseLegacyAutomaticCombos = _replayData.comboRuleVersion == 0;
         replaySpec.UseLegacyNumericRules = _replayData.numericRuleVersion == 0;
+        replaySpec.UseLegacyBoardRules = _replayData.boardRuleVersion < ReplayData.CurrentBoardRuleVersion;
         if (_replayData.formatVersion == ReplayData.CurrentFormatVersion)
         {
             replaySpec.mode = _replayData.mode;
@@ -183,7 +175,8 @@ public class ReplayController : MonoBehaviour
         }
 
         // 퍼즐 타입에 맞는 보드 생성
-        switch (replaySpec.rule.puzzleType)
+        _puzzleType = replaySpec.rule.puzzleType;
+        switch (_puzzleType)
         {
             case PuzzleType.ThreeMatch:
                 _board = new ThreeMatchPuzzleBoard();

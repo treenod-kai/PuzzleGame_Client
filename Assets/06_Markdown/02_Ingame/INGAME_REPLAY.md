@@ -28,6 +28,10 @@ ReplayData 로드 → GameSpec 복원 (동일 Rule/Stage + 동일 시드)
         → board.FixedUpdate() 후 다음 틱으로 전진
 ```
 
+스테이지에서 플레이어가 먼저 클리어하면 해당 틱을 종료 시점으로 저장한다. 결과 패널은 화면 하단에 표시해 우측 상단의 상대 보드를 볼 수 있다. 결과 화면에 머무르는 동안 상대 보드는 기록을 끝까지 재생하고 종료 틱과 점수를 검증한다. [플레이어와 상대의 고정 틱](../../02_Scripts/PuzzleCore/Controller/PuzzleGameController.cs)
+
+기록에 `boardRuleVersion`이 없으면 버전 0의 보드 규칙으로 상대를 재생한다. 링크와 3매치 대전은 현재 보드 규칙 버전이 일치하는 상대만 선택한다. 탭 매치는 버전 0과 현재 버전의 점수 판정이 같아 제한 시간·콤보·수치·피벗 규칙을 만족하면 이전 기록과도 대전할 수 있다. [리플레이 초기화](../../02_Scripts/PuzzleCore/Controller/ReplayController.cs)
+
 ---
 
 ## ReplayController 배치

@@ -30,7 +30,7 @@
 | GameScene | 인게임 퍼즐 플레이 | PuzzleGameController.cs, ReplayController.cs |
 | ToolScene | 스테이지 맵 편집 도구 (에디터 전용) | StageMapToolController.cs |
 
-> **ToolScene**: 스테이지 맵 툴 전용 씬. `SceneEnum`에 등록되지 않으며 `Main.MoveScene` 흐름과 무관하다(에디터에서 직접 열어 사용). 상세: `DATA.md` "스테이지 맵 툴".
+플레이어 빌드에는 TitleScene, SharedScene, LoadingScene, LobbyScene, GameScene이 포함된다. 맵 편집용 ToolScene은 에디터에서 직접 연다. [스테이지 맵 툴](../03_Data/DATA_STAGE.md)
 
 ## SharedScene (영구 상주)
 ### 자동 로드

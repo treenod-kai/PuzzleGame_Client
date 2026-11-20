@@ -83,9 +83,10 @@ namespace Puzzle.Core
 
                 if (replayData.formatVersion < 0 || replayData.formatVersion > ReplayData.CurrentFormatVersion ||
                     replayData.comboRuleVersion < 0 || replayData.comboRuleVersion > ReplayData.CurrentComboRuleVersion ||
-                    replayData.numericRuleVersion < 0 || replayData.numericRuleVersion > ReplayData.CurrentNumericRuleVersion)
+                    replayData.numericRuleVersion < 0 || replayData.numericRuleVersion > ReplayData.CurrentNumericRuleVersion ||
+                    replayData.boardRuleVersion < 0 || replayData.boardRuleVersion > ReplayData.CurrentBoardRuleVersion)
                 {
-                    Debug.LogError($"[ReplayStorage] 지원하지 않는 리플레이 버전입니다: 형식 {replayData.formatVersion}, 콤보 규칙 {replayData.comboRuleVersion}, 수치 규칙 {replayData.numericRuleVersion}");
+                    Debug.LogError($"[ReplayStorage] 지원하지 않는 리플레이 버전입니다: 형식 {replayData.formatVersion}, 콤보 규칙 {replayData.comboRuleVersion}, 수치 규칙 {replayData.numericRuleVersion}, 보드 규칙 {replayData.boardRuleVersion}");
                     return null;
                 }
                 if (replayData.formatVersion == ReplayData.CurrentFormatVersion &&
