@@ -90,17 +90,27 @@ public class UserDataManager : MonoBehaviour
             return;
         }
 
+        /// <summary>인증된 <paramref name="response"/>의 유저를 적용하고 설치 게스트와의 연결을 기억한다.</summary>
+        void OnSignedIn(AuthLoginResponse response)
+        {
+            if (provider == AuthProvider.Guest)
+            {
+                IdentityLayer.RememberGuest(providerUserId, response.user.uid);
+            }
+            Identity.SetData(response.user);
+            if (onComplete != null)
+            {
+                onComplete.Invoke(response);
+            }
+        }
+
         Auth.Login(
             provider,
             providerUserId,
             nickname,
             email,
             Identity.Data?.uid ?? "",
-            (response) =>
-            {
-                Identity.SetData(response.user);
-                onComplete?.Invoke(response);
-            },
+            OnSignedIn,
             onFailed
         );
     }

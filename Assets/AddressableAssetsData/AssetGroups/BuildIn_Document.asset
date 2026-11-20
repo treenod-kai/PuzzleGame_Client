@@ -15,6 +15,11 @@ MonoBehaviour:
   m_GroupName: BuildIn_Document
   m_GUID: 0abeb8d0b8f97d242b46ae45992619b3
   m_SerializeEntries:
+  - m_GUID: 522fff5915194908b1407813c9d68028
+    m_Address: LobbyDefense/Rules
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 1015346fa46158c419b3fab20509aae8
     m_Address: Stage
     m_ReadOnly: 0

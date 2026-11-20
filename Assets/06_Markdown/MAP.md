@@ -31,6 +31,7 @@
 | 문서 | 상위 문서 | 내용 |
 |------|----------|------|
 | `ARCHITECTURE_FLOW.md` | `ARCHITECTURE.md` | 메인 대전/사이드 스테이지 게임 흐름 상세 |
+| [로비 디펜스 아키텍처](01_Architecture/LOBBY-DEFENSE-ARCHITECTURE.md) | `LOBBY-DEFENSE.md` | 방어 모델, 로비 저장, 대전·리플레이 연결 설계와 단계별 인수 기준 |
 | `INGAME_GIMMICK.md` | `INGAME.md` | 기믹 인터페이스/파괴 연쇄/새 기믹 추가 절차 |
 | `INGAME_REPLAY.md` | `INGAME.md` | 리플레이 기록/재생 흐름 상세 |
 | `DATA_SCHEMA.md` | `DATA.md` | GameSpec 전체 필드 스키마 트리 + ReplayData JSON |
@@ -65,6 +66,7 @@
 | 로비 하단 탭·패널·좌우 스와이프 | [LobbyNavigation.cs](../02_Scripts/Lobby/LobbyNavigation.cs) | [UI.md](04_UI/UI.md#로비-하단-탭) |
 | 90초 대전 준비 팝업·슬롯·라이프 | [PopupReady.cs](../02_Scripts/UI/Popup/PopupReady.cs) | [UI.md](04_UI/UI.md#콘텐츠와-c-매핑) |
 | 로비 대전 진입·리플레이 상대 선택 | [LobbyMain.cs](../02_Scripts/Lobby/LobbyMain.cs) | [UI.md](04_UI/UI.md#준비-팝업의-플레이-진입) |
+| 로비 디펜스 배치·침공·고용·카드 관리 | [LobbyDefenseController.cs](../02_Scripts/LobbyDefense/Controller/LobbyDefenseController.cs) · [DefenseSession.cs](../02_Scripts/LobbyDefense/Model/DefenseSession.cs) | [로비 디펜스 아키텍처](01_Architecture/LOBBY-DEFENSE-ARCHITECTURE.md#콘텐츠와-c-매핑) |
 | 퍼즐 입력·게임 루프·화면 배치·종료 처리 | [PuzzleGameController.cs](../02_Scripts/PuzzleCore/Controller/PuzzleGameController.cs) | [INGAME.md](02_Ingame/INGAME.md#콘텐츠와-c-매핑) |
 | 3매치·스왑·자동 셔플 | [ThreeMatchPuzzleBoard.cs](../02_Scripts/PuzzleCore/Module/Board/ThreeMatchPuzzleBoard.cs) | [INGAME.md](02_Ingame/INGAME.md#콘텐츠와-c-매핑) |
 | 링크 연결 | [LinkPuzzleBoard.cs](../02_Scripts/PuzzleCore/Module/Board/LinkPuzzleBoard.cs) | [INGAME.md](02_Ingame/INGAME.md#콘텐츠와-c-매핑) |

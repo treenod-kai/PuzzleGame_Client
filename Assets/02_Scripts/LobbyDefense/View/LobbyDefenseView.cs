@@ -1,0 +1,343 @@
+﻿using System;
+using System.Collections.Generic;
+using LobbyDefense.Model;
+using TMPro;
+using UnityEngine;
+using UnityEngine.Events;
+using UnityEngine.UI;
+
+namespace LobbyDefense.View
+{
+    /// <summary>전체 경로와 확대 지도를 함께 보여 주고 배치·고용·회수 입력을 로비 컨트롤러에 전달한다.</summary>
+    public sealed class LobbyDefenseView : MonoBehaviour
+    {
+        private static readonly Color Panel = new Color32(19, 44, 49, 255);
+        private static readonly Color Trim = new Color32(44, 86, 89, 255);
+        private static readonly Color Ink = new Color32(242, 248, 237, 255);
+        private static readonly Color Gold = new Color32(253, 208, 128, 255);
+        private readonly Dictionary<string, Sprite> _defenders = new Dictionary<string, Sprite>();
+        private readonly Dictionary<string, Sprite> _monsters = new Dictionary<string, Sprite>();
+        private readonly List<int> _oldRoute = new List<int>();
+        private readonly List<int> _oldPreview = new List<int>();
+        private TMP_FontAsset _font;
+        private TMP_Text _gold;
+        private TMP_Text _wave;
+        private TMP_Text _spawn;
+        private TMP_Text _window;
+        private TMP_Text _hint;
+        private TMP_Text _choice;
+        private TMP_Text _confirmText;
+        private Button _confirm;
+        private Button _recall;
+        private DefenseBoardGraphic _overview;
+        private DefenseBoardGraphic _detail;
+        private DefenseUnitMarkers _dots;
+        private DefenseUnitMarkers _units;
+        private int _width;
+        private int _entrance;
+        private int _exit;
+        private int _first = -1;
+        private int _columns;
+        private int _shownGold = -1;
+        private bool[] _route;
+        private bool[] _preview;
+        private int _selected = -1;
+        private int _range;
+        private bool _canPlace;
+
+        public event Action<int> CellSelected;
+        public event Action<int> ChoiceChanged;
+        public event Action Confirmed;
+        public event Action Recalled;
+
+        /// <summary>보드 폭 <paramref name="width"/>와 높이 <paramref name="height"/>, 입구 <paramref name="entrance"/>와 출구 <paramref name="exit"/>,
+        /// 로비 폰트 <paramref name="font"/>로 제공된 사각 영역 안에 전장을 구성한다.</summary>
+        public void Initialize(int width, int height, int entrance, int exit, TMP_FontAsset font)
+        {
+            _width = width;
+            _columns = Mathf.Min(15, width);
+            _entrance = entrance;
+            _exit = exit;
+            _font = font;
+            _route = new bool[width * height];
+            _preview = new bool[width * height];
+            RectTransform panel = Rect("DefensePanel", transform, 0f, 0f, 1f, 1f);
+            Paint(panel, Panel);
+            _wave = Label("Wave", panel, 0.035f, 0.925f, 0.45f, 0.997f, "", 30f, TextAlignmentOptions.Left);
+            _spawn = Label("Spawn", panel, 0.45f, 0.925f, 0.76f, 0.997f, "", 22f, TextAlignmentOptions.Center);
+            _gold = Label("Gold", panel, 0.76f, 0.925f, 0.965f, 0.997f, "", 28f, TextAlignmentOptions.Right);
+            _gold.color = Gold;
+            _overview = Grid(panel, "Overview", 0.79f, 0.92f);
+            _overview.Initialize(width, height, entrance, exit, width, FocusOverview, MoveWindow);
+            _window = Label("VisibleColumns", panel, 0.035f, 0.735f, 0.965f, 0.79f, "", 21f, TextAlignmentOptions.Center);
+            _detail = Grid(panel, "PlacementMap", 0.271f, 0.735f);
+            _detail.Initialize(width, height, entrance, exit, _columns, SelectCell, MoveWindow);
+            _dots = new DefenseUnitMarkers(_overview, this, width, true);
+            _units = new DefenseUnitMarkers(_detail, this, width, false);
+            _hint = Label("Hint", panel, 0.035f, 0.202f, 0.965f, 0.267f, "", 22f, TextAlignmentOptions.Center);
+
+            Control("Previous", panel, 0.035f, 0.108f, 0.15f, 0.197f, "이전", Previous, out _);
+            _choice = Label("Choice", panel, 0.155f, 0.108f, 0.845f, 0.197f, "", 27f, TextAlignmentOptions.Center);
+            Control("Next", panel, 0.85f, 0.108f, 0.965f, 0.197f, "다음", Next, out _);
+            _recall = Control("Recall", panel, 0.035f, 0.012f, 0.35f, 0.098f, "회수", Recall, out _);
+            _confirm = Control("Confirm", panel, 0.365f, 0.012f, 0.965f, 0.098f, "배치 확정", Confirm, out _confirmText);
+            _confirm.targetGraphic.color = new Color32(46, 118, 100, 255);
+            MoveWindow(entrance % width - _columns / 2);
+        }
+
+        /// <summary>골드 <paramref name="gold"/>, 웨이브 문구 <paramref name="wave"/>와 다음 소환 문구 <paramref name="spawn"/>를 갱신한다.</summary>
+        public void SetStatus(int gold, string wave, string spawn)
+        {
+            if (_shownGold != gold)
+            {
+                _shownGold = gold;
+                _gold.text = $"{gold:N0} 골드";
+            }
+            _wave.text = wave;
+            _spawn.text = spawn;
+        }
+
+        /// <summary>선택 카드 <paramref name="choice"/>, 실행 문구 <paramref name="action"/>, 확정·회수 가능 여부 <paramref name="canConfirm"/>·<paramref name="canRecall"/>와
+        /// 배치 안내 <paramref name="hint"/>를 적용한다.</summary>
+        public void SetControls(string choice, string action, bool canConfirm, bool canRecall, string hint)
+        {
+            _choice.text = choice;
+            _confirmText.text = action;
+            _confirm.interactable = canConfirm;
+            _recall.interactable = canRecall;
+            _hint.text = hint;
+        }
+
+        /// <summary>기존 경로 <paramref name="currentPath"/>와 예상 경로 <paramref name="previewPath"/>, 선택 칸 <paramref name="selectedCell"/>의
+        /// 사거리 <paramref name="range"/> 및 배치 가능 여부 <paramref name="canPlace"/>를 표시한다.</summary>
+        public void SetRoute(IReadOnlyList<int> currentPath, IReadOnlyList<int> previewPath, int selectedCell, int range, bool canPlace)
+        {
+            bool routeChanged = UpdatePath(currentPath, _oldRoute, _route);
+            bool previewChanged = UpdatePath(previewPath, _oldPreview, _preview);
+            if (!routeChanged && !previewChanged && _selected == selectedCell && _range == range && _canPlace == canPlace)
+            {
+                return;
+            }
+            bool selectionChanged = _selected != selectedCell;
+            _selected = selectedCell;
+            _range = range;
+            _canPlace = canPlace;
+            _overview.SetRoute(_route, _preview, _selected, _range, canPlace);
+            _detail.SetRoute(_route, _preview, _selected, _range, canPlace);
+            if (selectionChanged)
+            {
+                UpdateWindowLabel();
+            }
+        }
+
+        /// <summary>현재 전투 <paramref name="session"/>과 마지막 틱 이후 보간 비율 <paramref name="tickFraction"/>로 두 지도의 개체를 갱신한다.</summary>
+        public void RenderUnits(DefenseSession session, float tickFraction)
+        {
+            _dots.Render(session, tickFraction);
+            _units.Render(session, tickFraction);
+        }
+
+        /// <summary>새 경로 <paramref name="path"/>가 이전 경로 <paramref name="old"/>와 달라질 때만 칸 표시 배열 <paramref name="mask"/>을 다시 채운다.</summary>
+        private static bool UpdatePath(IReadOnlyList<int> path, List<int> old, bool[] mask)
+        {
+            int count = path == null ? 0 : path.Count;
+            bool changed = old.Count != count;
+            for (int i = 0; !changed && i < count; i++)
+            {
+                changed = old[i] != path[i];
+            }
+            if (!changed)
+            {
+                return false;
+            }
+            for (int i = 0; i < old.Count; i++)
+            {
+                mask[old[i]] = false;
+            }
+            old.Clear();
+            for (int i = 0; i < count; i++)
+            {
+                mask[path[i]] = true;
+                old.Add(path[i]);
+            }
+            return true;
+        }
+
+        /// <summary>진영 <paramref name="group"/>과 종류 <paramref name="id"/>의 스프라이트를 씬의 공용 에셋 관리자에서 한 번 요청한다.</summary>
+        internal Sprite FindSprite(string group, string id)
+        {
+            Dictionary<string, Sprite> cache = group == "Monsters" ? _monsters : _defenders;
+            if (group == "Trap")
+            {
+                id = "CoilFrog/Special";
+            }
+            if (cache.TryGetValue(id, out Sprite sprite))
+            {
+                return sprite;
+            }
+            cache.Add(id, null);
+            string address = group == "Trap" ? "LobbyDefense/Projectiles/CoilFrog/Special" : $"LobbyDefense/{group}/{id}";
+            LoadSprite(cache, id, address);
+            return cache[id];
+        }
+
+        /// <summary>주소 <paramref name="address"/>의 비동기 로드 결과를 <paramref name="cache"/>의 종류 키 <paramref name="id"/>에 기록한다.</summary>
+        private static void LoadSprite(Dictionary<string, Sprite> cache, string id, string address)
+        {
+            AssetManager.Instance.LoadAssetAsync(new AssetManager.AssetArguments<Sprite>
+            {
+                address = address,
+                successCallback = loaded => cache[id] = loaded,
+                failedCallback = () => Debug.LogError($"로비 디펜스 이미지를 불러오지 못했습니다. {address}")
+            });
+        }
+
+        /// <summary>전체 지도에서 누른 <paramref name="cell"/>의 열을 확대 창 가운데로 옮긴다.</summary>
+        private void FocusOverview(int cell) => MoveWindow(cell % _width - _columns / 2);
+
+        /// <summary>첫 열 <paramref name="first"/> 기준으로 확대 범위와 화면 밖 입구·출구 방향을 표시한다.</summary>
+        private void MoveWindow(int first)
+        {
+            first = Mathf.Clamp(first, 0, _width - _columns);
+            if (first == _first)
+            {
+                return;
+            }
+            _first = first;
+            _overview.SetWindow(0, first, _columns);
+            _detail.SetWindow(first, 0, 0);
+            UpdateWindowLabel();
+        }
+
+        /// <summary>확대 창의 열 범위와 입출구 방향, 선택한 칸의 기획 좌표를 보여 준다.</summary>
+        private void UpdateWindowLabel()
+        {
+            string inlet = GateLabel("입구", _entrance % _width);
+            string outlet = GateLabel("출구", _exit % _width);
+            string selection = _selected < 0 ? "" : $"    선택 ({_selected % _width + 1}, {_selected / _width + 1})";
+            _window.text = $"{inlet}     {_first + 1}~{_first + _columns}열     {outlet}{selection}";
+        }
+
+        /// <summary><paramref name="name"/> 문의 열 <paramref name="column"/>이 확대 창 밖이면 방향을 표시한다.</summary>
+        private string GateLabel(string name, int column)
+        {
+            if (column < _first)
+            {
+                return name + " (왼쪽)";
+            }
+            if (column >= _first + _columns)
+            {
+                return name + " (오른쪽)";
+            }
+            return name;
+        }
+
+        /// <summary>선택한 칸 <paramref name="cell"/>을 컨트롤러에 전달한다.</summary>
+        private void SelectCell(int cell)
+        {
+            if (CellSelected != null)
+            {
+                CellSelected(cell);
+            }
+        }
+
+        /// <summary>이전 카드나 고용 후보를 요청한다.</summary>
+        private void Previous()
+        {
+            if (ChoiceChanged != null)
+            {
+                ChoiceChanged(-1);
+            }
+        }
+
+        /// <summary>다음 카드나 고용 후보를 요청한다.</summary>
+        private void Next()
+        {
+            if (ChoiceChanged != null)
+            {
+                ChoiceChanged(1);
+            }
+        }
+
+        /// <summary>현재 후보로 배치 확정을 요청한다.</summary>
+        private void Confirm()
+        {
+            if (Confirmed != null)
+            {
+                Confirmed();
+            }
+        }
+
+        /// <summary>선택한 칸의 유닛 회수를 요청한다.</summary>
+        private void Recall()
+        {
+            if (Recalled != null)
+            {
+                Recalled();
+            }
+        }
+
+        /// <summary>패널 <paramref name="parent"/>의 세로 구간 <paramref name="bottom"/>~<paramref name="top"/>에 이름 <paramref name="name"/>의 지도를 둔다.</summary>
+        private static DefenseBoardGraphic Grid(RectTransform parent, string name, float bottom, float top)
+        {
+            RectTransform rect = Rect(name, parent, 0.035f, bottom, 0.965f, top);
+            rect.gameObject.AddComponent<RectMask2D>();
+            return rect.gameObject.AddComponent<DefenseBoardGraphic>();
+        }
+
+        /// <summary><paramref name="parent"/>의 상대 영역 <paramref name="x0"/>·<paramref name="y0"/>~<paramref name="x1"/>·<paramref name="y1"/>에 이름 <paramref name="name"/>의 UI를 둔다.</summary>
+        internal static RectTransform Rect(string name, Transform parent, float x0, float y0, float x1, float y1)
+        {
+            RectTransform rect = (RectTransform)new GameObject(name, typeof(RectTransform)).transform;
+            rect.SetParent(parent, false);
+            rect.anchorMin = new Vector2(x0, y0);
+            rect.anchorMax = new Vector2(x1, y1);
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+            return rect;
+        }
+
+        /// <summary>영역 <paramref name="rect"/>에 입력을 받지 않는 <paramref name="tint"/> 배경을 추가한다.</summary>
+        internal static Image Paint(RectTransform rect, Color tint)
+        {
+            Image image = rect.gameObject.AddComponent<Image>();
+            image.color = tint;
+            image.raycastTarget = false;
+            return image;
+        }
+
+        /// <summary><paramref name="parent"/> 안의 <paramref name="x0"/>·<paramref name="y0"/>~<paramref name="x1"/>·<paramref name="y1"/>에 <paramref name="name"/> 라벨을 둔다.
+        /// <paramref name="value"/>를 최대 크기 <paramref name="size"/>와 정렬 <paramref name="alignment"/>로 표시한다.</summary>
+        private TMP_Text Label(string name, Transform parent, float x0, float y0, float x1, float y1, string value, float size, TextAlignmentOptions alignment)
+        {
+            RectTransform rect = Rect(name, parent, x0, y0, x1, y1);
+            TextMeshProUGUI text = rect.gameObject.AddComponent<TextMeshProUGUI>();
+            if (_font != null)
+            {
+                text.font = _font;
+            }
+            text.text = value;
+            text.color = Ink;
+            text.enableAutoSizing = true;
+            text.fontSizeMin = 12f;
+            text.fontSizeMax = size;
+            text.alignment = alignment;
+            text.raycastTarget = false;
+            return text;
+        }
+
+        /// <summary><paramref name="parent"/> 안의 <paramref name="x0"/>·<paramref name="y0"/>~<paramref name="x1"/>·<paramref name="y1"/>에 이름 <paramref name="name"/>의 버튼을 둔다.
+        /// 문구 <paramref name="value"/>를 담은 <paramref name="label"/>과 눌렀을 때의 <paramref name="click"/>을 연결한다.</summary>
+        private Button Control(string name, Transform parent, float x0, float y0, float x1, float y1, string value, UnityAction click, out TMP_Text label)
+        {
+            RectTransform rect = Rect(name, parent, x0, y0, x1, y1);
+            Image image = Paint(rect, Trim);
+            image.raycastTarget = true;
+            Button button = rect.gameObject.AddComponent<Button>();
+            button.targetGraphic = image;
+            button.onClick.AddListener(click);
+            label = Label("Label", rect, 0.03f, 0.03f, 0.97f, 0.97f, value, 26f, TextAlignmentOptions.Center);
+            return button;
+        }
+    }
+}

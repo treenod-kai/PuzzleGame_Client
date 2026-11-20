@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.IO;
+using LobbyDefense.Controller;
 using Puzzle.Core;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -7,6 +8,7 @@ using UnityEngine.EventSystems;
 /// <summary>로비에서 대전 준비 팝업을 열고 추첨된 퍼즐 규칙에 맞는 상대 기록을 선택합니다.</summary>
 public class LobbyMain : MonoBehaviour
 {
+    private static LobbyDefenseController _defense;
     [SerializeField] private RectTransform _navigationRoot;
     [SerializeField] private CanvasGroup _mainControls;
     [SerializeField] private CanvasGroup _lobbyControls;
@@ -15,6 +17,7 @@ public class LobbyMain : MonoBehaviour
     /// <summary>메인 로비와 팝업 사이에 하단 탭 UI를 불러온다.</summary>
     private void Start()
     {
+        _defense = gameObject.AddComponent<LobbyDefenseController>();
         AssetManager.Instance.LoadAssetAsync(new AssetManager.AssetArguments<GameObject>
         {
             address = "Lobby/Navigation",
@@ -30,6 +33,7 @@ public class LobbyMain : MonoBehaviour
         {
             GameObject navigation = Instantiate(prefab, _navigationRoot, false);
             navigation.GetComponent<LobbyNavigation>().BindMainControls(_mainControls, _lobbyControls);
+            _defense.Initialize((RectTransform)_mainControls.transform, navigation);
         }
     }
 
@@ -83,6 +87,18 @@ public class LobbyMain : MonoBehaviour
             events.SetSelectedGameObject(selected);
         }
         _previousSelection = null;
+    }
+
+    /// <summary>현재 로비의 진행을 저장하고 대전 진입용 방어선의 통행을 확인한다.</summary>
+    internal static bool SuspendDefense() => _defense != null && _defense.SuspendForBattle();
+
+    /// <summary>라이프 차감에 실패했을 때 동결한 로비를 재개한다.</summary>
+    internal static void ResumeDefense()
+    {
+        if (_defense != null)
+        {
+            _defense.ResumeLobby();
+        }
     }
 
     /// <summary>추첨된 규칙에 맞는 최신 완주 기록을 찾아 같은 조건의 대전을 준비합니다.</summary>

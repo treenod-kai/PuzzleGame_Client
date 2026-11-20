@@ -107,8 +107,14 @@ public class PopupReady : PopupHandler
             RestoreButtons("대전을 준비하지 못했습니다. 다시 시도해 주세요.");
             yield break;
         }
+        if (!LobbyMain.SuspendDefense())
+        {
+            RestoreButtons("방어선의 통로와 로비 저장 상태를 확인해 주세요.");
+            yield break;
+        }
         if (!PlayerLives.TrySpend(DateTimeOffset.UtcNow.ToUnixTimeSeconds()))
         {
+            LobbyMain.ResumeDefense();
             RestoreButtons("라이프가 충전되면 시작할 수 있어요.");
             yield break;
         }

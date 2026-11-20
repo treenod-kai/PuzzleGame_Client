@@ -78,6 +78,8 @@ UserDataManager (MonoBehaviour 싱글톤, SharedScene)
    └─ AuthLoginResponse (PuzleBattleShared.Models.AuthLoginResponse)
 ```
 
+로비 디펜스는 현재 UID 또는 설치 게스트에 연결된 로컬 파일에 보유 카드·종류별 에너지·골드·진행 틱을 함께 저장한다. 게스트 로그인이 성공하면 확인된 UID로 같은 설치의 진행을 이어받는다. [DefenseProgressStore.cs](../../02_Scripts/Manager/UserData/DefenseProgressStore.cs) · [보유 유닛과 계정](../01_Architecture/LOBBY-DEFENSE-ARCHITECTURE.md#유저-데이터와-보유-유닛)
+
 ### UserDataManager API
 
 | 메서드 | 용도 |

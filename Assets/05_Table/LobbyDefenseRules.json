@@ -1,0 +1,31 @@
+{
+  "Version": 1,
+  "Width": 100,
+  "Height": 10,
+  "EntranceRow": 5,
+  "ExitRow": 5,
+  "HireGold": 15,
+  "ConversionEnergy": 1,
+  "UpgradeCost": 1,
+  "TrapLimit": 1,
+  "GradeMaxTotals": [10, 20, 29, 30],
+  "StarterUnitId": "PearlSentry",
+  "Units": [
+    {
+      "Id": "PearlSentry", "Name": "진주 수비병", "Range": 2, "AttackTicks": 50,
+      "Base": { "Attack": 4, "Health": 12, "Defense": 0 },
+      "PerPoint": { "Attack": 1, "Health": 2, "Defense": 1 }
+    },
+    {
+      "Id": "RampartTurtle", "Name": "성벽거북", "Range": 0, "AttackTicks": 50,
+      "Base": { "Attack": 1, "Health": 30, "Defense": 3 },
+      "PerPoint": { "Attack": 1, "Health": 3, "Defense": 1 }
+    }
+  ],
+  "Combat": {
+    "Normal": { "TypeId": "WaveJelly", "AttackPower": 4, "MaxHealth": 12, "DefensePower": 0, "MoveTicks": 50, "AttackTicks": 50 },
+    "Ghost": { "TypeId": "PathWarden", "AttackPower": 6, "MaxHealth": 20, "DefensePower": 0, "MoveTicks": 50, "AttackTicks": 50 },
+    "NormalSpawnTicks": 150, "GhostSpawnTicks": 250, "WaveSize": 6, "PreparationTicks": 400,
+    "KillGold": 5, "TrapStunTicks": 100, "TrapRechargeTicks": 250
+  }
+}

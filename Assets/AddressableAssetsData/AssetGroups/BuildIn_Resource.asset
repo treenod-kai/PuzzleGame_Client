@@ -70,6 +70,41 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: de617a544b0c4e1bb6c610718c4d687d
+    m_Address: LobbyDefense/Monsters/WaveJelly
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 2f3460e7e36447df938f267569d67be9
+    m_Address: LobbyDefense/Monsters/PathWarden
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a0bf047d06b74bc4b3213c9f4ad2ba0f
+    m_Address: LobbyDefense/Defenders/PearlSentry
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 96ca19c724aa4915bdb9aafb906c4690
+    m_Address: LobbyDefense/Defenders/RampartTurtle
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d8e9e023a609a436880bd84a6f8c5919
+    m_Address: LobbyDefense/Profiles/PearlSentry
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1fc3c54a3cdc049fcb3475e2dc22c22c
+    m_Address: LobbyDefense/Profiles/RampartTurtle
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 55bfe91dee304c62b8ed9a4eb85fe24e
+    m_Address: LobbyDefense/Projectiles/CoilFrog/Special
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 08b14f19381d0a146bdc4641103dff40, type: 2}
   m_SchemaSet:

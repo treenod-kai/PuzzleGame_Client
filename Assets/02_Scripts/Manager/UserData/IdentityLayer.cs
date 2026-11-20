@@ -12,6 +12,21 @@ public class IdentityLayer
     /// <summary> 서버 엔드포인트 경로 </summary>
     private const string LOGIN_ENDPOINT = "auth/login";
     private const string GuestProviderUserIdKey = "PuzleBattle.GuestProviderUserId";
+    private const string GuestUidKey = "PuzleBattle.LocalGuestUid";
+
+    /// <summary>이 설치의 게스트 자격으로 서버에서 확인한 계정 ID다.</summary>
+    internal static string LocalGuestUid => PlayerPrefs.GetString(GuestUidKey, "");
+
+    /// <summary>이 설치의 게스트 ID <paramref name="providerUserId"/>로 로그인한 서버 계정 <paramref name="uid"/>를 기억한다.</summary>
+    internal static void RememberGuest(string providerUserId, string uid)
+    {
+        if (!string.IsNullOrEmpty(uid) && uid != "dummy_user" &&
+            providerUserId == GetOrCreateGuestProviderUserId() && uid != LocalGuestUid)
+        {
+            PlayerPrefs.SetString(GuestUidKey, uid);
+            PlayerPrefs.Save();
+        }
+    }
 
     /// <summary> 유저 기본 데이터 (PuzleBattleShared.Models.UserData) </summary>
     public UserData Data { get; private set; }
@@ -44,6 +59,7 @@ public class IdentityLayer
                 return;
             }
 
+            RememberGuest(request.providerUserId, response.user.uid);
             SetData(response.user);
             Debug.Log($"[IdentityLayer] 게스트 로그인 완료: uid={Data.uid}, nickname={Data.nickname}");
             if (onComplete != null)
@@ -93,7 +109,8 @@ public class IdentityLayer
         };
     }
 
-    private string GetOrCreateGuestProviderUserId()
+    /// <summary>이 설치에서 오프라인 진행과 서버 게스트 로그인에 함께 사용할 식별자를 얻는다.</summary>
+    internal static string GetOrCreateGuestProviderUserId()
     {
         string providerUserId = PlayerPrefs.GetString(GuestProviderUserIdKey, "");
         if (!string.IsNullOrEmpty(providerUserId))
