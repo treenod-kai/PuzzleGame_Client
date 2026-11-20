@@ -105,6 +105,14 @@ public class PuzzleBoardView : MonoBehaviour
     private static readonly Color _linkTrailColor = new Color(0.22f, 0.86f, 0.85f);
     private static readonly Color _readyTrailColor = new Color(1f, 0.76f, 0.31f);
     private readonly List<LineRenderer> _bombWaves = new List<LineRenderer>();
+    private readonly List<LineRenderer> _pivotOutlines = new List<LineRenderer>();
+    private static readonly Color _pivotGold = new Color(1f, 0.82f, 0.35f);
+    private const float LinkRingWidth = 0.035f;
+    private const float PivotBorderWidth = 0.065f;
+    private const float PivotNeighborWidth = 0.072f;
+    private float WorldCellSize => cellSize * Mathf.Abs(transform.lossyScale.x);
+    private LineRenderer _pivotBorder;
+    private bool _pivotActive;
 
     /// <summary> 현재 보드가 애니메이션 연출 중인지 여부를 반환합니다. </summary>
     public bool IsAnimating => _isAnimating;
@@ -293,12 +301,12 @@ public class PuzzleBoardView : MonoBehaviour
         if (_lineRenderer == null)
         {
             GameObject lineObj = new GameObject("LinkLine");
-            lineObj.transform.SetParent(this.transform);
+            lineObj.transform.SetParent(transform, false);
             _lineRenderer = lineObj.AddComponent<LineRenderer>();
             _lineRenderer.startWidth = 25f;
             _lineRenderer.endWidth = 25f;
             _lineRenderer.positionCount = 0;
-            _lineRenderer.useWorldSpace = true;
+            _lineRenderer.useWorldSpace = false;
             _lineRenderer.sortingLayerName = "Ingame";
             _lineRenderer.sortingOrder = 100;
 
@@ -438,6 +446,34 @@ public class PuzzleBoardView : MonoBehaviour
         }
 
         transform.localPosition = new Vector3(0, finalY, 0);
+    }
+
+    /// <summary><paramref name="camera"/>에서 보드 전체와 테두리가 <paramref name="area"/> 화면 픽셀 영역 안에 들어오도록
+    /// 배치합니다. 상대 보드는 <paramref name="maxScale"/>까지 확대합니다.</summary>
+    internal void FitToScreen(Camera camera, Rect area, float maxScale)
+    {
+        if (_board == null || camera == null || camera.pixelHeight <= 0 || area.width <= 0f || area.height <= 0f)
+        {
+            return;
+        }
+        float stagger = _cachedBoardShape == BoardShape.Hexagon ? cellSize * 0.5f : 0f;
+        float height = _board.Height * cellSize;
+        float centerY = -stagger;
+        if (_board.Width > 1)
+        {
+            height += stagger;
+            centerY *= 0.5f;
+        }
+        float worldPerPixel = 2f * camera.orthographicSize / camera.pixelHeight;
+        float fitX = area.width * worldPerPixel / (_board.Width * cellSize + 2f * padding);
+        float fitY = area.height * worldPerPixel / (height + 2f * padding);
+        float scale = Mathf.Min(maxScale, Mathf.Min(fitX, fitY));
+        float depth = camera.WorldToScreenPoint(transform.position).z;
+        Vector3 center = camera.ScreenToWorldPoint(new Vector3(area.center.x, area.center.y, depth));
+        float previousWorldCellSize = WorldCellSize;
+        transform.localScale = Vector3.one * scale;
+        transform.position = center - transform.TransformVector(Vector3.up * centerY);
+        RefreshLineWidths(previousWorldCellSize);
     }
 
     /// <summary> 기존 셀과 블럭 뷰를 반환하고 보드 표시 상태를 비웁니다. </summary>
@@ -613,8 +649,7 @@ public class PuzzleBoardView : MonoBehaviour
                 {
                     Vector3 localPos = GetLocalPos(path[i]);
                     localPos.z = -1f;
-                    Vector3 worldPos = this.transform.TransformPoint(localPos);
-                    _lineRenderer.SetPosition(i, worldPos);
+                    _lineRenderer.SetPosition(i, localPos);
                 }
 
                 // 포인트가 1개인 경우 두 번째 포인트를 동일 위치에 배치
@@ -628,10 +663,7 @@ public class PuzzleBoardView : MonoBehaviour
                 bool isReady = path.Count >= LinkPuzzleBoard.MinimumLinkLength;
                 _lineRenderer.startColor = isReady ? _readyTrailColor : _linkTrailColor;
                 AnimateLinkTip(path, hasNewSegment);
-                float width = isReady ? 0.15f : 0.1f;
-                float worldWidth = cellSize * Mathf.Abs(transform.lossyScale.x) * width;
-                _lineRenderer.startWidth = worldWidth;
-                _lineRenderer.endWidth = worldWidth;
+                SetLinkWidth(isReady);
                 if (!wasReady && isReady)
                 {
                     PlayLinkRing(path[LinkPuzzleBoard.MinimumLinkLength - 1]);
@@ -664,6 +696,14 @@ public class PuzzleBoardView : MonoBehaviour
         }
     }
 
+    /// <summary><paramref name="isReady"/>에 맞는 연결선의 굵기를 현재 보드의 월드 배율로 그립니다.</summary>
+    private void SetLinkWidth(bool isReady)
+    {
+        float width = WorldCellSize * (isReady ? 0.15f : 0.1f);
+        _lineRenderer.startWidth = width;
+        _lineRenderer.endWidth = width;
+    }
+
     /// <summary> 링크가 처음 성립한 <paramref name="pos"/>에서 원을 한 번 펼칩니다.</summary>
     private void PlayLinkRing(GridPos pos)
     {
@@ -675,7 +715,7 @@ public class PuzzleBoardView : MonoBehaviour
         _linkRing.gameObject.SetActive(true);
         _linkRing.transform.localPosition = GetLocalPos(pos);
         _linkRing.transform.localScale = Vector3.one * 0.3f;
-        _linkRing.widthMultiplier = cellSize * 0.035f;
+        _linkRing.widthMultiplier = WorldCellSize * LinkRingWidth;
         _linkRing.transform.DOScale(1f, 0.18f).SetEase(Ease.OutQuad)
             .OnComplete(() => _linkRing.gameObject.SetActive(false));
     }
@@ -690,17 +730,24 @@ public class PuzzleBoardView : MonoBehaviour
         }
     }
 
-    /// <summary> 주어진 이름과 정렬 순서로 보드의 로컬 좌표에 지정한 반경의 원을 만듭니다. </summary>
-    private LineRenderer CreateRing(string objectName, int sortingOrder, float radius)
+    /// <summary>보드 아래에 <paramref name="objectName"/> 폐곡선을 만들고 <paramref name="sortingOrder"/>로 정렬합니다.</summary>
+    private LineRenderer CreateOutline(string objectName, int sortingOrder)
     {
         GameObject obj = new GameObject(objectName);
         obj.transform.SetParent(transform, false);
-        LineRenderer ring = obj.AddComponent<LineRenderer>();
-        ring.sharedMaterial = _lineMaterial;
-        ring.useWorldSpace = false;
-        ring.loop = true;
-        ring.sortingLayerName = "Ingame";
-        ring.sortingOrder = sortingOrder;
+        LineRenderer line = obj.AddComponent<LineRenderer>();
+        line.sharedMaterial = _lineMaterial;
+        line.useWorldSpace = false;
+        line.loop = true;
+        line.sortingLayerName = "Ingame";
+        line.sortingOrder = sortingOrder;
+        return line;
+    }
+
+    /// <summary><paramref name="objectName"/>의 원을 <paramref name="radius"/> 반경으로 만들고 <paramref name="sortingOrder"/>로 정렬합니다.</summary>
+    private LineRenderer CreateRing(string objectName, int sortingOrder, float radius)
+    {
+        LineRenderer ring = CreateOutline(objectName, sortingOrder);
         ring.positionCount = 32;
         for (int i = 0; i < ring.positionCount; i++)
         {
@@ -708,6 +755,135 @@ public class PuzzleBoardView : MonoBehaviour
             ring.SetPosition(i, new Vector3(Mathf.Cos(angle), Mathf.Sin(angle)) * radius);
         }
         return ring;
+    }
+
+    /// <summary><paramref name="active"/>로 바뀔 때 보드 테두리를 한 번 밝히고, 종료하면 서서히 감춥니다.</summary>
+    public void SetPivotActive(bool active)
+    {
+        if (_pivotActive == active || !isActiveAndEnabled || _board == null || _lineMaterial == null)
+        {
+            return;
+        }
+        _pivotActive = active;
+        if (active)
+        {
+            if (_pivotBorder == null)
+            {
+                _pivotBorder = CreateOutline("PivotBorder", 22);
+                _pivotBorder.numCornerVertices = 5;
+            }
+            // 짝수 열이 내려가는 육각 보드와 단일 열 보드의 바깥 경계도 포함합니다.
+            Vector3 bottom = GetLocalPos(new GridPos(0, 0));
+            Vector3 top = GetLocalPos(new GridPos(Mathf.Min(1, _board.Width - 1), _board.Height - 1));
+            float margin = cellSize * 0.55f;
+            SetRectangle(_pivotBorder, Rect.MinMaxRect(bottom.x - margin, bottom.y - margin, -bottom.x + margin, top.y + margin));
+            _pivotBorder.widthMultiplier = WorldCellSize * PivotBorderWidth;
+            _pivotBorder.gameObject.SetActive(true);
+            SetOutlineAlpha(_pivotBorder, 1f);
+        }
+
+        _pivotBorder.DOKill();
+        float opacity = active ? 0.48f : 0f;
+        Tween fade = DOTween.To(() => _pivotBorder.startColor.a, alpha => SetOutlineAlpha(_pivotBorder, alpha), opacity, 0.28f).SetTarget(_pivotBorder);
+        if (!active)
+        {
+            fade.OnComplete(() => _pivotBorder.gameObject.SetActive(false));
+        }
+    }
+
+    /// <summary>링크와 피벗 선을 현재 칸 크기에 맞추고 <paramref name="previousWorldCellSize"/> 대비 배율로 재생 중인 폭탄 충격파의 굵기도 조정합니다.</summary>
+    private void RefreshLineWidths(float previousWorldCellSize)
+    {
+        if (_lineRenderer != null && _previousLinkPath.Count > 0)
+        {
+            SetLinkWidth(_previousLinkPath.Count >= LinkPuzzleBoard.MinimumLinkLength);
+        }
+        float worldCellSize = WorldCellSize;
+        if (_linkRing != null)
+        {
+            _linkRing.widthMultiplier = worldCellSize * LinkRingWidth;
+        }
+        if (previousWorldCellSize > 0f)
+        {
+            // 충격파마다 폭탄 반경이 다르므로 현재 굵기에 보드의 배율 변화만 반영합니다.
+            float scaleRatio = worldCellSize / previousWorldCellSize;
+            foreach (LineRenderer wave in _bombWaves)
+            {
+                if (wave.gameObject.activeSelf)
+                {
+                    wave.widthMultiplier *= scaleRatio;
+                }
+            }
+        }
+        if (_pivotBorder != null)
+        {
+            _pivotBorder.widthMultiplier = worldCellSize * PivotBorderWidth;
+        }
+        foreach (LineRenderer outline in _pivotOutlines)
+        {
+            outline.widthMultiplier = worldCellSize * PivotNeighborWidth;
+        }
+    }
+
+    /// <summary><paramref name="outline"/>의 금빛을 <paramref name="alpha"/> 세기로 표시합니다.</summary>
+    private static void SetOutlineAlpha(LineRenderer outline, float alpha)
+    {
+        Color tint = _pivotGold;
+        tint.a = alpha;
+        outline.startColor = tint;
+        outline.endColor = tint;
+    }
+
+    /// <summary><paramref name="outline"/>의 꼭짓점을 로컬 <paramref name="rect"/>의 네 모서리에 맞춥니다.</summary>
+    private static void SetRectangle(LineRenderer outline, Rect rect)
+    {
+        outline.positionCount = 4;
+        outline.SetPosition(0, new Vector3(rect.xMin, rect.yMin));
+        outline.SetPosition(1, new Vector3(rect.xMax, rect.yMin));
+        outline.SetPosition(2, new Vector3(rect.xMax, rect.yMax));
+        outline.SetPosition(3, new Vector3(rect.xMin, rect.yMax));
+    }
+
+    /// <summary>일반 파괴와 동시에 피벗이 추가한 <paramref name="position"/>의 타일을 짧게 강조합니다.</summary>
+    private void PlayPivotOutline(GridPos position)
+    {
+        LineRenderer outline = GetPivotOutline();
+        outline.transform.localPosition = GetLocalPos(position);
+        float half = cellSize * 0.46f;
+        if (_cachedBoardShape == BoardShape.Hexagon)
+        {
+            outline.positionCount = 6;
+            for (int i = 0; i < 6; i++)
+            {
+                float angle = i * Mathf.PI / 3f;
+                outline.SetPosition(i, new Vector3(Mathf.Cos(angle) * half, Mathf.Sin(angle) * half));
+            }
+        }
+        else
+        {
+            SetRectangle(outline, Rect.MinMaxRect(-half, -half, half, half));
+        }
+        outline.widthMultiplier = WorldCellSize * PivotNeighborWidth;
+        SetOutlineAlpha(outline, 1f);
+        outline.gameObject.SetActive(true);
+        DOTween.To(() => outline.startColor.a, alpha => SetOutlineAlpha(outline, alpha), 0f, 0.23f)
+            .SetEase(Ease.InQuad).SetTarget(outline).OnComplete(() => outline.gameObject.SetActive(false));
+    }
+
+    /// <summary>재사용 가능한 피벗 셀 테두리를 반환하고 모두 재생 중이면 하나 더 만듭니다.</summary>
+    private LineRenderer GetPivotOutline()
+    {
+        foreach (LineRenderer outline in _pivotOutlines)
+        {
+            if (!outline.gameObject.activeSelf)
+            {
+                return outline;
+            }
+        }
+        LineRenderer created = CreateOutline("PivotNeighbor", 23);
+        created.numCornerVertices = 3;
+        _pivotOutlines.Add(created);
+        return created;
     }
 
     /// <summary> 파괴 액션에 담긴 폭탄마다 해당 좌표에서 판정 반경까지 충격파를 펼칩니다. </summary>
@@ -725,7 +901,7 @@ public class PuzzleBoardView : MonoBehaviour
                 wave.gameObject.SetActive(true);
                 wave.transform.localPosition = GetLocalPos(action.position);
                 wave.transform.localScale = Vector3.one * 0.12f;
-                wave.widthMultiplier = cellSize * 0.045f / bomb.Radius;
+                wave.widthMultiplier = WorldCellSize * 0.045f / bomb.Radius;
                 wave.transform.DOScale((float)bomb.Radius, 0.24f).SetEase(Ease.OutQuad)
                     .OnComplete(() => wave.gameObject.SetActive(false));
             }
@@ -806,6 +982,17 @@ public class PuzzleBoardView : MonoBehaviour
     private void ClearFeedback()
     {
         HideLinkRing();
+        _pivotActive = false;
+        if (_pivotBorder != null)
+        {
+            _pivotBorder.DOKill();
+            _pivotBorder.gameObject.SetActive(false);
+        }
+        foreach (LineRenderer outline in _pivotOutlines)
+        {
+            outline.DOKill();
+            outline.gameObject.SetActive(false);
+        }
         foreach (LineRenderer wave in _bombWaves)
         {
             wave.transform.DOKill();
@@ -903,7 +1090,7 @@ public class PuzzleBoardView : MonoBehaviour
         {
             Vector3 point = tip.localPosition;
             point.z = -1f;
-            _lineRenderer.SetPosition(last, transform.TransformPoint(point));
+            _lineRenderer.SetPosition(last, point);
         }
     }
 
@@ -1125,6 +1312,11 @@ public class PuzzleBoardView : MonoBehaviour
             {
                 view.PlayMoveAnimation(targetPos, onComplete);
             }
+            else if (action.type == ViewType.CreateAndFall && action.position.Y >= _board.Height)
+            {
+                float topCellY = GetLocalPos(new GridPos(to.X, _board.Height - 1)).y;
+                view.PlayFallAnimation(targetPos, onComplete, topCellY);
+            }
             else
             {
                 view.PlayFallAnimation(targetPos, onComplete);
@@ -1151,6 +1343,10 @@ public class PuzzleBoardView : MonoBehaviour
         switch (action.type)
         {
             case ViewType.Destroy:
+                if (action.IsPivotNeighbor)
+                {
+                    PlayPivotOutline(action.position);
+                }
                 PlayBombWaves(action);
                 if (_blockViews.TryGetValue(action.position, out PuzzleBlockView dView))
                 {

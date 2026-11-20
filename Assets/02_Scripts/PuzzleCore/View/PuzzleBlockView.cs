@@ -181,15 +181,26 @@ public class PuzzleBlockView : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 지정된 좌표로 낙하하는 애니메이션을 수행합니다.
-    /// </summary>
-    /// <param name="targetLocalPos">이동할 로컬 좌표</param>
-    /// <param name="onComplete">연출 완료 시 호출할 콜백</param>
-    public void PlayFallAnimation(Vector3 targetLocalPos, Action onComplete)
+    /// <summary><paramref name="targetLocalPos"/>로 낙하한 뒤 <paramref name="onComplete"/>를 호출합니다.
+    /// 보드 밖에서 생성된 블록은 <paramref name="topCellY"/>의 맨 위 칸에 진입하면서 나타납니다.</summary>
+    public void PlayFallAnimation(Vector3 targetLocalPos, Action onComplete, float? topCellY = null)
     {
         float duration = 0.075f;
         Tween tween = transform.DOLocalMove(targetLocalPos, duration).SetEase(Ease.OutQuad);
+        if (topCellY.HasValue)
+        {
+            float halfCell = _boardView.cellSize * 0.5f;
+            float topEdge = topCellY.Value + halfCell;
+            transform.localScale = Vector3.zero;
+
+            /// <summary>낙하 중인 스프라이트가 보드 위쪽의 안내 문구 영역에 그려지지 않도록 경계 안에서만 키웁니다.</summary>
+            void RevealInsideBoard()
+            {
+                float scale = Mathf.Clamp01((topEdge - transform.localPosition.y) / halfCell);
+                transform.localScale = Vector3.one * scale;
+            }
+            tween.OnUpdate(RevealInsideBoard);
+        }
         if (onComplete != null)
         {
             tween.OnComplete(() => onComplete.Invoke());

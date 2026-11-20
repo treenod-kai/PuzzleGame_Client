@@ -19,6 +19,8 @@ namespace Puzzle.Core
         public GridPos targetPosition;
         /// <summary> 생성하거나 파괴한 블럭으로, 파괴 시점의 폭탄 기믹도 포함합니다. </summary>
         public Block blockData;
+        /// <summary>피벗이 원래 매칭 범위에 추가한 칸의 파괴 여부입니다.</summary>
+        public bool IsPivotNeighbor => type == ViewType.Destroy && blockData != null && blockData.IsPivotTarget;
     }
 
     /// <summary>

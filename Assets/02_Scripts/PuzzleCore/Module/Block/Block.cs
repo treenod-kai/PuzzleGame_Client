@@ -19,6 +19,9 @@ namespace Puzzle.Core
         /// <summary> 이 블럭에 부착된 기믹 목록 (행동은 기믹이 담당) </summary>
         public List<IGimmick> Gimmicks { get; } = new List<IGimmick>();
 
+        /// <summary>피벗으로 이번 매칭에 추가되어 파괴될 블럭입니다. 폭탄이 먼저 파괴해도 같은 블럭을 강조합니다.</summary>
+        internal bool IsPivotTarget { get; set; }
+
         /// <summary> 블럭의 현재 논리적 상태 </summary>
         public BlockState State { get; protected set; } = BlockState.Idle;
 

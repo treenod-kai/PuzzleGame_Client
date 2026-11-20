@@ -15,7 +15,7 @@
           → START → 슬롯 정지 → 같은 Rule의 호환 대전 기록 확인
             → 대전 준비 성공 → 라이프 1개 사용 → LoadingScene → GameScene
               → Board 생성 + Initialize + View 그리기 → 게임 루프
-              → 상대 기록이 있으면 ReplayController 초기화 → 우측 상단 자동 재생
+              → 상대 기록이 있으면 ReplayController 초기화 → 상대 보드 영역에서 자동 재생
                 → 90초 종료 → 기록 저장 → 같은 조건으로 재도전(라이프 1개) 또는 로비 이동
 ```
 

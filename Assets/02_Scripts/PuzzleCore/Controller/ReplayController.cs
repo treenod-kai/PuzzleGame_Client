@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Text;
 using Puzzle.Core;
 using Battle.Pivot;
 using UnityEngine;
@@ -15,11 +16,11 @@ public class ReplayController : MonoBehaviour
     public PuzzleBoardView replayBoardView;
 
     [Header("배치 설정")]
-    /// <summary> 카메라 뷰포트 기준 리플레이 보드의 축소 비율 (0~1) </summary>
+    /// <summary> 플레이어 보드를 기준으로 한 상대 보드의 최대 표시 배율입니다. </summary>
     [Range(0.1f, 0.5f)]
     public float viewScale = 0.3f;
 
-    /// <summary> 화면 가장자리로부터의 여백 (월드 단위) </summary>
+    /// <summary> 상대 보드의 가장자리에 더 확보할 여백 (월드 단위) </summary>
     public float margin = 0.3f;
 
     /// <summary> 리플레이용 퍼즐 보드 모델 </summary>
@@ -81,6 +82,7 @@ public class ReplayController : MonoBehaviour
     private int _lastPivotCapacity;
     /// <summary> 마지막으로 표시한 피벗 활성 여부입니다. </summary>
     private bool _lastPivotActive;
+    private readonly StringBuilder _statusMessage = new StringBuilder(128);
     /// <summary> 메인 게임에서 공동 틱 진행을 시작할 수 있는지 여부입니다. </summary>
     public bool IsInitialized => _isInitialized;
     /// <summary> 종료 점수를 비교할 수 있는 완주 기록인지 여부입니다. </summary>
@@ -219,40 +221,25 @@ public class ReplayController : MonoBehaviour
             replayBoardView.InputEnabled = false;
             replayBoardView.skipCameraAlign = true;
             replayBoardView.DrawBoard(_board, replaySpec.rule.boardShape);
-            AlignToTopRight();
         }
 
         _isInitialized = true;
         Debug.Log($"[ReplayController] 리플레이 재생 시작 (입력 {_replayData.inputs.Count}개, 입력종료 {_replayData.inputEnds.Count}개)");
     }
 
-    /// <summary>
-    /// 메인 카메라 기준 우측 상단에 리플레이 보드를 축소 배치합니다.
-    /// </summary>
-    private void AlignToTopRight()
+    /// <summary>상대 보드의 재생 상태를 표시하는 텍스트입니다.</summary>
+    internal TMP_Text StatusText => _statusText;
+
+    /// <summary>상대 보드를 <paramref name="camera"/>의 <paramref name="area"/> 영역에 놓고, <paramref name="playerScale"/>에 대한 축소 비율을 유지합니다.</summary>
+    internal void FitBoard(Camera camera, Rect area, float playerScale)
     {
-        Camera cam = Camera.main;
-        if (cam == null || _board == null)
+        if (replayBoardView != null && _isInitialized)
         {
-            return;
+            float inset = Mathf.Min(Mathf.Min(area.width, area.height) * 0.25f,
+                Mathf.Max(0f, margin) * camera.pixelHeight / (2f * camera.orthographicSize));
+            area = Rect.MinMaxRect(area.xMin + inset, area.yMin + inset, area.xMax - inset, area.yMax - inset);
+            replayBoardView.FitToScreen(camera, area, playerScale * viewScale);
         }
-
-        // 리플레이 보드뷰의 스케일 설정
-        replayBoardView.transform.localScale = Vector3.one * viewScale;
-
-        // 카메라 뷰 영역 계산
-        float camHeight = cam.orthographicSize * 2f;
-        float camWidth = camHeight * cam.aspect;
-
-        // 리플레이 보드의 실제 월드 크기 (축소 적용)
-        float boardWorldWidth = _board.Width * replayBoardView.cellSize * viewScale;
-        float boardWorldHeight = _board.Height * replayBoardView.cellSize * viewScale;
-
-        // 우측 상단 위치 계산 (카메라 중심 기준)
-        float posX = (camWidth / 2f) - (boardWorldWidth / 2f) - margin;
-        float posY = (camHeight / 2f) - (boardWorldHeight / 2f) - margin;
-
-        replayBoardView.transform.position = new Vector3(posX, posY, 0f);
     }
 
     /// <summary> 현재 논리 프레임의 입력을 수신 순서대로 주입한 뒤 보드를 한 틱 진행합니다. </summary>
@@ -322,6 +309,11 @@ public class ReplayController : MonoBehaviour
     /// <summary> 논리 판정과 독립적으로 리플레이 상태를 화면에 표시합니다. </summary>
     private void Update()
     {
+        if (replayBoardView != null)
+        {
+            bool pivotActiveOnBoard = _isInitialized && !_isComplete && _pivotSession != null && _pivotSession.Mode.IsActive;
+            replayBoardView.SetPivotActive(pivotActiveOnBoard);
+        }
         if (_statusText == null)
         {
             return;
@@ -332,7 +324,6 @@ public class ReplayController : MonoBehaviour
             return;
         }
 
-        UpdateStatusPosition();
         ReplayStatusState statusState;
         int seconds = -1;
         if (!_isInitialized)
@@ -374,33 +365,37 @@ public class ReplayController : MonoBehaviour
         _lastPivotCapacity = pivotCapacity;
         _lastPivotActive = pivotActive;
 
-        string status;
+        _statusMessage.Clear();
+        _statusMessage.Append("상대 리플레이\n");
         switch (statusState)
         {
             case ReplayStatusState.Failed:
-                status = "리플레이를 불러오지 못했습니다";
+                _statusMessage.Append("리플레이를 불러오지 못했습니다");
                 break;
             case ReplayStatusState.LegacyComplete:
-                status = "이전 기록 · 재생 완료";
+                _statusMessage.Append("이전 기록 재생 완료");
                 break;
             case ReplayStatusState.Complete:
-                status = "재생 완료";
+                _statusMessage.Append("재생 완료");
                 break;
             case ReplayStatusState.Mismatch:
-                status = "기록 불일치 · 점수 비교 제외";
+                _statusMessage.Append("기록 불일치 (비교 제외)");
                 break;
             default:
-                string label = statusState == ReplayStatusState.Waiting ? "남은 입력 없음" : "재생 중";
-                status = $"{label} · {seconds / 60}:{seconds % 60:00}";
+                _statusMessage.Append(statusState == ReplayStatusState.Waiting ? "남은 입력 없음  " : "재생 중  ");
+                PuzzleHudText.AppendNumber(_statusMessage, seconds / 60);
+                _statusMessage.Append(':');
+                PuzzleHudText.AppendNumber(_statusMessage, seconds % 60, true);
                 break;
         }
-        string text = $"상대 리플레이\n{status}\n점수 {score}";
+        _statusMessage.Append("\n점수 ");
+        PuzzleHudText.AppendNumber(_statusMessage, score);
         if (pivotTenths >= 0)
         {
-            string pivotState = pivotActive ? "피벗 모드" : "피벗 충전";
-            text += $"\n{pivotState} · {pivotTenths / 10}.{pivotTenths % 10} / {pivotCapacity}";
+            _statusMessage.Append('\n');
+            PuzzleHudText.AppendPivot(_statusMessage, pivotActive, pivotTenths, pivotCapacity);
         }
-        _statusText.text = text;
+        _statusText.SetText(_statusMessage);
     }
     /// <summary> 컨트롤러 제거 시 상대 보드의 피벗 효과 구독을 정리합니다. </summary>
     private void OnDestroy()
@@ -408,29 +403,6 @@ public class ReplayController : MonoBehaviour
         if (_pivotSession != null)
         {
             _pivotSession.Dispose();
-        }
-    }
-
-    /// <summary> 화면 비율에 관계없이 상태 텍스트를 작은 보드 바로 아래에 배치합니다. </summary>
-    private void UpdateStatusPosition()
-    {
-        if (_board == null || replayBoardView == null || Camera.main == null)
-        {
-            return;
-        }
-        RectTransform parent = _statusText.rectTransform.parent as RectTransform;
-        Canvas canvas = _statusText.GetComponentInParent<Canvas>();
-        if (parent == null || canvas == null)
-        {
-            return;
-        }
-        float halfHeight = (_board.Height + 0.5f) * replayBoardView.cellSize * viewScale * 0.5f;
-        Vector3 world = replayBoardView.transform.position - Vector3.up * (halfHeight + margin);
-        Vector2 screen = Camera.main.WorldToScreenPoint(world);
-        Camera uiCamera = canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
-        if (RectTransformUtility.ScreenPointToLocalPointInRectangle(parent, screen, uiCamera, out Vector2 local))
-        {
-            _statusText.rectTransform.localPosition = new Vector3(local.x, local.y, 0f);
         }
     }
 

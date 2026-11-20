@@ -2,6 +2,7 @@
 using System;
 using Battle.Pivot;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Text;
 using TMPro;
 using UnityEngine;
@@ -40,9 +41,15 @@ public class PuzzleGameController : MonoBehaviour
     [SerializeField] private GameObject _resultPanel;
     [SerializeField] private TMP_Text _summaryText;
     private string _resultSummary;
+    private Canvas _hudCanvas;
+    private Rect _layoutSafeArea;
+    private Vector2Int _layoutScreen;
+    private float _layoutCanvasScale;
+    private bool _layoutShowsResult;
     private string _playHint;
     private List<ObjectiveData> _objectives;
     private int _lastDestroyed = -1;
+    private readonly StringBuilder _hudText = new StringBuilder(128);
 
     /// <summary> 퍼즐 보드의 핵심 로직을 처리하는 모델 인터페이스 </summary>
     private IPuzzleBoard _board;
@@ -87,6 +94,19 @@ public class PuzzleGameController : MonoBehaviour
     /// </summary>
     private void Start()
     {
+        Component hudReference = _timerText;
+        if (_resultPanel != null)
+        {
+            hudReference = _resultPanel.transform;
+        }
+        if (hudReference != null)
+        {
+            Canvas canvas = hudReference.GetComponentInParent<Canvas>(true);
+            if (canvas != null)
+            {
+                _hudCanvas = canvas.rootCanvas;
+            }
+        }
         GameSpec gameSpec = StageInjection.Instance.GetGameSpec();
 
         if (gameSpec == null || gameSpec.stageData == null)
@@ -158,9 +178,9 @@ public class PuzzleGameController : MonoBehaviour
         _objectives = gameSpec.rule.objectives;
         _playHint = gameSpec.rule.puzzleType switch
         {
-            PuzzleType.Link => "같은 색 블록을 3개 이상 이어 보세요",
-            PuzzleType.TapMatch => "같은 색 블록이 2개 이상 붙은 곳을 누르세요",
-            _ => "이웃한 블록을 바꿔 같은 색 3개를 한 줄로 맞추세요"
+            PuzzleType.Link => "같은 색 블록 3개 이상을 <nobr>이으세요</nobr>",
+            PuzzleType.TapMatch => "같은 색이 2개 이상 붙은 곳을 <nobr>누르세요</nobr>",
+            _ => "이웃한 블록을 바꿔 같은 색 3개를 한 줄로 <nobr>맞추세요</nobr>"
         };
         UpdatePlayHint();
         if (replayData != null && replayController != null)
@@ -175,6 +195,7 @@ public class PuzzleGameController : MonoBehaviour
     /// </summary>
     private void Update()
     {
+        RefreshScreenLayout();
         if (!_isInitialized || _board == null || _replaySaved)
         {
             return;
@@ -196,6 +217,10 @@ public class PuzzleGameController : MonoBehaviour
         }
         UpdateTimerUI();
         UpdateScoreUI();
+        if (_pivotSession != null && boardView != null)
+        {
+            boardView.SetPivotActive(_pivotSession.Mode.IsActive);
+        }
         if (_pivotGaugeView != null)
         {
             _pivotGaugeView.Refresh();
@@ -211,9 +236,108 @@ public class PuzzleGameController : MonoBehaviour
             }
             _summaryText.text = _resultSummary;
             _resultPanel.SetActive(true);
+            RefreshScreenLayout();
             return;
         }
         UpdatePlayHint();
+    }
+
+    /// <summary>안전 영역과 결과 패널 상태가 바뀌면 두 보드와 안내 문구의 화면 영역을 함께 갱신합니다.</summary>
+    private void RefreshScreenLayout()
+    {
+        if (_hudCanvas == null || _hudCanvas.scaleFactor <= 0f || Screen.width <= 0 || Screen.height <= 0)
+        {
+            return;
+        }
+        Rect safe = Screen.safeArea;
+        Vector2Int screen = new Vector2Int(Screen.width, Screen.height);
+        if (safe.width <= 0f || safe.height <= 0f)
+        {
+            safe = new Rect(Vector2.zero, screen);
+        }
+        bool result = _resultPanel != null && _resultPanel.activeSelf;
+        float canvasScale = _hudCanvas.scaleFactor;
+        if (safe == _layoutSafeArea && screen == _layoutScreen && result == _layoutShowsResult && canvasScale == _layoutCanvasScale)
+        {
+            return;
+        }
+        _layoutSafeArea = safe;
+        _layoutScreen = screen;
+        _layoutShowsResult = result;
+        _layoutCanvasScale = canvasScale;
+
+        bool hasOpponent = _opponent != null && replayController != null;
+        PuzzleHudPlacement layout = new PuzzleHudPlacement(safe, result, hasOpponent);
+        LayoutBoards(layout, hasOpponent);
+        LayoutPlayerInterface(layout, result);
+    }
+
+    /// <summary><paramref name="layout"/>에 두 보드를 배치하고 <paramref name="hasOpponent"/>이면 상대 상태를 함께 표시합니다.</summary>
+    private void LayoutBoards(PuzzleHudPlacement layout, bool hasOpponent)
+    {
+        if (_mainCamera == null)
+        {
+            _mainCamera = Camera.main;
+        }
+        if (boardView != null && _mainCamera != null)
+        {
+            boardView.FitToScreen(_mainCamera, layout.PlayerBoard, float.PositiveInfinity);
+        }
+        if (hasOpponent)
+        {
+            PuzzleHudPlacement.PlaceText(replayController.StatusText, layout.ReplayStatus, 20f * layout.Unit / _hudCanvas.scaleFactor);
+            if (boardView != null && _mainCamera != null)
+            {
+                replayController.FitBoard(_mainCamera, layout.ReplayBoard, boardView.transform.lossyScale.x);
+            }
+        }
+        Physics2D.SyncTransforms();
+    }
+
+    /// <summary><paramref name="layout"/>의 플레이어 정보 영역에 <paramref name="result"/> 상태에 맞는 안내 또는 결과 카드를 놓습니다.</summary>
+    private void LayoutPlayerInterface(PuzzleHudPlacement layout, bool result)
+    {
+        if (_timerText != null)
+        {
+            _timerText.gameObject.SetActive(!result);
+        }
+        if (_scoreText != null)
+        {
+            _scoreText.gameObject.SetActive(!result);
+        }
+        if (_resultText != null)
+        {
+            _resultText.gameObject.SetActive(!result);
+        }
+        if (result)
+        {
+            Rect card = _isInitialized ? layout.PlayerHud : _layoutSafeArea;
+            PuzzleHudPlacement.Place(_resultPanel.transform as RectTransform, card, true);
+        }
+        else
+        {
+            LayoutPlayerHud(layout.PlayerHud, layout.Unit, _hudCanvas.scaleFactor);
+        }
+    }
+
+    /// <summary><paramref name="area"/> 안에서 점수·시간·피벗·안내 순서로 배치합니다.
+    /// <paramref name="unit"/>은 화면 픽셀 배율, <paramref name="canvasScale"/>은 캔버스 단위의 배율입니다.</summary>
+    private void LayoutPlayerHud(Rect area, float unit, float canvasScale)
+    {
+        float textScale = unit / canvasScale;
+        float row = Mathf.Min(38f * unit, area.height * 0.18f);
+        float gap = 4f * unit;
+        Rect score = PuzzleHudPlacement.TakeTop(ref area, row, gap);
+        Rect timer = PuzzleHudPlacement.TakeTop(ref area, row, gap);
+        PuzzleHudPlacement.PlaceText(_scoreText, score, 32f * textScale);
+        PuzzleHudPlacement.PlaceText(_timerText, timer, 26f * textScale);
+        if (_pivotGaugeView != null)
+        {
+            Rect gauge = PuzzleHudPlacement.TakeTop(ref area, Mathf.Min(58f * unit, area.height * 0.46f), gap);
+            gauge.width = Mathf.Min(gauge.width, 290f * unit);
+            _pivotGaugeView.SetLayout(gauge, 22f * textScale);
+        }
+        PuzzleHudPlacement.PlaceText(_resultText, area, 23f * textScale);
     }
 
     /// <summary>고정 간격으로 플레이어와 상대 보드를 각자의 종료 틱까지 진행합니다.</summary>
@@ -247,12 +371,12 @@ public class PuzzleGameController : MonoBehaviour
         string result;
         if (_opponent == null)
         {
-            result = $"대전 기록 완료 · {score}점";
+            result = $"대전 기록 완료\n내 점수 {score}점";
         }
         else if (replayController == null || !replayController.HasValidResult ||
             !replayController.HasCompatibleBattleRules(_pivotSettings))
         {
-            result = $"대전 종료 · 내 점수 {score}\n상대 기록 확인 실패 · 승패 비교 제외";
+            result = $"대전 종료 (내 점수 {score})\n상대 기록을 확인할 수 없어 승패를 비교하지 못했습니다.";
         }
         else
         {
@@ -321,27 +445,44 @@ public class PuzzleGameController : MonoBehaviour
         _lastDestroyed = objective.TotalDestroyedBlocks;
         if (_mode == GameMode.Battle)
         {
-            string title = _opponent == null ? "90초 대전 · 첫 기록 도전" : "90초 대전 · 상대 점수에 도전";
+            string title = _opponent == null ? "90초 대전 (첫 기록 도전)" : "90초 대전 (상대 점수에 도전)";
             _resultText.text = title + "\n" + _playHint;
             return;
         }
-        StringBuilder hint = new StringBuilder(_playHint);
+        _hudText.Clear();
+        _hudText.Append(_playHint);
         if (_objectives != null)
         {
             foreach (ObjectiveData target in _objectives)
             {
+                int progress;
                 if (target.type == ObjectiveType.Score)
                 {
-                    hint.Append($"\n점수 {Math.Min(objective.CurrentScore, target.count)} / {target.count}");
+                    _hudText.Append("\n점수 ");
+                    progress = objective.CurrentScore;
                 }
                 else if (target.type == ObjectiveType.CollectBlock)
                 {
-                    string name = target.targetId == "100-1" ? "빨간 블록" : $"블록 {target.targetId}";
-                    hint.Append($"\n{name} {Math.Min(objective.GetCollectedCount(target.targetId), target.count)} / {target.count}");
+                    if (target.targetId == "100-1")
+                    {
+                        _hudText.Append("\n빨간 블록 ");
+                    }
+                    else
+                    {
+                        _hudText.Append("\n블록 ").Append(target.targetId).Append(' ');
+                    }
+                    progress = objective.GetCollectedCount(target.targetId);
                 }
+                else
+                {
+                    continue;
+                }
+                PuzzleHudText.AppendNumber(_hudText, Math.Min(progress, target.count));
+                _hudText.Append(" / ");
+                PuzzleHudText.AppendNumber(_hudText, target.count);
             }
         }
-        _resultText.text = hint.ToString();
+        _resultText.SetText(_hudText);
     }
 
     /// <summary>
@@ -365,7 +506,7 @@ public class PuzzleGameController : MonoBehaviour
             _lastDisplayedSeconds = seconds;
             int min = seconds / 60;
             int sec = seconds % 60;
-            _timerText.SetText("{0}:{1:00}", min, sec);
+            _timerText.SetText("남은 시간 {0}:{1:00}", min, sec);
         }
     }
 
@@ -383,7 +524,10 @@ public class PuzzleGameController : MonoBehaviour
         if (score != _lastDisplayedScore)
         {
             _lastDisplayedScore = score;
-            _scoreText.SetText("{0}", score);
+            _hudText.Clear();
+            _hudText.Append("점수 ");
+            PuzzleHudText.AppendNumber(_hudText, score);
+            _scoreText.SetText(_hudText);
         }
     }
 
@@ -509,5 +653,180 @@ public class PuzzleGameController : MonoBehaviour
         {
             _pivotGaugeView.Dispose();
         }
+    }
+}
+
+/// <summary>플레이어와 상대의 점수·피벗 수치를 정수 정밀도로 같은 형식으로 표시합니다.</summary>
+internal static class PuzzleHudText
+{
+    /// <summary><paramref name="text"/>에 정수 <paramref name="value"/>를 추가하고 <paramref name="twoDigits"/>이면 두 자리까지 0을 채웁니다.</summary>
+    internal static void AppendNumber(StringBuilder text, int value, bool twoDigits = false)
+    {
+        // 부호를 포함한 모든 int 값과 두 자리 초 표기가 들어가는 크기입니다.
+        Span<char> digits = stackalloc char[11];
+        value.TryFormat(digits, out int count, twoDigits ? "D2" : null, CultureInfo.InvariantCulture);
+        text.Append(digits.Slice(0, count));
+    }
+
+    /// <summary><paramref name="text"/>에 <paramref name="active"/>에 맞는 상태와 0.1점 단위 <paramref name="tenths"/>, 최대치 <paramref name="capacity"/>를 추가합니다.</summary>
+    internal static void AppendPivot(StringBuilder text, bool active, int tenths, int capacity)
+    {
+        text.Append(active ? "피벗 모드 " : "피벗 충전 ");
+        AppendNumber(text, tenths / 10);
+        text.Append('.');
+        AppendNumber(text, tenths % 10);
+        text.Append(" / ");
+        AppendNumber(text, capacity);
+    }
+}
+
+/// <summary>게임 화면의 픽셀 영역을 캔버스의 텍스트와 결과 카드에 맞춥니다.</summary>
+internal readonly struct PuzzleHudPlacement
+{
+    internal readonly float Unit;
+    internal readonly Rect PlayerBoard;
+    internal readonly Rect PlayerHud;
+    internal readonly Rect ReplayBoard;
+    internal readonly Rect ReplayStatus;
+
+    /// <summary><paramref name="safe"/> 안에 가로·세로 배치를 구성하고 <paramref name="result"/>와 <paramref name="hasOpponent"/>에 따라 카드와 상대 표시 공간을 확보합니다.</summary>
+    internal PuzzleHudPlacement(Rect safe, bool result, bool hasOpponent)
+    {
+        float unit = Mathf.Min(safe.width, safe.height) / 720f;
+        float edge = 20f * unit;
+        float gap = 16f * unit;
+        Rect main = Rect.MinMaxRect(safe.xMin + edge, safe.yMin + edge, safe.xMax - edge, safe.yMax - edge);
+        Rect hud;
+        Rect opponent = default;
+        bool landscape = safe.width > safe.height;
+        if (landscape)
+        {
+            float width = result ? main.width * 0.46f : Mathf.Min(main.width * 0.36f, 440f * unit);
+            hud = TakeRight(ref main, width, gap);
+            if (hasOpponent)
+            {
+                opponent = TakeTop(ref hud, hud.height * 0.52f, gap);
+            }
+        }
+        else if (result)
+        {
+            hud = TakeBottom(ref main, Mathf.Min(360f * unit, main.height * 0.32f), gap);
+            if (hasOpponent)
+            {
+                opponent = TakeTop(ref main, Mathf.Min(220f * unit, main.height * 0.30f), gap);
+            }
+        }
+        else
+        {
+            float header = hasOpponent ? 320f : 235f;
+            hud = TakeTop(ref main, Mathf.Min(header * unit, main.height * 0.42f), gap);
+            if (hasOpponent)
+            {
+                opponent = TakeRight(ref hud, hud.width * 0.45f, gap);
+            }
+        }
+
+        Rect status = default;
+        if (hasOpponent)
+        {
+            if (result && !landscape)
+            {
+                status = TakeRight(ref opponent, opponent.width * 0.55f, gap);
+            }
+            else
+            {
+                status = TakeBottom(ref opponent, Mathf.Min(106f * unit, opponent.height * 0.44f), gap * 0.5f);
+            }
+        }
+        PlayerBoard = main;
+        PlayerHud = hud;
+        ReplayBoard = opponent;
+        ReplayStatus = status;
+        Unit = unit;
+    }
+
+
+    /// <summary><paramref name="area"/> 위의 <paramref name="height"/> 높이를 떼고 남은 영역에 <paramref name="gap"/> 간격을 둡니다.</summary>
+    internal static Rect TakeTop(ref Rect area, float height, float gap)
+    {
+        Rect top = Rect.MinMaxRect(area.xMin, area.yMax - height, area.xMax, area.yMax);
+        area.yMax = Mathf.Max(area.yMin, top.yMin - gap);
+        return top;
+    }
+
+    /// <summary><paramref name="area"/> 아래의 <paramref name="height"/> 높이를 떼고 남은 영역에 <paramref name="gap"/> 간격을 둡니다.</summary>
+    internal static Rect TakeBottom(ref Rect area, float height, float gap)
+    {
+        Rect bottom = Rect.MinMaxRect(area.xMin, area.yMin, area.xMax, area.yMin + height);
+        area.yMin = Mathf.Min(area.yMax, bottom.yMax + gap);
+        return bottom;
+    }
+
+    /// <summary><paramref name="area"/> 오른쪽의 <paramref name="width"/> 너비를 떼고 남은 영역에 <paramref name="gap"/> 간격을 둡니다.</summary>
+    internal static Rect TakeRight(ref Rect area, float width, float gap)
+    {
+        Rect right = Rect.MinMaxRect(area.xMax - width, area.yMin, area.xMax, area.yMax);
+        area.xMax = Mathf.Max(area.xMin, right.xMin - gap);
+        return right;
+    }
+
+    /// <summary><paramref name="target"/>을 <paramref name="area"/> 화면 영역에 맞춥니다. <paramref name="keepSize"/>이면 내부 버튼 배치를 유지하며 균일하게 축소·확대합니다.</summary>
+    internal static void Place(RectTransform target, Rect area, bool keepSize = false)
+    {
+        if (target == null || !(target.parent is RectTransform parent))
+        {
+            return;
+        }
+        Canvas canvas = target.GetComponentInParent<Canvas>(true);
+        if (canvas == null)
+        {
+            return;
+        }
+        canvas = canvas.rootCanvas;
+        Camera uiCamera = canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
+        if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(parent, area.min, uiCamera, out Vector2 min) ||
+            !RectTransformUtility.ScreenPointToLocalPointInRectangle(parent, area.max, uiCamera, out Vector2 max))
+        {
+            return;
+        }
+        target.anchorMin = parent.pivot;
+        target.anchorMax = parent.pivot;
+        target.pivot = new Vector2(0.5f, 0.5f);
+        target.anchoredPosition = (min + max) * 0.5f;
+        Vector2 size = max - min;
+        if (keepSize)
+        {
+            if (target.rect.width <= 0f || target.rect.height <= 0f)
+            {
+                return;
+            }
+            float scale = Mathf.Min(size.x / target.rect.width, size.y / target.rect.height);
+            target.localScale = Vector3.one * scale;
+        }
+        else
+        {
+            target.sizeDelta = size;
+        }
+    }
+
+    /// <summary><paramref name="text"/>를 <paramref name="area"/> 안에 놓고 <paramref name="fontSize"/>를 최대 크기로 사용합니다.</summary>
+    internal static void PlaceText(TMP_Text text, Rect area, float fontSize)
+    {
+        if (text != null)
+        {
+            Place(text.rectTransform, area);
+            FitText(text, fontSize, TextAlignmentOptions.TopLeft);
+        }
+    }
+
+    /// <summary><paramref name="text"/>를 <paramref name="alignment"/>로 정렬하고 <paramref name="fontSize"/> 범위에서 줄바꿈과 글자 크기를 조절합니다.</summary>
+    internal static void FitText(TMP_Text text, float fontSize, TextAlignmentOptions alignment)
+    {
+        text.enableAutoSizing = true;
+        text.fontSizeMax = fontSize;
+        text.fontSizeMin = fontSize * 0.55f;
+        text.alignment = alignment;
+        text.overflowMode = TextOverflowModes.Truncate;
+        text.raycastTarget = false;
     }
 }

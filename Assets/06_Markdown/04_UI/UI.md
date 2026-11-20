@@ -25,13 +25,13 @@ UI, 팝업, 탭 관련 작업 시 이 문서를 참고.
 | 하단 다섯 탭·스와이프·모달 입력 | [LobbyNavigation.cs](../../02_Scripts/Lobby/LobbyNavigation.cs) | `SelectTab`, `OnEndDrag`, `SwitchBySwipe` |
 | 오버레이 패널의 가로 전환 | [LobbyOverlayTab.cs](../../02_Scripts/Lobby/LobbyOverlayTab.cs) | `Bind`, `ActivateAnimation`, `DeactivateAnimation` |
 | 메인 화면의 상주 탭 컴포넌트 | [LobbyTabController.cs](../../02_Scripts/Lobby/LobbyTabController.cs) | `LobbyTabController` |
-| 대전 전용 피벗 충전·활성 게이지 | [PivotGaugeView.cs](../../02_Scripts/Battle/Pivot/PivotGaugeView.cs) | `PivotGaugeView`, `Refresh`, `Dispose` |
+| 대전 전용 피벗 충전·활성 게이지 | [PivotGaugeView.cs](../../02_Scripts/Battle/Pivot/PivotGaugeView.cs) | `PivotGaugeView`, `SetLayout`, `Refresh`, `Dispose` |
 
-피벗 게이지는 대전 시작 시 기존 타이머 아래에 생성하며 같은 한글 폰트를 사용한다. 게임 종료 시 숨기고 컨트롤러 제거 시 UI를 정리한다. 상태 및 설정 규칙은 [INGAME-VIEW-AND-BATTLE.md](../02_Ingame/INGAME-VIEW-AND-BATTLE.md#대전-전용-피벗-모드)를 참고한다.
+대전의 점수·타이머·피벗 게이지와 퍼즐 안내는 화면의 안전 영역 안에서 보드와 따로 배치한다. 피벗 게이지는 타이머와 같은 폰트를 사용한다. 게임 종료 시 숨기고 컨트롤러 제거 시 UI를 정리한다. 상태 및 설정 규칙은 [INGAME-VIEW-AND-BATTLE.md](../02_Ingame/INGAME-VIEW-AND-BATTLE.md#대전-전용-피벗-모드)를 참고한다.
 
 대전 시작은 콤보·수치 계산·보드 판정과 피벗 설정이 맞는 완주 기록을 상대로 선택한다. 호환되는 상대가 없으면 첫 기록 도전으로 진입한다. 탭 매치는 판정이 같은 이전 보드 규칙의 기록도 상대로 선택한다.
 
-상대 탐색 중 동일 Rule/Stage 데이터는 요청 내에서 재사용하며, 캐시된 후보를 선택하면 실제 씬 주입 데이터도 해당 후보로 맞춘다. 상대 상태 UI는 표시할 상태·남은 초·점수·피벗 수치가 바뀔 때만 문자열을 생성한다.
+상대 탐색 중 동일 Rule/Stage 데이터는 요청 내에서 재사용하며, 캐시된 후보를 선택하면 실제 씬 주입 데이터도 해당 후보로 맞춘다. 상대 상태 UI는 재생 상태·남은 초·점수·피벗 수치가 바뀔 때만 갱신한다. 양쪽 점수와 피벗 수치는 재사용하는 텍스트 버퍼에 정수로 기록해 큰 점수까지 정확히 표시한다.
 
 ## 도메인 시스템 개요
 

@@ -86,6 +86,7 @@ namespace Battle.Pivot
                             (cell.CellType == CellType.Normal || cell.CellType == CellType.Generator))
                         {
                             targets.Add(candidate);
+                            cell.Block.IsPivotTarget = true;
                         }
                     }
                 }

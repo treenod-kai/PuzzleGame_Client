@@ -1,4 +1,5 @@
-﻿using TMPro;
+﻿using System.Text;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -19,6 +20,7 @@ namespace Battle.Pivot
         private int _lastDisplayedTenths = -1;
         /// <summary> 마지막으로 표시한 활성 상태입니다. </summary>
         private bool _lastActive;
+        private readonly StringBuilder _labelText = new StringBuilder(48);
 
         /// <summary> 타이머의 배치와 폰트로 피벗 상태와 충전량을 표시합니다. </summary>
         public PivotGaugeView(TMP_Text template, PivotMode mode)
@@ -69,6 +71,17 @@ namespace Battle.Pivot
             Refresh();
         }
 
+        /// <summary>게이지를 <paramref name="area"/> 화면 영역에 놓고 프레임 비율과 <paramref name="fontSize"/> 글자 크기를 맞춥니다.</summary>
+        internal void SetLayout(Rect area, float fontSize)
+        {
+            RectTransform root = (RectTransform)_root.transform;
+            PuzzleHudPlacement.Place(root, area);
+            RectTransform track = (RectTransform)_fillImage.transform.parent;
+            float width = Mathf.Min(root.rect.width, root.rect.height * 0.50f * 264f / 34f);
+            track.sizeDelta = new Vector2(width, width * 34f / 264f);
+            PuzzleHudPlacement.FitText(_label, fontSize, TextAlignmentOptions.MidlineLeft);
+        }
+
         /// <summary> 피벗 게이지와 활성 표시를 갱신합니다. 게임 종료 시 표시를 숨깁니다. </summary>
         public void Refresh()
         {
@@ -90,8 +103,9 @@ namespace Battle.Pivot
             {
                 _lastDisplayedTenths = displayedTenths;
                 _lastActive = _mode.IsActive;
-                string state = _mode.IsActive ? "피벗 모드" : "피벗 충전";
-                _label.text = $"{state} · {displayedTenths / 10}.{displayedTenths % 10} / {_mode.Capacity}";
+                _labelText.Clear();
+                PuzzleHudText.AppendPivot(_labelText, _mode.IsActive, displayedTenths, _mode.Capacity);
+                _label.SetText(_labelText);
                 _fillImage.color = _mode.IsActive ? new Color(1f, 0.65f, 0.15f) : new Color(0.2f, 0.75f, 1f);
             }
         }

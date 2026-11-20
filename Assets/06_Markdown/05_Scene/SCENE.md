@@ -167,7 +167,7 @@ PuzzleGameController.Start()
           → 게임 루프 시작
   → StageInjection.GetReplayData()
     → (리플레이 있으면) ReplayController.Initialize(replayData)
-      → 리플레이 보드 생성 + 우측 상단 축소 배치 + 자동 재생
+      → 리플레이 보드 생성 + 상대 전용 영역에 축소 배치 + 자동 재생
 
 PuzzleGameController.Update()
   → BoardState.Finish 감지

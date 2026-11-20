@@ -65,7 +65,7 @@
 | 로비 하단 탭·패널·좌우 스와이프 | [LobbyNavigation.cs](../02_Scripts/Lobby/LobbyNavigation.cs) | [UI.md](04_UI/UI.md#로비-하단-탭) |
 | 90초 대전 준비 팝업·슬롯·라이프 | [PopupReady.cs](../02_Scripts/UI/Popup/PopupReady.cs) | [UI.md](04_UI/UI.md#콘텐츠와-c-매핑) |
 | 로비 대전 진입·리플레이 상대 선택 | [LobbyMain.cs](../02_Scripts/Lobby/LobbyMain.cs) | [UI.md](04_UI/UI.md#준비-팝업의-플레이-진입) |
-| 퍼즐 입력·게임 루프·종료 처리 | [PuzzleGameController.cs](../02_Scripts/PuzzleCore/Controller/PuzzleGameController.cs) | [INGAME.md](02_Ingame/INGAME.md#콘텐츠와-c-매핑) |
+| 퍼즐 입력·게임 루프·화면 배치·종료 처리 | [PuzzleGameController.cs](../02_Scripts/PuzzleCore/Controller/PuzzleGameController.cs) | [INGAME.md](02_Ingame/INGAME.md#콘텐츠와-c-매핑) |
 | 3매치·스왑·자동 셔플 | [ThreeMatchPuzzleBoard.cs](../02_Scripts/PuzzleCore/Module/Board/ThreeMatchPuzzleBoard.cs) | [INGAME.md](02_Ingame/INGAME.md#콘텐츠와-c-매핑) |
 | 링크 연결 | [LinkPuzzleBoard.cs](../02_Scripts/PuzzleCore/Module/Board/LinkPuzzleBoard.cs) | [INGAME.md](02_Ingame/INGAME.md#콘텐츠와-c-매핑) |
 | 탭 매치·연결 블럭 탐색 | [TapMatchPuzzleBoard.cs](../02_Scripts/PuzzleCore/Module/Board/TapMatchPuzzleBoard.cs) | [INGAME.md](02_Ingame/INGAME.md#콘텐츠와-c-매핑) |
@@ -77,7 +77,7 @@
 | 피벗 게이지·충전·소비 수치 JSON 수정 | [PivotSettings.cs](../02_Scripts/Battle/Pivot/PivotSettings.cs) | [RULES-AND-STAGES.md](03_Data/RULES-AND-STAGES.md#피벗-게임-데이터) |
 | 낙하 중 블럭 소실·뷰 액션 순서 | [PuzzleBoardView.cs](../02_Scripts/PuzzleCore/View/PuzzleBoardView.cs) | [INGAME.md](02_Ingame/INGAME.md#콘텐츠와-c-매핑) |
 | 블럭 애니메이션 | [PuzzleBlockView.cs](../02_Scripts/PuzzleCore/View/PuzzleBlockView.cs) | [INGAME.md](02_Ingame/INGAME.md#콘텐츠와-c-매핑) |
-| 보드 좌표·링크 선·배치 | [PuzzleBoardView.cs](../02_Scripts/PuzzleCore/View/PuzzleBoardView.cs) | [INGAME.md](02_Ingame/INGAME.md#콘텐츠와-c-매핑) |
+| 보드 좌표·링크 선·피벗 발동과 추가 파괴 연출 | [PuzzleBoardView.cs](../02_Scripts/PuzzleCore/View/PuzzleBoardView.cs) | [INGAME.md](02_Ingame/INGAME.md#콘텐츠와-c-매핑) |
 | 리플레이 기록·저장 | [ReplayStorage.cs](../02_Scripts/PuzzleCore/Module/ReplayStorage.cs) | [DATA.md](03_Data/DATA.md#콘텐츠와-c-매핑) |
 | 리플레이 재생 | [ReplayController.cs](../02_Scripts/PuzzleCore/Controller/ReplayController.cs) | [INGAME.md](02_Ingame/INGAME.md#콘텐츠와-c-매핑) |
 | 새 스테이지·Rule JSON 로드 | [StageInjection.cs](../02_Scripts/StageMapTool/StageInjection.cs) | [DATA.md](03_Data/DATA.md#콘텐츠와-c-매핑) |
