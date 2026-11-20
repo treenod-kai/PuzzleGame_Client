@@ -2,6 +2,7 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using DG.Tweening;
 
 namespace Battle.Pivot
 {
@@ -20,6 +21,7 @@ namespace Battle.Pivot
         private int _lastDisplayedTenths = -1;
         /// <summary> 마지막으로 표시한 활성 상태입니다. </summary>
         private bool _lastActive;
+        private readonly Color _chargingTextColor;
         private readonly StringBuilder _labelText = new StringBuilder(48);
 
         /// <summary> 타이머의 배치와 폰트로 피벗 상태와 충전량을 표시합니다. </summary>
@@ -47,6 +49,7 @@ namespace Battle.Pivot
             _label.fontSize = 24f;
             _label.alignment = TextAlignmentOptions.Left;
             _label.raycastTarget = false;
+            _chargingTextColor = _label.color;
 
             RectTransform track = CreateRect("Track", root);
             track.anchorMin = Vector2.zero;
@@ -99,6 +102,12 @@ namespace Battle.Pivot
             _root.SetActive(visible);
             if (!visible)
             {
+                if (_lastActive)
+                {
+                    _fillImage.DOKill();
+                    _lastActive = false;
+                    _lastDisplayedTenths = -1;
+                }
                 return;
             }
 
@@ -107,12 +116,26 @@ namespace Battle.Pivot
             int displayedTenths = _mode.GaugeUnits / 10;
             if (displayedTenths != _lastDisplayedTenths || _mode.IsActive != _lastActive)
             {
+                if (_lastDisplayedTenths < 0 || _mode.IsActive != _lastActive)
+                {
+                    _fillImage.DOKill();
+                    if (_mode.IsActive)
+                    {
+                        _label.color = new Color(1f, 0.86f, 0.46f);
+                        _fillImage.color = new Color(1f, 1f, 0.85f);
+                        _fillImage.DOColor(new Color(1f, 0.65f, 0.15f), 0.38f).SetEase(Ease.OutQuad);
+                    }
+                    else
+                    {
+                        _label.color = _chargingTextColor;
+                        _fillImage.color = new Color(0.2f, 0.75f, 1f);
+                    }
+                }
                 _lastDisplayedTenths = displayedTenths;
                 _lastActive = _mode.IsActive;
                 _labelText.Clear();
                 PuzzleHudText.AppendPivot(_labelText, _mode.IsActive, displayedTenths, _mode.Capacity);
                 _label.SetText(_labelText);
-                _fillImage.color = _mode.IsActive ? new Color(1f, 0.65f, 0.15f) : new Color(0.2f, 0.75f, 1f);
             }
         }
 
@@ -121,6 +144,7 @@ namespace Battle.Pivot
         {
             if (_root != null)
             {
+                _fillImage.DOKill();
                 Object.Destroy(_root);
             }
         }

@@ -107,11 +107,39 @@ public class PuzzleBoardView : MonoBehaviour
     private readonly List<LineRenderer> _bombWaves = new List<LineRenderer>();
     private readonly List<LineRenderer> _pivotOutlines = new List<LineRenderer>();
     private static readonly Color _pivotGold = new Color(1f, 0.82f, 0.35f);
+    private static readonly Color _pivotCore = new Color(1f, 0.99f, 0.83f);
+    private static readonly Color _pivotAqua = new Color(0.40f, 0.98f, 0.94f);
+    /// <summary>한 덩어리로 이어진 보드의 외곽점과 그 둘레에서 재사용할 피벗 연출입니다.</summary>
+    private sealed class PivotContour
+    {
+        public readonly List<Vector3> Points = new List<Vector3>();
+        public readonly LineRenderer[] Trails = new LineRenderer[2];
+        public LineRenderer Border;
+        public LineRenderer Ignition;
+        public Bounds LocalBounds;
+    }
+
+    private readonly List<PivotContour> _pivotContours = new List<PivotContour>();
+    private int _pivotContourCount;
+    // 아래쪽 변부터 반시계 방향. 열 간격은 한 칸, 짝수 열의 중심은 반 칸 아래입니다.
+    private static readonly Vector2[] _hexCorners =
+    {
+        new Vector2(-1f / 3f, -0.5f), new Vector2(1f / 3f, -0.5f), new Vector2(2f / 3f, 0f),
+        new Vector2(1f / 3f, 0.5f), new Vector2(-1f / 3f, 0.5f), new Vector2(-2f / 3f, 0f)
+    };
+    private static readonly GridPos[] _evenHexNeighbors =
+    {
+        new GridPos(0, -1), new GridPos(1, -1), new GridPos(1, 0),
+        new GridPos(0, 1), new GridPos(-1, 0), new GridPos(-1, -1)
+    };
+    private ParticleSystem _pivotSparks;
+    private Mesh _pivotStarMesh;
+    private float _pivotTravel;
     private const float LinkRingWidth = 0.035f;
     private const float PivotBorderWidth = 0.065f;
+    private const float PivotTrailWidth = 0.14f;
     private const float PivotNeighborWidth = 0.072f;
     private float WorldCellSize => cellSize * Mathf.Abs(transform.lossyScale.x);
-    private LineRenderer _pivotBorder;
     private bool _pivotActive;
 
     /// <summary> 현재 보드가 애니메이션 연출 중인지 여부를 반환합니다. </summary>
@@ -209,6 +237,10 @@ public class PuzzleBoardView : MonoBehaviour
         StopAllCoroutines();
         _isAnimating = false;
 
+        if (_pivotStarMesh != null)
+        {
+            Destroy(_pivotStarMesh);
+        }
         if (_lineMaterial != null)
         {
             Destroy(_lineMaterial);
@@ -265,6 +297,7 @@ public class PuzzleBoardView : MonoBehaviour
         }
 
         ClearBoard();
+        _pivotContourCount = 0;
         SetupLineRenderer();
 
         if (cellRoot == null)
@@ -571,6 +604,14 @@ public class PuzzleBoardView : MonoBehaviour
         }
 
         UpdateLineRenderer();
+        if (_pivotActive)
+        {
+            _pivotTravel = Mathf.Repeat(_pivotTravel + Time.deltaTime * 1.6f, 4f);
+            for (int i = 0; i < _pivotContourCount; i++)
+            {
+                UpdatePivotTrails(_pivotContours[i]);
+            }
+        }
 
         foreach (KeyValuePair<GridPos, PuzzleBlockView> kvp in _blockViews)
         {
@@ -757,7 +798,7 @@ public class PuzzleBoardView : MonoBehaviour
         return ring;
     }
 
-    /// <summary><paramref name="active"/>로 바뀔 때 보드 테두리를 한 번 밝히고, 종료하면 서서히 감춥니다.</summary>
+    /// <summary><paramref name="active"/>가 켜지면 모서리에서 별빛을 터뜨리고 두 빛줄기를 테두리에 따라 이동시킵니다.</summary>
     public void SetPivotActive(bool active)
     {
         if (_pivotActive == active || !isActiveAndEnabled || _board == null || _lineMaterial == null)
@@ -767,27 +808,257 @@ public class PuzzleBoardView : MonoBehaviour
         _pivotActive = active;
         if (active)
         {
-            if (_pivotBorder == null)
+            if (_pivotContourCount == 0)
             {
-                _pivotBorder = CreateOutline("PivotBorder", 22);
-                _pivotBorder.numCornerVertices = 5;
+                BuildPivotPaths();
             }
-            // 짝수 열이 내려가는 육각 보드와 단일 열 보드의 바깥 경계도 포함합니다.
-            Vector3 bottom = GetLocalPos(new GridPos(0, 0));
-            Vector3 top = GetLocalPos(new GridPos(Mathf.Min(1, _board.Width - 1), _board.Height - 1));
-            float margin = cellSize * 0.55f;
-            SetRectangle(_pivotBorder, Rect.MinMaxRect(bottom.x - margin, bottom.y - margin, -bottom.x + margin, top.y + margin));
-            _pivotBorder.widthMultiplier = WorldCellSize * PivotBorderWidth;
-            _pivotBorder.gameObject.SetActive(true);
-            SetOutlineAlpha(_pivotBorder, 1f);
+            _pivotTravel = 0f;
+        }
+        for (int i = 0; i < _pivotContourCount; i++)
+        {
+            SetContourActive(_pivotContours[i], active);
+        }
+    }
+
+    /// <summary><paramref name="contour"/>의 테두리와 빛줄기를 <paramref name="active"/> 상태로 전환합니다.</summary>
+    private void SetContourActive(PivotContour contour, bool active)
+    {
+        LineRenderer border = contour.Border;
+        border.DOKill();
+        if (active)
+        {
+            border.gameObject.SetActive(true);
+            SetOutlineAlpha(border, 1f);
+            PlayPivotIgnition(contour);
+            UpdatePivotTrails(contour);
+            EmitPivotCornerStars(contour);
+        }
+        foreach (LineRenderer trail in contour.Trails)
+        {
+            trail.gameObject.SetActive(active);
         }
 
-        _pivotBorder.DOKill();
-        float opacity = active ? 0.48f : 0f;
-        Tween fade = DOTween.To(() => _pivotBorder.startColor.a, alpha => SetOutlineAlpha(_pivotBorder, alpha), opacity, 0.28f).SetTarget(_pivotBorder);
+        float opacity = active ? 0.68f : 0f;
+        Tween fade = DOTween.To(() => border.startColor.a, alpha => SetOutlineAlpha(border, alpha), opacity, 0.28f).SetTarget(border);
         if (!active)
         {
-            fade.OnComplete(() => _pivotBorder.gameObject.SetActive(false));
+            contour.Ignition.DOKill();
+            contour.Ignition.gameObject.SetActive(false);
+            fade.OnComplete(() => border.gameObject.SetActive(false));
+        }
+    }
+
+    /// <summary><paramref name="contour"/>의 네 모서리에 가장 가까운 테두리 꼭짓점에서 별빛을 방출합니다.</summary>
+    private void EmitPivotCornerStars(PivotContour contour)
+    {
+        for (int i = 0; i < 4; i++)
+        {
+            Vector3 inward = new Vector3(i == 0 || i == 3 ? 1f : -1f, i < 2 ? 1f : -1f);
+            Vector3 target = contour.LocalBounds.center - Vector3.Scale(inward, contour.LocalBounds.extents);
+            Vector3 corner = contour.Points[0];
+            foreach (Vector3 point in contour.Points)
+            {
+                if ((point - target).sqrMagnitude < (corner - target).sqrMagnitude)
+                {
+                    corner = point;
+                }
+            }
+            Vector3 origin = corner + inward * (cellSize * 0.19f);
+            EmitPivotStar(origin, inward * 0.38f, 0.74f, _pivotCore);
+            EmitPivotStar(origin, new Vector3(inward.x * 1.6f, inward.y * 0.24f), 0.38f, _pivotGold);
+            EmitPivotStar(origin, new Vector3(inward.x * 0.24f, inward.y * 1.6f), 0.42f, _pivotAqua);
+        }
+    }
+
+    /// <summary>새 보드를 처음 발동할 때만 외곽점과 발동 띠의 좌표를 준비합니다.</summary>
+    private void BuildPivotPaths()
+    {
+        if (_cachedBoardShape == BoardShape.Hexagon)
+        {
+            BuildHexPivotPaths();
+        }
+        else
+        {
+            PivotContour contour = GetNextPivotContour();
+            Vector3 bottom = GetLocalPos(new GridPos(0, 0)) - new Vector3(1f, 1f) * (cellSize * 0.55f);
+            contour.Points.Add(bottom);
+            contour.Points.Add(new Vector3(-bottom.x, bottom.y));
+            contour.Points.Add(new Vector3(-bottom.x, -bottom.y));
+            contour.Points.Add(new Vector3(bottom.x, -bottom.y));
+        }
+        for (int i = 0; i < _pivotContourCount; i++)
+        {
+            PivotContour contour = _pivotContours[i];
+            contour.LocalBounds = new Bounds(contour.Points[0], Vector3.zero);
+            foreach (Vector3 point in contour.Points)
+            {
+                contour.LocalBounds.Encapsulate(point);
+            }
+            contour.Ignition.transform.localPosition = contour.LocalBounds.center;
+            contour.Border.positionCount = contour.Points.Count;
+            contour.Ignition.positionCount = contour.Points.Count;
+            for (int vertex = 0; vertex < contour.Points.Count; vertex++)
+            {
+                Vector3 point = contour.Points[vertex];
+                contour.Border.SetPosition(vertex, point);
+                contour.Ignition.SetPosition(vertex, point - contour.LocalBounds.center);
+            }
+            SetPivotWidths(contour, WorldCellSize);
+        }
+    }
+
+    /// <summary>재사용할 테두리를 다음 보드 영역에 할당하며 부족한 만큼만 렌더러를 만듭니다.</summary>
+    private PivotContour GetNextPivotContour()
+    {
+        if (_pivotContourCount == _pivotContours.Count)
+        {
+            PivotContour created = new PivotContour();
+            created.Border = CreateOutline("PivotBorder", 22);
+            created.Border.numCornerVertices = 5;
+            created.Ignition = CreateOutline("PivotIgnition", 23);
+            created.Ignition.numCornerVertices = 5;
+            for (int i = 0; i < created.Trails.Length; i++)
+            {
+                LineRenderer trail = CreateOutline("PivotTrail", 24);
+                trail.loop = false;
+                trail.numCornerVertices = 5;
+                trail.numCapVertices = 3;
+                Color tail = i == 0 ? _pivotGold : _pivotAqua;
+                trail.startColor = new Color(tail.r, tail.g, tail.b, 0.18f);
+                trail.endColor = i == 0 ? _pivotCore : _pivotAqua;
+                trail.widthCurve = AnimationCurve.Linear(0f, 0.15f, 1f, 1f);
+                created.Trails[i] = trail;
+            }
+            _pivotContours.Add(created);
+        }
+        PivotContour contour = _pivotContours[_pivotContourCount++];
+        contour.Points.Clear();
+        return contour;
+    }
+
+    /// <summary>왼쪽 아래부터 각 육각 타일 덩어리를 한 번씩 방문해 서로 떨어진 영역의 테두리를 나눕니다.</summary>
+    private void BuildHexPivotPaths()
+    {
+        HashSet<GridPos> remaining = new HashSet<GridPos>();
+        foreach (KeyValuePair<GridPos, PuzzleCell> entry in _board.Cells)
+        {
+            if (entry.Value.CellType != CellType.Close)
+            {
+                remaining.Add(entry.Key);
+            }
+        }
+        Stack<GridPos> pending = new Stack<GridPos>();
+        for (int x = 0; x < _board.Width && remaining.Count > 0; x++)
+        {
+            for (int y = 0; y < _board.Height && remaining.Count > 0; y++)
+            {
+                GridPos first = new GridPos(x, y);
+                if (!remaining.Remove(first))
+                {
+                    continue;
+                }
+                pending.Push(first);
+                while (pending.Count > 0)
+                {
+                    GridPos cell = pending.Pop();
+                    for (int edge = 0; edge < 6; edge++)
+                    {
+                        GridPos adjacent = GetHexNeighbor(cell, edge);
+                        if (remaining.Remove(adjacent))
+                        {
+                            pending.Push(adjacent);
+                        }
+                    }
+                }
+                TraceHexPivotPerimeter(first, GetNextPivotContour().Points);
+            }
+        }
+    }
+
+    /// <summary><paramref name="cell"/>의 <paramref name="edge"/> 변을 공유하는 이웃 좌표를 짝수 열 배치에 맞춰 반환합니다.</summary>
+    private static GridPos GetHexNeighbor(GridPos cell, int edge)
+    {
+        GridPos offset = _evenHexNeighbors[edge];
+        int rowShift = offset.X == 0 ? 0 : (cell.X & 1);
+        return new GridPos(cell.X + offset.X, cell.Y + offset.Y + rowShift);
+    }
+
+    /// <summary>덩어리의 맨 왼쪽 아래 칸 <paramref name="first"/>에서 외곽을 한 바퀴 돌며 <paramref name="points"/>를 채웁니다.</summary>
+    private void TraceHexPivotPerimeter(GridPos first, List<Vector3> points)
+    {
+        GridPos cell = first;
+        int edge = 0;
+        do
+        {
+            points.Add(GetLocalPos(cell) + (Vector3)(_hexCorners[edge] * cellSize));
+            edge = (edge + 1) % 6;
+            GridPos adjacent = GetHexNeighbor(cell, edge);
+            PuzzleCell neighbor = _board.GetCell(adjacent);
+            if (neighbor != null && neighbor.CellType != CellType.Close)
+            {
+                // 다음 변을 이웃과 공유하면 같은 꼭짓점에서 이웃의 다음 노출 변으로 이어집니다.
+                cell = adjacent;
+                edge = (edge + 4) % 6;
+            }
+        }
+        while (cell != first || edge != 0);
+    }
+
+    /// <summary><paramref name="contour"/>의 윤곽을 따라 발동 빛을 펼칩니다. 육각 보드에서는 타일 테두리 폭 안에서 빛납니다.</summary>
+    private void PlayPivotIgnition(PivotContour contour)
+    {
+        Vector3 half = contour.LocalBounds.extents;
+        LineRenderer ignition = contour.Ignition;
+        ignition.DOKill();
+        float insetRatio = _cachedBoardShape == BoardShape.Hexagon ? PivotBorderWidth : 0.65f;
+        float inset = Mathf.Min(insetRatio * cellSize, Mathf.Min(half.x, half.y) * 0.5f);
+        ignition.transform.localScale = new Vector3(1f - inset / half.x, 1f - inset / half.y, 1f);
+        ignition.startColor = ignition.endColor = _pivotCore;
+        ignition.gameObject.SetActive(true);
+        ignition.transform.DOScale(Vector3.one, 0.44f).SetEase(Ease.OutQuad).SetTarget(ignition);
+        DOTween.To(() => ignition.startColor.a, alpha => SetOutlineAlpha(ignition, alpha), 0f, 0.44f)
+            .SetEase(Ease.InQuad).SetTarget(ignition).OnComplete(() => ignition.gameObject.SetActive(false));
+    }
+
+    /// <summary><paramref name="contour"/>의 반대편에서 출발한 빛줄기 두 개를 그 영역의 바깥 변을 따라 이동시킵니다.</summary>
+    private void UpdatePivotTrails(PivotContour contour)
+    {
+        List<Vector3> points = contour.Points;
+        int count = points.Count;
+        for (int i = 0; i < contour.Trails.Length; i++)
+        {
+            LineRenderer trail = contour.Trails[i];
+            float head = (_pivotTravel + i * 2f) * (count / 4f);
+            float tail = head - count * 0.2f;
+            int firstCorner = Mathf.FloorToInt(tail) + 1;
+            int endCorner = Mathf.CeilToInt(head);
+            trail.positionCount = 2 + endCorner - firstCorner;
+            trail.SetPosition(0, GetPivotBorderPoint(points, tail));
+            for (int corner = firstCorner; corner < endCorner; corner++)
+            {
+                trail.SetPosition(1 + corner - firstCorner, points[(corner + count) % count]);
+            }
+            trail.SetPosition(trail.positionCount - 1, GetPivotBorderPoint(points, head));
+        }
+    }
+
+    /// <summary><paramref name="points"/>의 모서리 간격으로 나타낸 <paramref name="distance"/>를 테두리 위 로컬 좌표로 변환합니다.</summary>
+    private static Vector3 GetPivotBorderPoint(List<Vector3> points, float distance)
+    {
+        int side = Mathf.FloorToInt(distance);
+        int count = points.Count;
+        int vertex = (side + count) % count;
+        return Vector3.Lerp(points[vertex], points[(vertex + 1) % count], distance - side);
+    }
+
+    /// <summary><paramref name="contour"/>의 모든 피벗 선 굵기를 <paramref name="worldCellSize"/>에 맞춥니다.</summary>
+    private static void SetPivotWidths(PivotContour contour, float worldCellSize)
+    {
+        contour.Border.widthMultiplier = worldCellSize * PivotBorderWidth;
+        contour.Ignition.widthMultiplier = worldCellSize * 0.09f;
+        foreach (LineRenderer trail in contour.Trails)
+        {
+            trail.widthMultiplier = worldCellSize * PivotTrailWidth;
         }
     }
 
@@ -815,9 +1086,9 @@ public class PuzzleBoardView : MonoBehaviour
                 }
             }
         }
-        if (_pivotBorder != null)
+        for (int i = 0; i < _pivotContourCount; i++)
         {
-            _pivotBorder.widthMultiplier = worldCellSize * PivotBorderWidth;
+            SetPivotWidths(_pivotContours[i], worldCellSize);
         }
         foreach (LineRenderer outline in _pivotOutlines)
         {
@@ -848,7 +1119,8 @@ public class PuzzleBoardView : MonoBehaviour
     private void PlayPivotOutline(GridPos position)
     {
         LineRenderer outline = GetPivotOutline();
-        outline.transform.localPosition = GetLocalPos(position);
+        Vector3 origin = GetLocalPos(position);
+        outline.transform.localPosition = origin;
         float half = cellSize * 0.46f;
         if (_cachedBoardShape == BoardShape.Hexagon)
         {
@@ -864,10 +1136,90 @@ public class PuzzleBoardView : MonoBehaviour
             SetRectangle(outline, Rect.MinMaxRect(-half, -half, half, half));
         }
         outline.widthMultiplier = WorldCellSize * PivotNeighborWidth;
-        SetOutlineAlpha(outline, 1f);
         outline.gameObject.SetActive(true);
-        DOTween.To(() => outline.startColor.a, alpha => SetOutlineAlpha(outline, alpha), 0f, 0.23f)
-            .SetEase(Ease.InQuad).SetTarget(outline).OnComplete(() => outline.gameObject.SetActive(false));
+        outline.transform.localScale = Vector3.one * 0.70f;
+        outline.startColor = outline.endColor = _pivotCore;
+        /// <summary><paramref name="progress"/>에 맞춰 피벗 칸의 윤곽을 넓히며 금빛을 흐리게 합니다.</summary>
+        void UpdateOutline(float progress)
+        {
+            float remaining = 1f - progress;
+            outline.transform.localScale = Vector3.one * Mathf.Lerp(1.06f, 0.70f, remaining * remaining);
+            Color color = Color.Lerp(_pivotCore, _pivotGold, progress);
+            color.a = 1f - progress * progress;
+            outline.startColor = outline.endColor = color;
+        }
+        DOVirtual.Float(0f, 1f, 0.29f, UpdateOutline).SetEase(Ease.Linear).SetTarget(outline).OnComplete(() => outline.gameObject.SetActive(false));
+        float side = ((position.X + position.Y) & 1) == 0 ? 1f : -1f;
+        EmitPivotStar(origin, new Vector3(side * 0.72f, 0.84f), 0.46f, _pivotCore);
+        EmitPivotStar(origin, new Vector3(-side * 0.65f, 0.34f), 0.27f, _pivotAqua);
+    }
+
+    /// <summary>로컬 <paramref name="origin"/>에서 초당 셀 단위 <paramref name="velocity"/>로, 셀 대비 <paramref name="size"/> 크기의 <paramref name="color"/> 별을 방출합니다.</summary>
+    private void EmitPivotStar(Vector3 origin, Vector3 velocity, float size, Color color)
+    {
+        if (_pivotSparks == null)
+        {
+            CreatePivotSparks();
+        }
+        if (!_pivotSparks.isPlaying)
+        {
+            _pivotSparks.Play(false);
+        }
+        ParticleSystem.EmitParams spark = new ParticleSystem.EmitParams
+        {
+            position = origin,
+            velocity = velocity * cellSize,
+            startSize = size * cellSize,
+            startLifetime = 0.30f + size * 0.30f,
+            startColor = color,
+            rotation = velocity.x * 15f
+        };
+        _pivotSparks.Emit(spark, 1);
+    }
+
+    /// <summary>공유 별 메시를 쓰는 로컬 입자 시스템 하나를 준비해 보드당 최대 48개의 반짝임을 그립니다.</summary>
+    private void CreatePivotSparks()
+    {
+        GameObject obj = new GameObject("PivotSparks");
+        obj.transform.SetParent(transform, false);
+        _pivotSparks = obj.AddComponent<ParticleSystem>();
+        _pivotSparks.Stop(false, ParticleSystemStopBehavior.StopEmittingAndClear);
+        ParticleSystem.MainModule main = _pivotSparks.main;
+        main.playOnAwake = false;
+        main.loop = false;
+        main.duration = 1f;
+        main.maxParticles = 48;
+        main.simulationSpace = ParticleSystemSimulationSpace.Local;
+        main.scalingMode = ParticleSystemScalingMode.Hierarchy;
+        ParticleSystem.EmissionModule emission = _pivotSparks.emission;
+        emission.enabled = false;
+        ParticleSystem.ShapeModule shape = _pivotSparks.shape;
+        shape.enabled = false;
+        ParticleSystem.SizeOverLifetimeModule scale = _pivotSparks.sizeOverLifetime;
+        scale.enabled = true;
+        scale.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.EaseInOut(0f, 1f, 1f, 0f));
+
+        // 흰 중심에서 네 개의 긴 꼭짓점으로 색이 번지는 별을 한 메시로 그립니다.
+        Vector3[] vertices = new Vector3[9];
+        Color32[] colors = new Color32[9];
+        int[] triangles = new int[24];
+        colors[0] = Color.white;
+        for (int i = 0; i < 8; i++)
+        {
+            float angle = i * Mathf.PI / 4f;
+            float radius = (i & 1) == 0 ? 0.5f : 0.12f;
+            vertices[i + 1] = new Vector3(Mathf.Cos(angle), Mathf.Sin(angle)) * radius;
+            colors[i + 1] = new Color32(255, 255, 255, 195);
+            triangles[i * 3 + 1] = (i + 1) % 8 + 1;
+            triangles[i * 3 + 2] = i + 1;
+        }
+        _pivotStarMesh = new Mesh { name = "PivotStar", vertices = vertices, colors32 = colors, triangles = triangles };
+        ParticleSystemRenderer renderer = obj.GetComponent<ParticleSystemRenderer>();
+        renderer.renderMode = ParticleSystemRenderMode.Mesh;
+        renderer.mesh = _pivotStarMesh;
+        renderer.sharedMaterial = _lineMaterial;
+        renderer.sortingLayerName = "Ingame";
+        renderer.sortingOrder = 25;
     }
 
     /// <summary>재사용 가능한 피벗 셀 테두리를 반환하고 모두 재생 중이면 하나 더 만듭니다.</summary>
@@ -983,10 +1335,21 @@ public class PuzzleBoardView : MonoBehaviour
     {
         HideLinkRing();
         _pivotActive = false;
-        if (_pivotBorder != null)
+        for (int i = 0; i < _pivotContourCount; i++)
         {
-            _pivotBorder.DOKill();
-            _pivotBorder.gameObject.SetActive(false);
+            PivotContour contour = _pivotContours[i];
+            contour.Border.DOKill();
+            contour.Border.gameObject.SetActive(false);
+            contour.Ignition.DOKill();
+            contour.Ignition.gameObject.SetActive(false);
+            foreach (LineRenderer trail in contour.Trails)
+            {
+                trail.gameObject.SetActive(false);
+            }
+        }
+        if (_pivotSparks != null)
+        {
+            _pivotSparks.Stop(false, ParticleSystemStopBehavior.StopEmittingAndClear);
         }
         foreach (LineRenderer outline in _pivotOutlines)
         {

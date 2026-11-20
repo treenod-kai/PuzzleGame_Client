@@ -25,7 +25,7 @@
 | 셀 상태와 블럭 보관 | [PuzzleCell.cs](../../02_Scripts/PuzzleCore/Module/PuzzleCell.cs) | `PuzzleCell` |
 | 바닥 패널 기본 타입 | [PuzzlePanel.cs](../../02_Scripts/PuzzleCore/Module/PuzzlePanel.cs) | `PuzzlePanel`, `NormalPanel` |
 | 점수·콤보·피버·시간 제한·목표 판정·누적 파괴/조작 성공 수 | [ObjectiveManager.cs](../../02_Scripts/PuzzleCore/Module/ObjectiveManager.cs) | `OnMatchEvent`, `OnBlockDestroyed`, `UpdateTimer`, `ShouldFinish`, `IsAllObjectivesCleared`, `GetCollectedCount`, `TotalDestroyedBlocks`, `TotalPlayerMatches`, `IsValidTimeLimit`, `GetTimeLimitFrames`, `RemainingSeconds` |
-| 보드 배치·뷰 액션 순서·링크·피벗 테두리·파괴 파편·폭탄 충격파 | [PuzzleBoardView.cs](../../02_Scripts/PuzzleCore/View/PuzzleBoardView.cs) | `DrawBoard`, `FitToScreen`, `Shape`, `GetLocalPos`, `ExecuteBatchMovement`, `UpdateLineRenderer`, `CacheLinkPathIfChanged`, `AnimateLinkTip`, `PlayLinkRing`, `PlayMatchFragments`, `PlayBombWaves`, `SetPivotActive`, `PlayPivotOutline` |
+| 보드 배치·뷰 액션 순서·링크·피벗 테두리·파괴 파편·폭탄 충격파 | [PuzzleBoardView.cs](../../02_Scripts/PuzzleCore/View/PuzzleBoardView.cs) | `DrawBoard`, `FitToScreen`, `Shape`, `GetLocalPos`, `ExecuteBatchMovement`, `UpdateLineRenderer`, `CacheLinkPathIfChanged`, `AnimateLinkTip`, `PlayLinkRing`, `PlayMatchFragments`, `PlayBombWaves`, `SetPivotActive`, `TraceHexPivotPerimeter`, `UpdatePivotTrails`, `PlayPivotOutline` |
 | 블럭 스프라이트·클릭/이동/낙하/파괴 연출 | [PuzzleBlockView.cs](../../02_Scripts/PuzzleCore/View/PuzzleBlockView.cs) | `UpdateVisual`, `PlayMoveAnimation`, `PlayFallAnimation`, `PlayDestroyAnimation` |
 | 사각·육각 보드 타일과 셀 상태 표시 | [PuzzleCellView.cs](../../02_Scripts/PuzzleCore/View/PuzzleCellView.cs) | `Initialize`, `UpdateVisual` |
 | 입력 충돌체와 블럭 뷰 연결 | [PuzzleBlockCollider.cs](../../02_Scripts/PuzzleCore/PuzzleBlockCollider.cs) | `PuzzleBlockCollider` |
