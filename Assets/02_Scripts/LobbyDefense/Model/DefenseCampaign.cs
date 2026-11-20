@@ -15,6 +15,7 @@ namespace LobbyDefense.Model
         public IReadOnlyList<OwnedDefenseCard> Cards => _progress.Cards;
         public int Gold => _progress.Gold;
         public int Revision { get; private set; }
+        public int InventoryRevision { get; private set; }
 
         /// <summary><paramref name="rules"/>와 추첨기 <paramref name="random"/>으로 <paramref name="saved"/>를 열거나 처음 접속한 유저에게 카드를 지급한다.</summary>
         public DefenseCampaign(DefenseRules rules, PuzzleRandom random, DefenseProgress saved)
@@ -189,6 +190,7 @@ namespace LobbyDefense.Model
             }
             _progress.Cards.Add(card);
             _progress.Gold -= Rules.HireGold;
+            InventoryRevision++;
             return true;
         }
 
@@ -236,6 +238,7 @@ namespace LobbyDefense.Model
             }
             energy.Amount += Rules.ConversionEnergy;
             _progress.Cards.Remove(card);
+            InventoryRevision++;
             Revision++;
             return true;
         }
@@ -259,6 +262,7 @@ namespace LobbyDefense.Model
                 card.ReserveHealth++;
             }
             Session.UpdateCardStats(card.CreateUnit(Rules.Find(card.TypeId)));
+            InventoryRevision++;
             Revision++;
             return true;
         }

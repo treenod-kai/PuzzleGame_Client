@@ -56,7 +56,7 @@
 
 하단 탭은 1280×256 텍스처의 256px 칸 다섯 개다. 상점, 가방, 집, 말풍선, 톱니 순서를 유지하고, 글자는 UI에 맡긴다. Addressables 주소는 `Lobby/TabIcons`다. [로비 탭 원본](../../04_Resources/Images/LobbyTabIcons.png)
 
-방어 카드용 초상은 배경을 투명하게 두고 이름·등급을 그리지 않는다. Unity가 카드별 정보를 겹쳐 표시하므로 인벤토리 크기에서도 얼굴과 장비가 함께 읽히는지 확인한다. [인벤토리에 표시한 초상](../../../Docs/Previews/LobbyDefense/LobbyDefenseInventory.png)
+방어 카드용 초상은 배경을 투명하게 두고 이름·등급을 그리지 않는다. Unity가 카드별 정보를 겹쳐 표시하므로 인벤토리 크기에서도 얼굴과 장비가 함께 읽히는지 확인한다. [인벤토리에 표시한 초상](../../../Docs/Previews/LobbyDefense/LobbyDefenseInventory.png) · [카드 프레임과 상세 창 원화](../../../Docs/Previews/LobbyDefense/InventoryCardArt.md)
 
 ## 로비 디펜스 캐릭터
 

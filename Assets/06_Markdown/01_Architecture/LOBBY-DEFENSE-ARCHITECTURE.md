@@ -20,7 +20,7 @@
 | [LobbyDefenseView.cs](../../02_Scripts/LobbyDefense/View/LobbyDefenseView.cs) · [DefenseBoardGraphic.cs](../../02_Scripts/LobbyDefense/View/DefenseBoardGraphic.cs) · [DefenseUnitMarkers.cs](../../02_Scripts/LobbyDefense/View/DefenseUnitMarkers.cs) | 상단 상태와 하단 조작 영역 사이에 정사각형 칸 10행을 맞춘다. 배치 지도의 좌우 드래그와 미니맵의 열 선택을 같은 좌표로 처리한다. 등장 구역·경로·사거리와 유닛·체력을 그린다. |
 | [DefenseMotionLibrary.cs](../../02_Scripts/LobbyDefense/View/DefenseMotionLibrary.cs) | 대기·걷기를 처음 표시할 때 공격 클립을, 수비 유닛을 대기 상태로 표시할 때 장기자랑 클립도 준비한다. 각 클립의 네 장과 좌우 반전값을 재사용한다. |
 | [DefenseProjectileView.cs](../../02_Scripts/LobbyDefense/View/DefenseProjectileView.cs) | `DefenderFired`에서 발사 칸과 표적을 기록한다. 사수와 탄은 같은 표적 위치를 바라보고, 세 번째 공격 프레임에 탄이 나온다. 계정 전환 시 진행 중인 탄을 비운다. |
-| [DefenseCardInventoryView.cs](../../02_Scripts/LobbyDefense/View/DefenseCardInventoryView.cs) · [DefenseInventoryTile.cs](../../02_Scripts/LobbyDefense/View/DefenseInventoryTile.cs) | 보유 카드 ID별로 초상·별·배치 상태를 세로 스크롤 목록에 표시한다. 목록 위치를 유지하며 카드 상세를 연다. |
+| [DefenseCardInventoryView.cs](../../02_Scripts/LobbyDefense/View/DefenseCardInventoryView.cs) · [DefenseInventoryTile.cs](../../02_Scripts/LobbyDefense/View/DefenseInventoryTile.cs) | 세로 스크롤 위치에 맞춰 보이는 행과 주변 행의 카드 칸을 재사용한다. 카드 ID별 초상·별·배치 상태를 표시하고, 초상 요청이 실패하면 다음 바인딩에서 다시 시도한다. |
 | [DefenseGradeStars.cs](../../02_Scripts/LobbyDefense/View/DefenseGradeStars.cs) | 목록과 상세 창에서 1~3성 및 금색 3성을 표시한다. |
 | [PopupDefenseCard.cs](../../02_Scripts/LobbyDefense/View/PopupDefenseCard.cs) | 카드 상세와 변환 확인을 열어 능력치·에너지 잔액을 표시하고 강화와 변환을 선택 카드 ID로 전달한다. 창 배치는 [공용 팝업](../../02_Scripts/Manager/PopupBase.cs)의 안전 영역을 따른다. |
 
@@ -49,7 +49,7 @@
 
 카드 획득 시 세 태생 점수를 각각 정수 0~10에서 독립·균등 추첨하고 고유 등급과 함께 한 번 저장한다. 복원·재배치 때는 저장값을 읽는다. 전투용 능력치를 계산할 때 기본값, 태생 보너스, 선택 카드의 강화값을 사용하고, 대전 시작 편성에는 계산된 수치를 복사한다. [카드 등급·능력치 규칙](LOBBY-DEFENSE.md#유닛-카드와-고유-등급)
 
-카드 변환 시 한 장의 소모와 에너지 지급을 한 건으로 저장한다. 시험값은 변환 1에너지, 강화 1에너지당 선택 능력치 +1이다. 배치 중인 카드도 강화되는 즉시 누적 피해와 공격 시점을 보존해 능력치가 바뀐다. 변환은 회수한 카드에서 가능하다. 마지막 사격 카드는 대체 카드를 고용할 골드가 있을 때 변환할 수 있다.
+카드 변환 시 한 장의 소모와 에너지 지급을 한 건으로 저장한다. 변환이나 강화 저장에 실패하면 원래 카드와 에너지를 복구하고 목록에 사유를 표시한다. 시험값은 변환 1에너지, 강화 1에너지당 선택 능력치 +1이다. 배치 중인 카드도 강화되는 즉시 누적 피해와 공격 시점을 보존해 능력치가 바뀐다. 변환은 회수한 카드에서 가능하다. 마지막 사격 카드는 대체 카드를 고용할 골드가 있을 때 변환할 수 있다.
 
 로비 진입 시 계정을 식별한 뒤 그 유저의 보유 목록과 배치를 함께 연다. 서버 계정은 `Identity.Data.uid`, 오프라인 게스트는 설치별 게스트 식별자를 사용한다. 연결 실패 시 반환하는 공통 UID `dummy_user`는 계정을 구별할 수 없다. 같은 게스트가 온라인 로그인에 성공하면 기존 진행을 한 번 이어받는다. 계정 전환·로그아웃 시에는 이전 세션과 메모리 목록을 닫는다. [IdentityLayer.cs](../../02_Scripts/Manager/UserData/IdentityLayer.cs)
 

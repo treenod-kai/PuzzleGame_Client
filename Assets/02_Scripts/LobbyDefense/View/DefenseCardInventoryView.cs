@@ -19,6 +19,13 @@ namespace LobbyDefense.View
         [SerializeField] private TMP_Text _state;
         [SerializeField] private TMP_Text _balances;
         private readonly List<DefenseInventoryTile> _tiles = new List<DefenseInventoryTile>();
+        private GridLayoutGroup _layout;
+        private VerticalLayoutGroup _contentLayout;
+        private Action<string> _openCard;
+        private int _firstTile = -1;
+        private int _inventoryRevision = -1;
+        private int _boardRevision = -1;
+        private bool _canRehire;
         private DefenseCampaign _game;
         private string _selectedId;
         private string _receipt;
@@ -28,6 +35,24 @@ namespace LobbyDefense.View
         private CanvasGroup _lockedControls;
         public event Action<string> Converted;
         public event Action<string, DefenseAttribute> Upgraded;
+
+        /// <summary>스크롤 위치에 맞춰 보이는 행의 카드만 재사용하도록 연결한다.</summary>
+        private void Awake()
+        {
+            _layout = _grid.GetComponent<GridLayoutGroup>();
+            _contentLayout = _scroll.content.GetComponent<VerticalLayoutGroup>();
+            _openCard = OpenCard;
+            _scroll.onValueChanged.AddListener(OnScroll);
+        }
+
+        /// <summary>스크롤 위치 <paramref name="position"/>이 바뀌면 화면 앞뒤 한 행까지 바인딩한다.</summary>
+        private void OnScroll(Vector2 position)
+        {
+            if (_game != null && isActiveAndEnabled)
+            {
+                RenderTiles(false);
+            }
+        }
 
         /// <summary><paramref name="game"/>의 보유 목록과 에너지를 갱신하고 열려 있는 상세 창의 카드 ID를 다시 확인한다.</summary>
         public void ShowInventory(DefenseCampaign game)
@@ -46,6 +71,7 @@ namespace LobbyDefense.View
         /// <summary>탭을 열 때 현재 계정의 목록을 표시한다.</summary>
         private void OnEnable()
         {
+            _inventoryRevision = -1;
             if (_game != null)
             {
                 Render();
@@ -56,31 +82,26 @@ namespace LobbyDefense.View
         private void Render()
         {
             DefenseCampaign game = _game;
+            bool inventoryChanged = _inventoryRevision != game.InventoryRevision;
+            bool boardChanged = _boardRevision != game.Session.Board.Revision;
+            bool canRehire = game.Gold >= game.Rules.HireGold;
+            if (!inventoryChanged && !boardChanged && canRehire == _canRehire)
+            {
+                return;
+            }
+            _inventoryRevision = game.InventoryRevision;
+            _boardRevision = game.Session.Board.Revision;
+            _canRehire = canRehire;
+            if (inventoryChanged || boardChanged)
+            {
+                RenderTiles(true);
+            }
             int count = game.Cards.Count;
-            for (int i = 0; i < count; i++)
+            if (inventoryChanged)
             {
-                OwnedDefenseCard card = game.Cards[i];
-                if (i == _tiles.Count)
-                {
-                    _tiles.Add(Instantiate(_template, _grid));
-                }
-                DefenseInventoryTile tile = _tiles[i];
-                tile.Bind(card, game.Rules.Find(card.TypeId).Name, game.Session.IsCardDeployed(card.Id), OpenCard);
-                tile.gameObject.SetActive(true);
+                _count.text = $"보유 {count}장";
+                ShowBalances(game);
             }
-            TrimTiles(count);
-            _count.text = $"보유 {count}장";
-            StringBuilder balances = new StringBuilder();
-            foreach (DefenseUnitDefinition unit in game.Rules.Units)
-            {
-                int amount = game.EnergyFor(unit.Id);
-                if (amount > 0)
-                {
-                    balances.AppendLine($"{unit.Name}   {amount}개");
-                }
-            }
-            _balances.gameObject.SetActive(balances.Length > 0);
-            _balances.text = "보유 에너지\n" + balances.ToString().TrimEnd();
             if (_detail != null)
             {
                 OwnedDefenseCard selected = game.FindCard(_selectedId);
@@ -103,11 +124,73 @@ namespace LobbyDefense.View
             }
         }
 
+        /// <summary>화면에 필요한 행만 만들고 <paramref name="force"/>가 참이면 같은 위치의 카드 정보도 갱신한다.</summary>
+        private void RenderTiles(bool force)
+        {
+            float rowHeight = _layout.cellSize.y + _layout.spacing.y;
+            float width = _scroll.viewport.rect.width - _contentLayout.padding.horizontal - _layout.padding.horizontal;
+            int columns = Mathf.Max(1, Mathf.FloorToInt((width + _layout.spacing.x + 0.001f) / (_layout.cellSize.x + _layout.spacing.x)));
+            int count = _game.Cards.Count;
+            int rows = Mathf.CeilToInt((float)count / columns);
+            int visibleRows = Mathf.Min(rows, Mathf.CeilToInt(_scroll.viewport.rect.height / rowHeight) + 3);
+            float offset = _scroll.content.anchoredPosition.y - _contentLayout.padding.top;
+            int firstRow = Mathf.Clamp(Mathf.FloorToInt(offset / rowHeight) - 1, 0, rows - visibleRows);
+            int first = firstRow * columns;
+            int visible = Mathf.Min(count - first, visibleRows * columns);
+            // 위아래의 생략된 행은 여백으로 남겨 스크롤 범위와 마지막 에너지 표시 위치를 유지한다.
+            int top = Mathf.RoundToInt(firstRow * rowHeight);
+            int bottom = Mathf.RoundToInt((rows - firstRow - visibleRows) * rowHeight);
+            if (_layout.padding.top != top || _layout.padding.bottom != bottom)
+            {
+                _layout.padding.top = top;
+                _layout.padding.bottom = bottom;
+                LayoutRebuilder.MarkLayoutForRebuild(_grid);
+            }
+            if (!force && _firstTile == first && _tiles.Count == visible)
+            {
+                return;
+            }
+            _firstTile = first;
+            TrimTiles(visible);
+            for (int i = 0; i < visible; i++)
+            {
+                OwnedDefenseCard card = _game.Cards[first + i];
+                if (i == _tiles.Count)
+                {
+                    _tiles.Add(Instantiate(_template, _grid));
+                }
+                DefenseInventoryTile tile = _tiles[i];
+                tile.Bind(card, _game.Rules.Find(card.TypeId).Name, _game.Session.IsCardDeployed(card.Id), _openCard);
+                if (!tile.gameObject.activeSelf)
+                {
+                    tile.gameObject.SetActive(true);
+                }
+            }
+        }
+
+        /// <summary><paramref name="game"/>의 에너지 잔액을 종류별로 표시한다.</summary>
+        private void ShowBalances(DefenseCampaign game)
+        {
+            StringBuilder balances = new StringBuilder();
+            foreach (DefenseUnitDefinition unit in game.Rules.Units)
+            {
+                int amount = game.EnergyFor(unit.Id);
+                if (amount > 0)
+                {
+                    balances.AppendLine($"{unit.Name}   {amount}개");
+                }
+            }
+            _balances.gameObject.SetActive(balances.Length > 0);
+            _balances.text = "보유 에너지\n" + balances.ToString().TrimEnd();
+        }
+
         /// <summary>이전 계정의 카드와 창을 정리하고 로드·실패 상태 <paramref name="message"/>를 표시한다.</summary>
         public void ShowState(string message)
         {
             Dismiss();
             _game = null;
+            _inventoryRevision = -1;
+            _firstTile = -1;
             _receipt = null;
             TrimTiles(0);
             _scroll.StopMovement();
@@ -200,9 +283,10 @@ namespace LobbyDefense.View
         {
             if (this != null)
             {
-                _receipt = "카드 상세를 열지 못했습니다. 다시 선택해 주세요.";
-                _state.text = _receipt;
-                _state.gameObject.SetActive(true);
+                if (_selectedId != null)
+                {
+                    ShowFailure("카드 상세를 열지 못했습니다. 다시 선택해 주세요.");
+                }
                 Unlock();
             }
         }
@@ -240,5 +324,17 @@ namespace LobbyDefense.View
 
         /// <summary>탭을 떠나면 진행 중인 상세 요청과 선택을 해제한다.</summary>
         private void OnDisable() => Dismiss();
+
+        /// <summary>열려 있는 인벤토리에서 카드 상세를 닫고 조작이 실패한 이유 <paramref name="message"/>를 표시한다.</summary>
+        public void ShowFailure(string message)
+        {
+            if (isActiveAndEnabled)
+            {
+                Dismiss();
+                _receipt = message;
+                _state.text = message;
+                _state.gameObject.SetActive(true);
+            }
+        }
     }
 }

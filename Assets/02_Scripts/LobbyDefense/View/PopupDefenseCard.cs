@@ -23,6 +23,7 @@ namespace LobbyDefense.View
         [SerializeField] private Button _confirm;
         [SerializeField] private Button _cancel;
         [SerializeField] private Button _close;
+        private readonly DefenseCardPortrait _portraitRequest = new DefenseCardPortrait();
         private string _cardId;
         private bool _canConvert;
         internal string UnitTypeId { get; private set; }
@@ -56,13 +57,8 @@ namespace LobbyDefense.View
                 _name.text = definition.Name;
                 _grade.text = card.Grade == 4 ? "금색 3성" : $"{card.Grade}성";
                 _stars.SetGrade(card.Grade);
-                _portrait.enabled = false;
-                AssetManager.Instance.LoadAssetAsync(new AssetManager.AssetArguments<Sprite>
-                {
-                    address = "LobbyDefense/Profiles/" + card.TypeId,
-                    successCallback = SetPortrait
-                });
             }
+            _portraitRequest.Show(_portrait, card.TypeId);
             int energy = game.EnergyFor(card.TypeId);
             bool affordable = energy >= game.Rules.UpgradeCost;
             DefenseUnit unit = card.CreateUnit(definition);
@@ -89,16 +85,6 @@ namespace LobbyDefense.View
             _stats[offset + 1].text = "+" + upgrade;
             _stats[offset + 2].text = total.ToString();
             _upgrades[index].interactable = affordable && total < int.MaxValue;
-        }
-
-        /// <summary>팝업이 살아 있을 때 받은 초상 <paramref name="sprite"/>을 표시한다.</summary>
-        private void SetPortrait(Sprite sprite)
-        {
-            if (this != null)
-            {
-                _portrait.sprite = sprite;
-                _portrait.enabled = sprite != null;
-            }
         }
 
         /// <summary><paramref name="visible"/>에 따라 변환 확인 창을 열거나 닫는다.</summary>

@@ -202,15 +202,15 @@ namespace LobbyDefense.Controller
                 string before = JsonUtility.ToJson(_campaign.Capture());
                 if (!command(_campaign))
                 {
-                    _controls.Notify("현재 상태에서 실행할 수 없습니다.");
+                    _controls.Notify("현재 상태에서 실행할 수 없습니다.", showInventoryFailure: true);
                     continue;
                 }
-                if (!Save())
+                if (!Save(reportFailure: false))
                 {
                     _pending.Clear();
                     _campaign = DefenseProgressStore.Restore(before, _rules, _random);
                     _controls.Bind(_campaign);
-                    _controls.Notify("저장하지 못해 변경을 취소했습니다.");
+                    _controls.Notify("저장하지 못해 변경을 취소했습니다. 저장 공간을 확인해 주세요.", showInventoryFailure: true);
                     return false;
                 }
                 _controls.Notify(null);
@@ -248,8 +248,8 @@ namespace LobbyDefense.Controller
             }
         }
 
-        /// <summary>활성 계정의 같은 시점에 카드와 전투를 쓰며 실패하면 다음 틱까지 진행을 보류한다.</summary>
-        private bool Save()
+        /// <summary>활성 계정의 카드와 전투를 저장한다. <paramref name="reportFailure"/>가 꺼진 입력 저장은 복구 후 호출자가 실패를 알린다.</summary>
+        private bool Save(bool reportFailure = true)
         {
             if (_campaign == null)
             {
@@ -267,7 +267,10 @@ namespace LobbyDefense.Controller
                 if (!_saveFailed)
                 {
                     Debug.LogError("[로비 디펜스] 저장 실패. " + error);
-                    _controls.Notify("저장 공간을 확인해 주세요.");
+                    if (reportFailure)
+                    {
+                        _controls.Notify("저장 공간을 확인해 주세요.");
+                    }
                 }
                 _saveFailed = true;
                 _retryAfter = Time.unscaledTime + 3f;

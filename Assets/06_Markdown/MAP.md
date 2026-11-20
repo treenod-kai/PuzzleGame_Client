@@ -66,6 +66,7 @@
 | 찾는 기능·수정할 내용 | 먼저 볼 C# 파일 | 관련 코드 전체 표 |
 |---|---|---|
 | 로비 하단 탭·패널·좌우 스와이프 | [LobbyNavigation.cs](../02_Scripts/Lobby/LobbyNavigation.cs) | [UI.md](04_UI/UI.md#로비-하단-탭) |
+| 방어 카드 인벤토리·스크롤·강화·에너지 변환 | [DefenseCardInventoryView.cs](../02_Scripts/LobbyDefense/View/DefenseCardInventoryView.cs) | [로비 디펜스 아키텍처](01_Architecture/LOBBY-DEFENSE-ARCHITECTURE.md#콘텐츠와-c-매핑) |
 | 90초 대전 준비 팝업·슬롯·라이프 | [PopupReady.cs](../02_Scripts/UI/Popup/PopupReady.cs) | [UI.md](04_UI/UI.md#콘텐츠와-c-매핑) |
 | 로비 대전 진입·리플레이 상대 선택 | [LobbyMain.cs](../02_Scripts/Lobby/LobbyMain.cs) | [UI.md](04_UI/UI.md#준비-팝업의-플레이-진입) |
 | 로비 디펜스 배치·침공·고용·카드 관리 | [LobbyDefenseController.cs](../02_Scripts/LobbyDefense/Controller/LobbyDefenseController.cs) · [DefenseSession.cs](../02_Scripts/LobbyDefense/Model/DefenseSession.cs) | [로비 디펜스 아키텍처](01_Architecture/LOBBY-DEFENSE-ARCHITECTURE.md#콘텐츠와-c-매핑) |

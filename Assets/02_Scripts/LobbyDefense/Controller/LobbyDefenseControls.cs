@@ -64,13 +64,17 @@ namespace LobbyDefense.Controller
             _inventory.ShowState(message);
         }
 
-        /// <summary>최근 조작이나 저장 결과인 <paramref name="message"/>를 지도에 표시한다.</summary>
-        internal void Notify(string message)
+        /// <summary>조작 결과 <paramref name="message"/>를 지도에 표시하고, <paramref name="showInventoryFailure"/>이면 열린 인벤토리에도 실패를 알린다.</summary>
+        internal void Notify(string message, bool showInventoryFailure = false)
         {
             _message = message;
             if (_game != null)
             {
                 Refresh();
+                if (showInventoryFailure)
+                {
+                    _inventory.ShowFailure(message);
+                }
             }
         }
 
