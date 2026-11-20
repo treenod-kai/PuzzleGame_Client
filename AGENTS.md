@@ -89,6 +89,7 @@ if (condition)
 - 변경 시 기존 null 처리, 평가 순서, 콜백의 호출 시점과 캡처 변수의 수명을 유지한다.
 
 ### 에셋 및 리소스
+- 게임 이미지를 생성·수정할 때는 [이미지 스타일 가이드](Assets/06_Markdown/00_Guide/ART-STYLE.md)의 기준 PNG와 공통 프롬프트를 사용한다. 로비 디펜스 검토용 HTML·미리보기는 `Docs/Previews/LobbyDefense/`에 둔다.
 - 모든 게임 리소스는 **Addressables** 시스템을 통해 관리.
 - 에셋 로드 시 반드시 `AssetManager.cs` 경유. 직접 `Addressables.LoadAssetAsync` 호출 금지.
 - 인게임 시각 요소는 **`Ingame` Sorting Layer**에서 렌더링.

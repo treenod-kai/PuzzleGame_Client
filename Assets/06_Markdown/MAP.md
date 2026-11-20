@@ -19,7 +19,7 @@
 | [INGAME.md](02_Ingame/INGAME.md) | 게임 루프, 보드 상태, 블럭, 매칭, 뷰 동기화, 애니메이션, 리플레이 | 인게임 퍼즐 작업 시 |
 | [DATA.md](03_Data/DATA.md) | JSON 구조, GameSpec, Rule/Stage/Replay 데이터, 추가 방법 | 데이터/설정 작업 시 |
 | [UI.md](04_UI/UI.md) | 도메인 시스템, 팝업/탭 생명주기, UIButton, 추가 방법 | UI 작업 시 |
-| [ART-STYLE.md](00_Guide/ART-STYLE.md) | 실제 참조 이미지, 생성 프롬프트 예시, Unity 임포트 규격 | 보드 블럭이나 슬롯 릴을 만들 때 |
+| [ART-STYLE.md](00_Guide/ART-STYLE.md) | 게임 원화, 공통 생성 프롬프트, 종류별 Unity 규격 | 블럭·UI·로비 캐릭터 이미지를 만들 때 |
 | [SCENE.md](05_Scene/SCENE.md) | 씬 전환, SharedScene, 매니저, AssetManager, PoolManager | 인프라 작업 시 |
 | [SERVER.md](06_Server/SERVER.md) | 서버 통신, 공유 DLL, 네트워크 레이어, API 연동 | 서버 API 작업 시 |
 | [RULES-AND-STAGES.md](03_Data/RULES-AND-STAGES.md) | 규칙·스테이지 JSON과 피벗 설정 | 게임 데이터 추가 시 |
@@ -30,6 +30,8 @@
 
 | 문서 | 상위 문서 | 내용 |
 |------|----------|------|
+| [로비 디펜스 개별 생성 문구](00_Guide/LOBBY-ART-PROMPTS.md) | `ART-STYLE.md` | 캐릭터별 외형·장기자랑·공격·투사체의 프롬프트 |
+| [침공 몬스터 방향과 봉쇄 공격](00_Guide/INVADER-ART.md) | `ART-STYLE.md` | 시점별 원화, 가로 반전과 접촉 프레임 |
 | `ARCHITECTURE_FLOW.md` | `ARCHITECTURE.md` | 메인 대전/사이드 스테이지 게임 흐름 상세 |
 | [로비 디펜스 아키텍처](01_Architecture/LOBBY-DEFENSE-ARCHITECTURE.md) | `LOBBY-DEFENSE.md` | 방어 모델, 로비 저장, 대전·리플레이 연결 설계와 단계별 인수 기준 |
 | `INGAME_GIMMICK.md` | `INGAME.md` | 기믹 인터페이스/파괴 연쇄/새 기믹 추가 절차 |
