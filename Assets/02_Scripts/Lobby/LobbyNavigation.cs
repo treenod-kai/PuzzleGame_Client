@@ -218,7 +218,7 @@ public sealed class LobbyNavigation : TabController, IDragHandler, IEndDragHandl
         ShowBackdrop(false);
     }
 
-    /// <summary><paramref name="visible"/>에 따라 배경을 어둡게 하고 메인 UI의 입력만 전환한다.</summary>
+    /// <summary><paramref name="visible"/>에 따라 전체 화면 탭 배경을 표시하고 메인 UI 입력을 전환한다.</summary>
     private void ShowBackdrop(bool visible)
     {
         _dim.SetActive(visible);

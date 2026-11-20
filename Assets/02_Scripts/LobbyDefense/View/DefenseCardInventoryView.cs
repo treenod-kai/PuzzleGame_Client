@@ -47,11 +47,9 @@ namespace LobbyDefense.View
                     _font = titleText.font;
                 }
             }
-            HidePlaceholder("Title");
             HidePlaceholder("Status");
             HidePlaceholder("Illustration");
 
-            MakeText(transform, "카드 인벤토리", 0, 268, 504, 55, 37).fontStyle = FontStyles.Bold;
             _portrait = MakeRect(transform, "초상", 0, 156, 144, 144).gameObject.AddComponent<Image>();
             _portrait.preserveAspect = true;
             _portrait.raycastTarget = false;
