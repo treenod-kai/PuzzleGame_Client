@@ -18,6 +18,8 @@
 
 ## 재생 흐름
 
+대전 준비 팝업에서 모드가 결정되면 해당 Rule의 90초 완주 기록을 최신순으로 확인한다. 규칙·스테이지가 유효하고 현재 판정과 호환되는 첫 기록을 상대 보드에 전달한다. 호환 기록이 없으면 혼자 첫 대전 기록에 도전한다. [대전 상대 선택](../../02_Scripts/Lobby/LobbyMain.cs)
+
 ```
 ReplayData 로드 → GameSpec 복원 (동일 Rule/Stage + 동일 시드)
   → IPuzzleBoard 생성 + Initialize

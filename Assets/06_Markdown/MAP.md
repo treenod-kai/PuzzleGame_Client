@@ -62,8 +62,8 @@
 
 | 찾는 기능·수정할 내용 | 먼저 볼 C# 파일 | 관련 코드 전체 표 |
 |---|---|---|
-| 스테이지·90초 대전 준비 팝업·슬롯·라이프 | [PopupReady.cs](../02_Scripts/UI/Popup/PopupReady.cs) | [UI.md](04_UI/UI.md#콘텐츠와-c-매핑) |
-| 로비 대전·리플레이 진입 | [LobbyMain.cs](../02_Scripts/Lobby/LobbyMain.cs) | [UI.md](04_UI/UI.md#준비-팝업의-플레이-진입) |
+| 90초 대전 준비 팝업·슬롯·라이프 | [PopupReady.cs](../02_Scripts/UI/Popup/PopupReady.cs) | [UI.md](04_UI/UI.md#콘텐츠와-c-매핑) |
+| 로비 대전 진입·리플레이 상대 선택 | [LobbyMain.cs](../02_Scripts/Lobby/LobbyMain.cs) | [UI.md](04_UI/UI.md#준비-팝업의-플레이-진입) |
 | 퍼즐 입력·게임 루프·종료 처리 | [PuzzleGameController.cs](../02_Scripts/PuzzleCore/Controller/PuzzleGameController.cs) | [INGAME.md](02_Ingame/INGAME.md#콘텐츠와-c-매핑) |
 | 3매치·스왑·자동 셔플 | [ThreeMatchPuzzleBoard.cs](../02_Scripts/PuzzleCore/Module/Board/ThreeMatchPuzzleBoard.cs) | [INGAME.md](02_Ingame/INGAME.md#콘텐츠와-c-매핑) |
 | 링크 연결 | [LinkPuzzleBoard.cs](../02_Scripts/PuzzleCore/Module/Board/LinkPuzzleBoard.cs) | [INGAME.md](02_Ingame/INGAME.md#콘텐츠와-c-매핑) |

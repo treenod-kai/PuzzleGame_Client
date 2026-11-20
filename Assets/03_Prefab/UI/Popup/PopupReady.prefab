@@ -177,7 +177,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b81936a58dab3774bb1895350427d36c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
-  _titleText: {fileID: 2100000722}
   _statusText: {fileID: 2100000702}
   _lifeText: {fileID: 2100000712}
   _reel: {fileID: 2100000732}
@@ -321,7 +320,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "링크 · 3매치 · 탭 매치\n시작 시 라이프 1개 사용"
+  m_text: "링크 · 3매치 · 탭 매치\n대전 시작 시 라이프 1개 사용"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 05947997c1511744d878cc7977116a3e, type: 2}
   m_sharedMaterial: {fileID: 5488988152928790656, guid: 05947997c1511744d878cc7977116a3e, type: 2}
@@ -413,7 +412,7 @@ GameObject:
   - component: {fileID: 2100000713}
   - component: {fileID: 2100000712}
   m_Layer: 5
-  m_Name: StageLives
+  m_Name: BattleLives
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -595,7 +594,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "스테이지 준비"
+  m_text: "90초 대전 준비"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 05947997c1511744d878cc7977116a3e, type: 2}
   m_sharedMaterial: {fileID: 5488988152928790656, guid: 05947997c1511744d878cc7977116a3e, type: 2}

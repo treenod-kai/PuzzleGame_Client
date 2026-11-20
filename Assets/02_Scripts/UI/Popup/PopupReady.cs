@@ -4,10 +4,9 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-/// <summary>준비 팝업에서 미리 고른 퍼즐을 슬롯으로 공개하고 스테이지 또는 대전을 시작합니다.</summary>
+/// <summary>추첨된 퍼즐을 슬롯으로 공개하고 라이프 한 개를 사용해 90초 대전을 시작합니다.</summary>
 public class PopupReady : PopupHandler
 {
-    [SerializeField] private TMP_Text _titleText;
     [SerializeField] private TMP_Text _statusText;
     [SerializeField] private TMP_Text _lifeText;
     [SerializeField] private RawImage _reel;
@@ -21,7 +20,6 @@ public class PopupReady : PopupHandler
     private Vector2 _previewSize;
     private int _selectedMode;
     private bool _spinning;
-    private bool _isBattle;
     private long _lastSecond = -1;
 
     /// <summary>첫 프레임 전에 결과를 정하고 라이프 상태를 표시합니다.</summary>
@@ -31,13 +29,6 @@ public class PopupReady : PopupHandler
         _previewSize = _reel.rectTransform.sizeDelta;
         _selectedMode = UnityEngine.Random.Range(0, RulePaths.Length);
         RefreshLives(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
-    }
-
-    /// <summary>로비에서 대전을 선택한 팝업에 제목과 대전 진입 경로를 설정합니다.</summary>
-    internal void ConfigureBattle()
-    {
-        _isBattle = true;
-        _titleText.text = "90초 대전 준비";
     }
 
     /// <summary>팝업이 열린 동안 초 단위로 다음 회복 시각과 버튼 상태를 갱신합니다.</summary>
@@ -102,10 +93,10 @@ public class PopupReady : PopupHandler
         yield return new WaitForSecondsRealtime(resultSeconds);
 
         if (_popup.IsAnimating || Main.Instance == null || Main.Instance.IsMovingScene ||
-            StageInjection.Instance == null || !PrepareSelectedGame())
+            !LobbyMain.PrepareBattle(RulePaths[_selectedMode]))
         {
-            Debug.LogError("[PopupReady] 게임 진입을 준비하지 못했습니다.");
-            RestoreButtons("게임을 준비하지 못했습니다. 다시 시도해 주세요.");
+            Debug.LogError("[PopupReady] 대전 진입을 준비하지 못했습니다.");
+            RestoreButtons("대전을 준비하지 못했습니다. 다시 시도해 주세요.");
             yield break;
         }
         if (!PlayerLives.TrySpend(DateTimeOffset.UtcNow.ToUnixTimeSeconds()))
@@ -114,17 +105,6 @@ public class PopupReady : PopupHandler
             yield break;
         }
         Main.Instance.MoveScene(SceneEnum.LobbyScene, SceneEnum.GameScene);
-    }
-
-    /// <summary>릴에 표시한 규칙 주소로 요청된 종류의 게임을 준비합니다.</summary>
-    private bool PrepareSelectedGame()
-    {
-        string ruleAddress = RulePaths[_selectedMode];
-        if (_isBattle)
-        {
-            return LobbyMain.PrepareBattle(ruleAddress);
-        }
-        return StageInjection.Instance.MakeGameSpec(ruleAddress, "Stage");
     }
 
     /// <summary>시작 실패 시 선택 결과를 감추고 버튼을 다시 활성화합니다.</summary>

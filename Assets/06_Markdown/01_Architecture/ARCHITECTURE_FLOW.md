@@ -11,15 +11,12 @@
   TitleScene 시작 → Main.AutoCreate()가 SharedScene 추가 로드
     → TitleMain.Start()에서 CI 연출
       → LoadingScene 경유
-        → LobbyScene (스테이지 선택)
-          → [Stage] PopupReady → 슬롯 정지 → GameSpec 준비 → 라이프 1개 사용
-          → [Battle 90s] PopupReady → 슬롯 정지 → 같은 Rule의 대전 기록 확인 → 90초 대전 준비 → 라이프 1개 사용
-          → [리플레이] LobbyMain에서 기록 확인 → GameSpec 준비 → SetReplayData()
-              → LoadingScene 경유
-                → GameScene
-                  → Board 생성 + Initialize + View 그리기 → 게임 루프
-                  → (리플레이 있으면) ReplayController 초기화 → 우측 상단 자동 재생
-                    → 게임 종료(Finish) → 리플레이 JSON 저장 → 결과 확인 → 같은 조건으로 재도전 또는 LobbyScene 이동
+        → LobbyScene → [Battle 90s] → 대전 준비 팝업
+          → START → 슬롯 정지 → 같은 Rule의 호환 대전 기록 확인
+            → 대전 준비 성공 → 라이프 1개 사용 → LoadingScene → GameScene
+              → Board 생성 + Initialize + View 그리기 → 게임 루프
+              → 상대 기록이 있으면 ReplayController 초기화 → 우측 상단 자동 재생
+                → 90초 종료 → 기록 저장 → 같은 조건으로 재도전(라이프 1개) 또는 로비 이동
 ```
 
 ## 사이드 스테이지형 콘텐츠 (기획)

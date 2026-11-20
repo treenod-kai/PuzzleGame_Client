@@ -8,7 +8,7 @@
 |---|---|---|
 | SharedScene 자동 로드·중복 정리·씬 전환 | [Main.cs](../../02_Scripts/Manager/Main.cs) | `SceneEnum`, `AutoCreate`, `MoveScene`, `CoMoveScene`, `IsMovingScene` |
 | 타이틀 CI 연출·로비 진입 | [TitleMain.cs](../../02_Scripts/Title/TitleMain.cs) | `Start` |
-| 로비 준비 팝업·대전·최근 리플레이 | [LobbyMain.cs](../../02_Scripts/Lobby/LobbyMain.cs) | `OnClickStartStage`, `OnClickBattle`, `OnClickReplay` |
+| 90초 대전 준비 팝업·상대 기록 선택 | [LobbyMain.cs](../../02_Scripts/Lobby/LobbyMain.cs) | `OnClickBattle`, `PrepareBattle` |
 | 에셋 로딩 요청 공유·캐시·해제 | [AssetManager.cs](../../02_Scripts/Manager/AssetManager.cs) | `AssetArguments`, `LoadAsset`, `LoadAssetAsync`, `MarkPersistent`, `ReleaseAll` |
 | 오브젝트 풀 대여·반환·씬 전환 시 정리 | [PoolManager.cs](../../02_Scripts/Manager/PoolManager.cs) | `Get`, `Release`, `ClearIfCreated`, `Clear` |
 | 메인 카메라 접근·중복 처리 | [CameraController.cs](../../02_Scripts/CameraController.cs) | `MainCamera` |
@@ -26,7 +26,7 @@
 | SharedScene | 영구 상주 (매니저, 카메라, EventSystem) | Main.cs |
 | TitleScene | CI 연출 후 로비로 이동 | TitleMain.cs |
 | LoadingScene | 씬 전환 시 로딩 화면 | — |
-| LobbyScene | 스테이지 선택, 게임 준비 | LobbyMain.cs |
+| LobbyScene | 90초 대전 진입 | LobbyMain.cs |
 | GameScene | 인게임 퍼즐 플레이 | PuzzleGameController.cs, ReplayController.cs |
 | ToolScene | 스테이지 맵 편집 도구 (에디터 전용) | StageMapToolController.cs |
 
@@ -151,18 +151,10 @@ TitleMain.Start()
 
 ### LobbyScene
 ```
-LobbyMain.OnClickStartStage()
-  → DomainManager.OpenPopup("PopupReady")
-    → [스타트] 미리 고른 퍼즐 모드 공개
-      → StageInjection.MakeGameSpec(rulePath, stagePath) → 라이프 1개 사용
-        → Main.MoveScene(LobbyScene, GameScene)
-LobbyMain.OnClickReplay()
-      → 최근 리플레이 JSON 로드 → 기록의 Rule/Stage로 MakeGameSpec()
-        → 기록의 시드 적용 → SetReplayData() → Main.MoveScene(LobbyScene, GameScene)
-LobbyMain.OnClickBattle()
-  → PopupReady.ConfigureBattle() → START → 슬롯 결과 공개
-    → LobbyMain.PrepareBattle(추첨된 Rule) → 같은 Rule의 호환 완주 기록 선택 (없으면 단독 대전)
-      → 라이프 1개 사용 → GameScene 이동
+Battle 90s → LobbyMain.OnClickBattle() → DomainManager.OpenPopup("PopupReady")
+  → START → PopupReady.OnClickStart() → SpinAndStart() → 슬롯 결과 공개
+    → LobbyMain.PrepareBattle(추첨된 Rule) → 호환 완주 기록 선택 (없으면 단독 대전)
+      → 라이프 1개 사용 → Main.MoveScene(LobbyScene, GameScene)
 ```
 
 ### GameScene

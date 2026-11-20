@@ -38,6 +38,7 @@ public class PuzzleGameController : MonoBehaviour
     private ReplayData _opponent;
     [SerializeField] private GameObject _resultPanel;
     [SerializeField] private TMP_Text _summaryText;
+    private string _resultSummary;
     private string _playHint;
     private List<ObjectiveData> _objectives;
     private int _lastDestroyed = -1;
@@ -236,13 +237,13 @@ public class PuzzleGameController : MonoBehaviour
         if (_board.State == BoardState.Finish)
         {
             _replaySaved = true;
-            string summary = _mode == GameMode.Battle ? GetBattleResult() :
+            _resultSummary = _mode == GameMode.Battle ? GetBattleResult() :
                 $"{(_board.Objective.IsAllObjectivesCleared() ? "스테이지 클리어" : "시간 종료")}\n최종 점수 {_board.Objective.CurrentScore}점";
             if (!SaveReplay())
             {
-                summary += "\n리플레이를 저장하지 못했습니다";
+                _resultSummary += "\n리플레이를 저장하지 못했습니다";
             }
-            _summaryText.text = summary;
+            _summaryText.text = _resultSummary;
             _resultPanel.SetActive(true);
             return;
         }
@@ -295,11 +296,16 @@ public class PuzzleGameController : MonoBehaviour
         return result;
     }
 
-    /// <summary> 같은 시드와 상대 기록으로 새 보드를 시작합니다. </summary>
+    /// <summary>같은 조건으로 다시 시작하며, 완료된 대전에 재도전할 때 라이프 한 개를 사용합니다.</summary>
     private void OnClickRetry()
     {
-        if (Main.Instance.IsMovingScene)
+        if (Main.Instance == null || Main.Instance.IsMovingScene)
         {
+            return;
+        }
+        if (_mode == GameMode.Battle && _isInitialized && !PlayerLives.TrySpend(DateTimeOffset.UtcNow.ToUnixTimeSeconds()))
+        {
+            _summaryText.text = _resultSummary + "\n라이프가 충전되면 다시 도전할 수 있어요.";
             return;
         }
         StageInjection.Instance.SetReplayData(_opponent);

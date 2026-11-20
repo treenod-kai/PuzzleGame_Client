@@ -16,8 +16,8 @@ UI, 팝업, 탭 관련 작업 시 이 문서를 참고.
 | 탭 검색·활성화·비활성화 | [TabController.cs](../../02_Scripts/Manager/TabController.cs) | `ActivateTab`, `DeactivateTab` |
 | 탭 생명주기·애니메이션 확장 | [TabBase.cs](../../02_Scripts/Manager/TabBase.cs) | `Activate`, `Deactivate`, `ActivateAnimation`, `DeactivateAnimation` |
 | Inspector 버튼 콜백 연결 | [UIButton.cs](../../02_Scripts/UI/UIButton.cs) | `OnClickEvent` |
-| 스테이지·90초 대전 준비·슬롯 연출·게임 진입 | [PopupReady.cs](../../02_Scripts/UI/Popup/PopupReady.cs) | `ConfigureBattle`, `OnClickStart`, `SpinAndStart`, `OnClickClose` |
-| 로비 대전·리플레이 선택 | [LobbyMain.cs](../../02_Scripts/Lobby/LobbyMain.cs) | `OnClickBattle`, `PrepareBattle`, `OnClickReplay` |
+| 90초 대전 준비·슬롯 연출·게임 진입 | [PopupReady.cs](../../02_Scripts/UI/Popup/PopupReady.cs) | `OnClickStart`, `SpinAndStart`, `OnClickClose` |
+| 로비 대전 진입·리플레이 상대 선택 | [LobbyMain.cs](../../02_Scripts/Lobby/LobbyMain.cs) | `OnClickBattle`, `PrepareBattle` |
 | 준비 팝업 라이프·오프라인 충전 | [PlayerLives.cs](../../02_Scripts/Lobby/PlayerLives.cs) | `GetRemaining`, `TrySpend` |
 | Shared 공용 팝업 등록 | [SharedPopupController.cs](../../02_Scripts/Manager/SharedPopupController.cs) | `ControllerName` |
 | 로비 팝업 등록·로비 직접 실행 시 매니저 대기 | [LobbyPopupController.cs](../../02_Scripts/Lobby/LobbyPopupController.cs) | `ControllerName`, `RegisterWhenReady` |
@@ -180,7 +180,7 @@ Inspector에서 설정하는 범용 버튼 컴포넌트.
 
 ## 사이드 스테이지 팝업
 
-사이드 스테이지 팝업 흐름은 `UI_SIDE_STAGE.md` 참고.
+사이드 스테이지 팝업의 기획은 [사이드 스테이지 UI](UI_SIDE_STAGE.md)에 정리한다.
 
 ## 탭 추가 방법 (체크리스트)
 
@@ -191,10 +191,9 @@ Inspector에서 설정하는 범용 버튼 컴포넌트.
 
 릴의 세 칸 구성과 생성 프롬프트는 [슬롯 스타일](../00_Guide/ART-STYLE.md#준비-팝업-슬롯), 배경 이미지와 글자색은 [준비 팝업 패널](../00_Guide/ART-STYLE.md#준비-팝업-패널)을 참고한다.
 
-- 로비의 Stage 또는 Battle 90s 버튼이 팝업을 열면 링크·3매치·탭 매치 중 하나를 미리 선택한다. 닫기(×)는 무료다. START를 누르면 [릴 이미지](../../04_Resources/Images/ReadyReel.png)가 3초간 회전하며 감속한다. 선택된 그림과 모드 이름을 2초간 보여준 뒤 같은 Rule로 선택한 게임을 준비하고 로딩 씬으로 이동한다.
-- 라이프는 최초 5개이며 최대 5개까지 30분마다 1개씩 회복한다. 완충 예정 UTC 시각을 PlayerPrefs에 보관해 앱 종료 중에도 충전한다. 스테이지 또는 대전 데이터 준비가 성공한 뒤 진입 시 1개를 소비한다. 잔량이 0이면 START를 비활성화하고 다음 충전까지 남은 시간을 표시한다.
-- 로비의 `Battle 90s`: 추첨된 퍼즐 Rule 안에서 현재 콤보·수치 계산 규칙과 피벗 설정이 같은 가장 최근의 유효한 90초 완주 대전 기록을 상대로 선택한다. 기록이 없으면 혼자 90초를 플레이하여 첫 대전 기록을 만든다.
-- 로비의 `Replay`는 읽을 수 있는 가장 최근 기록을 원래 종료 규칙으로 재생한다. 기록이 없으면 로비에서 첫 판을 마치는 방법을 안내한다.
-- 게임 결과 화면의 `다시 도전`은 같은 규칙·시드·상대로 새 판을 시작하고, `로비로`는 모드 선택으로 돌아간다.
+- 로비의 시작 버튼 `Battle 90s`를 누르면 준비 팝업이 열리고 링크·3매치·탭 매치 중 하나를 미리 선택한다. 닫기(×)는 무료다. START를 누르면 릴이 3초간 회전하며 감속한다. 선택된 그림과 모드 이름을 2초간 보여준 뒤 추첨된 Rule로 대전을 준비한다. [릴 이미지](../../04_Resources/Images/ReadyReel.png)
+- 라이프는 최초 5개이며 최대 5개까지 30분마다 1개씩 회복한다. 완충 예정 UTC 시각을 PlayerPrefs에 보관해 앱 종료 중에도 충전한다. 대전 준비가 끝나면 라이프 1개를 쓰고 게임 씬으로 이동한다. 잔량이 0이면 START를 비활성화하고 다음 충전까지 남은 시간을 표시한다.
+- 대전 준비 시 추첨된 Rule과 콤보·수치 계산 규칙·피벗 설정이 맞는 최근 90초 완주 기록을 상대로 선택해 게임 씬에서 자동 재생한다. 기록이 없으면 혼자 90초를 플레이하여 첫 대전 기록을 만든다.
+- 대전 결과의 `다시 도전`은 라이프 1개를 사용해 같은 규칙·시드·상대로 새 판을 시작한다. 대전 라이프가 0개면 `로비로`를 누르거나 충전 후 다시 도전할 수 있다. 에디터에서 직접 실행한 스테이지의 시작과 재도전은 무료다.
 - 버튼은 `PopupReady.prefab`의 기존 `UIButton` 메시지 연결 방식을 사용한다.
 - 대전 점수 비교와 상대 상태 표시는 `GameScene.unity`에 연결된 TMP UI이며 상세는 [INGAME-VIEW-AND-BATTLE.md](../02_Ingame/INGAME-VIEW-AND-BATTLE.md#스테이지와-90초-대전)를 참고한다.
