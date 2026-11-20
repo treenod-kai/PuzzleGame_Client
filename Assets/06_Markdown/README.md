@@ -1,6 +1,6 @@
 # 문서 인덱스
 
-PuzleBattleGame(Unity 6000.0.38f1, URP) 문서 모음. 작업 영역에 맞는 문서를 골라 읽으세요.
+PuzleBattleGame(Unity URP) 문서 모음. Unity 버전은 [프로젝트 설정](../../ProjectSettings/ProjectVersion.txt)을 따른다. 작업 영역에 맞는 문서를 골라 읽으세요.
 세부 네비게이션(확장 포인트·소스 위치)은 [MAP.md](MAP.md), 코딩 규칙 전체는 [../../AGENTS.md](../../AGENTS.md) 참고.
 
 > **폴더 구조.** 문서는 콘텐츠별 폴더로 묶여 있다(`00_Guide`/`01_Architecture`/`02_Ingame`/`03_Data`/`04_UI`/`05_Scene`/`06_Server`/`07_Agents`).
@@ -20,6 +20,8 @@ PuzleBattleGame(Unity 6000.0.38f1, URP) 문서 모음. 작업 영역에 맞는 �
 | [04_UI/UI.md](04_UI/UI.md) | **UI 시스템.** 도메인 시스템, 팝업/탭 생명주기, UIButton, 팝업·탭 추가 방법. |
 | [05_Scene/SCENE.md](05_Scene/SCENE.md) | **씬/인프라.** 씬 전환, SharedScene, 매니저 구조, AssetManager, PoolManager. 새 씬·매니저 추가. |
 | [06_Server/SERVER.md](06_Server/SERVER.md) | **서버 통신.** 서버 API 연동, 공유 DLL(PuzleBattleShared), 네트워크 레이어, 공유 DTO 추가 방법. |
+| [01_Architecture/LOBBY-DEFENSE.md](01_Architecture/LOBBY-DEFENSE.md) | 100열 × 10행 로비 디펜스 기획, 배치·몬스터·보상·검증 시나리오. |
+| [00_Guide/ART-STYLE.md](00_Guide/ART-STYLE.md) | 게임 이미지의 원화 참고, 생성 예시와 Unity 임포트 기준. |
 | [CHANGELOG.md](CHANGELOG.md) | **변경 이력.** 전체 작업 변경 기록. 이전 작업 맥락 파악 시 참고. |
 
 ---
@@ -32,6 +34,8 @@ PuzleBattleGame(Unity 6000.0.38f1, URP) 문서 모음. 작업 영역에 맞는 �
 |------|------|------|
 | [01_Architecture/ARCHITECTURE_FLOW.md](01_Architecture/ARCHITECTURE_FLOW.md) | ARCHITECTURE | 메인 대전/사이드 스테이지 게임 흐름 상세. |
 | [02_Ingame/INGAME_GIMMICK.md](02_Ingame/INGAME_GIMMICK.md) | INGAME | 기믹 인터페이스/파괴 연쇄/새 기믹 추가 절차. |
+| [02_Ingame/INGAME-VIEW-AND-BATTLE.md](02_Ingame/INGAME-VIEW-AND-BATTLE.md) | INGAME | 게임 결과·리플레이·피벗 게이지와 보드 연출. |
+| [03_Data/RULES-AND-STAGES.md](03_Data/RULES-AND-STAGES.md) | DATA | 규칙·스테이지 JSON과 피벗 설정. |
 | [02_Ingame/INGAME_REPLAY.md](02_Ingame/INGAME_REPLAY.md) | INGAME | 리플레이 기록/재생 흐름 상세. |
 | [03_Data/DATA_SCHEMA.md](03_Data/DATA_SCHEMA.md) | DATA | GameSpec 전체 필드 스키마 트리 + ReplayData JSON. |
 | [03_Data/DATA_STAGE.md](03_Data/DATA_STAGE.md) | DATA | 스테이지 저장소(StageStorage)·맵 툴(StageMapTool) 레퍼런스. |

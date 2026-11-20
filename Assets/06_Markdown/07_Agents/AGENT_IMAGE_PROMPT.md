@@ -9,6 +9,8 @@
 - `MAP.md`
 - `AGENTS.md`
 - `README.md`
+- [기존 블럭·타일·게이지·슬롯 원화 기준](../00_Guide/ART-STYLE.md)
+- 로비 디펜스 캐릭터의 용도와 배치 크기는 [로비 디펜스 기획](../01_Architecture/LOBBY-DEFENSE.md)을 확인한다.
 - 필요 시 `UI.md`, `INGAME.md`, `DATA.md`
 
 ---

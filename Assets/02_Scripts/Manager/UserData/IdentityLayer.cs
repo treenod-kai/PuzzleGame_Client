@@ -35,24 +35,36 @@ public class IdentityLayer
             email = ""
         };
 
-        NetworkManager.Instance.Post<AuthLoginRequest, AuthLoginResponse>(
-            LOGIN_ENDPOINT,
-            request,
-            (response) =>
+        /// <summary>로그인 응답에서 게스트 정보를 적용합니다.</summary>
+        void OnIdentityLoaded(AuthLoginResponse response)
+        {
+            if (response == null || response.user == null)
             {
-                Data = response.user;
-                IsLoaded = true;
-                Debug.Log($"[IdentityLayer] 게스트 로그인 완료: uid={Data.uid}, nickname={Data.nickname}");
-                onComplete?.Invoke();
-            },
-            (error) =>
-            {
-                Debug.LogWarning($"[IdentityLayer] 서버 연결 실패, 더미 데이터로 대체: {error}");
-                Data = CreateDummyData();
-                IsLoaded = true;
-                onComplete?.Invoke();
+                OnIdentityLoadFailed("게스트 로그인 응답에 유저 정보가 없습니다.");
+                return;
             }
-        );
+
+            SetData(response.user);
+            Debug.Log($"[IdentityLayer] 게스트 로그인 완료: uid={Data.uid}, nickname={Data.nickname}");
+            if (onComplete != null)
+            {
+                onComplete.Invoke();
+            }
+        }
+
+        /// <summary>서버 요청에 실패하면 로컬 게스트 정보를 적용합니다.</summary>
+        void OnIdentityLoadFailed(string error)
+        {
+            Debug.LogWarning($"[IdentityLayer] 서버 연결 실패, 더미 데이터로 대체: {error}");
+            SetData(CreateDummyData());
+            if (onComplete != null)
+            {
+                onComplete.Invoke();
+            }
+        }
+
+        NetworkManager.Instance.Post<AuthLoginRequest, AuthLoginResponse>(
+            LOGIN_ENDPOINT, request, OnIdentityLoaded, OnIdentityLoadFailed);
     }
 
     /// <summary>

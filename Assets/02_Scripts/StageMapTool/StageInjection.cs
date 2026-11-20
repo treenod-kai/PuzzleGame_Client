@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using Puzzle.Core;
 
 /// <summary>
@@ -40,16 +40,8 @@ public class StageInjection
     /// 현재 보관 중인 게임 사양서 객체를 반환합니다.
     /// </summary>
     /// <returns>구성된 GameSpec 객체</returns>
-    public GameSpec GetGameSpec()
-    {
-        return _gameSpec;
-    }
+    public GameSpec GetGameSpec() => _gameSpec;
 
-    /// <summary>
-    /// 지정된 규칙과 스테이지 에셋 주소로부터 데이터를 로드하여 게임 사양서(GameSpec)를 완성합니다.
-    /// </summary>
-    /// <param name="ruleAddress">Addressable 내 규칙 JSON 에셋 주소</param>
-    /// <param name="stageAddress">Addressable 내 스테이지 JSON 에셋 주소</param>
     /// <summary>
     /// 마지막으로 사용된 규칙 에셋 주소를 반환합니다.
     /// </summary>
@@ -75,46 +67,20 @@ public class StageInjection
     /// 설정된 상대방 리플레이 데이터를 반환합니다.
     /// </summary>
     /// <returns>리플레이 데이터 (없으면 null)</returns>
-    public ReplayData GetReplayData()
-    {
-        return _replayData;
-    }
+    public ReplayData GetReplayData() => _replayData;
 
-    /// <summary>
-    /// 지정된 규칙과 모드별 스테이지 번호로부터 게임 사양서를 완성합니다.
-    /// </summary>
-    /// <param name="ruleAddress">Addressable 내 규칙 JSON 에셋 주소</param>
-    /// <param name="puzzleType">로드할 스테이지의 퍼즐 모드</param>
-    /// <param name="stageId">로드할 스테이지 번호</param>
-    /// <returns>사양서 생성 성공 여부</returns>
+    /// <summary> 규칙 주소와 모드별 스테이지 번호로 사이드 스테이지의 사양서를 준비합니다. </summary>
+    /// <param name="ruleAddress">규칙 에셋 주소입니다.</param>
+    /// <param name="puzzleType">스테이지 파일이 속한 퍼즐 모드입니다.</param>
+    /// <param name="stageId">스테이지 번호입니다.</param>
     public bool MakeGameSpec(string ruleAddress, PuzzleType puzzleType, int stageId)
     {
-        string stageKey = StageStorage.GetResourceKey(puzzleType, stageId);
-        _ruleAddress = ruleAddress;
-        _stageAddress = stageKey;
-        _gameSpec = new GameSpec();
-
-        if (!TryLoadRule(ruleAddress, _gameSpec))
+        if (!StageStorage.TryGetResourceKey(puzzleType, stageId, out string stageKey))
         {
             _gameSpec = null;
             return false;
         }
-
-        if (!StageStorage.TryLoadStageJson(puzzleType, stageId, out string stageJson))
-        {
-            Debug.LogError($"[StageInjection] 스테이지 JSON 로드 실패: {stageKey}");
-            _gameSpec = null;
-            return false;
-        }
-
-        if (!TryApplyStageJson(stageKey, stageJson, _gameSpec))
-        {
-            _gameSpec = null;
-            return false;
-        }
-
-        _gameSpec.randomSeed = new System.Random().Next();
-        return true;
+        return MakeGameSpec(ruleAddress, stageKey);
     }
 
     /// <summary>
@@ -122,99 +88,130 @@ public class StageInjection
     /// </summary>
     /// <param name="ruleAddress">Addressable 내 규칙 JSON 에셋 주소</param>
     /// <param name="stageAddress">Addressable 내 스테이지 JSON 에셋 주소</param>
+    /// <param name="mode">게임 종료 규칙과 대전 전용 데이터 검증 여부</param>
+    /// <param name="stageJson">기록 당시의 스테이지 스냅샷입니다. 없으면 주소에서 읽습니다.</param>
     /// <returns>사양서 생성 성공 여부</returns>
-    public bool MakeGameSpec(string ruleAddress, string stageAddress)
+    public bool MakeGameSpec(string ruleAddress, string stageAddress, GameMode mode = GameMode.Stage, string stageJson = null)
     {
         _ruleAddress = ruleAddress;
         _stageAddress = stageAddress;
         _gameSpec = new GameSpec();
+        _gameSpec.mode = mode;
 
         // 1. 규칙(Rule) 데이터 로드 및 파싱
-        if (!TryLoadRule(ruleAddress, _gameSpec))
+        TextAsset ruleAsset = AssetManager.Instance.LoadAsset<TextAsset>(ruleAddress);
+        if (ruleAsset != null)
+        {
+            GameRuleContainer ruleContainer;
+            try
+            {
+                ruleContainer = JsonUtility.FromJson<GameRuleContainer>(ruleAsset.text);
+            }
+            catch (System.ArgumentException exception)
+            {
+                Debug.LogError($"[StageInjection] 규칙 JSON 파싱 실패: {ruleAddress} / {exception.Message}");
+                _gameSpec = null;
+                return false;
+            }
+            if (ruleContainer == null)
+            {
+                Debug.LogError($"[StageInjection] 규칙 JSON 파싱 실패: {ruleAddress}");
+                _gameSpec = null;
+                return false;
+            }
+            if (!ObjectiveManager.IsValidTimeLimit(ruleContainer.rule.timeLimit))
+            {
+                Debug.LogError($"[StageInjection] 제한 시간 범위가 잘못되었습니다: {ruleAddress} / {ruleContainer.rule.timeLimit}");
+                _gameSpec = null;
+                return false;
+            }
+            _gameSpec.rule = ruleContainer.rule;
+            _gameSpec.blocks = ruleContainer.blocks;
+            _gameSpec.pivotSettings = ruleContainer.pivotSettings;
+            if (mode == GameMode.Battle)
+            {
+                if (_gameSpec.pivotSettings == null)
+                {
+                    Debug.LogError($"[StageInjection] 대전 피벗 설정이 없습니다: {ruleAddress} / pivotSettings");
+                    _gameSpec = null;
+                    return false;
+                }
+                try
+                {
+                    _gameSpec.pivotSettings = _gameSpec.pivotSettings.CopyValidated();
+                }
+                catch (System.ArgumentOutOfRangeException exception)
+                {
+                    Debug.LogError($"[StageInjection] 대전 피벗 설정 오류: {ruleAddress} / {exception.Message}");
+                    _gameSpec = null;
+                    return false;
+                }
+            }
+        }
+        else
+        {
+            Debug.LogError($"[StageInjection] 규칙 에셋 로드 실패: {ruleAddress}");
+            _gameSpec = null;
+            return false;
+        }
+
+        // 2. 스테이지(Stage) 데이터 로드 및 파싱
+        if (!TryLoadStageData(stageAddress, stageJson, out _gameSpec.stageData))
         {
             _gameSpec = null;
             return false;
         }
 
-        // 2. 기존 메인/리플레이 경로는 Addressable 스테이지 에셋만 사용합니다.
-        if (!TryLoadLegacyStage(stageAddress, _gameSpec))
-        {
-            _gameSpec = null;
-            return false;
-        }
+        _replayData = null;
 
         // 3. 결정론적 리플레이를 위한 랜덤 시드 생성
         _gameSpec.randomSeed = new System.Random().Next();
         return true;
     }
 
-    /// <summary>
-    /// 규칙 JSON 에셋을 로드하여 게임 사양서에 적용합니다.
-    /// </summary>
-    /// <param name="ruleAddress">Addressable 내 규칙 JSON 에셋 주소</param>
-    /// <param name="gameSpec">규칙 데이터를 적용할 게임 사양서</param>
-    /// <returns>규칙 로드 및 파싱 성공 여부</returns>
-    private bool TryLoadRule(string ruleAddress, GameSpec gameSpec)
+    /// <summary> 기록된 스냅샷을 우선하고, 없으면 모드별 저장소 또는 Addressables에서 스테이지를 로드합니다. </summary>
+    /// <param name="stageAddress">스테이지 저장소의 키 또는 에셋 주소입니다.</param>
+    /// <param name="stageJson">기록 당시의 JSON 스냅샷입니다.</param>
+    /// <param name="stageData">좌표와 셀 목록의 검증을 마친 스테이지입니다.</param>
+    internal static bool TryLoadStageData(string stageAddress, string stageJson, out StageData stageData)
     {
-        TextAsset ruleAsset = AssetManager.Instance.LoadAsset<TextAsset>(ruleAddress);
-        if (ruleAsset == null)
+        stageData = null;
+        if (string.IsNullOrEmpty(stageJson))
         {
-            Debug.LogError($"[StageInjection] 규칙 에셋 로드 실패: {ruleAddress}");
+            if (StageStorage.IsModeStageKey(stageAddress))
+            {
+                if (!StageStorage.TryLoadStageJson(stageAddress, out stageJson))
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                TextAsset stageAsset = AssetManager.Instance.LoadAsset<TextAsset>(stageAddress);
+                if (stageAsset == null)
+                {
+                    Debug.LogError($"[StageInjection] 스테이지 에셋 로드 실패: {stageAddress}");
+                    return false;
+                }
+                stageJson = stageAsset.text;
+            }
+        }
+
+        try
+        {
+            stageData = JsonUtility.FromJson<StageData>(stageJson);
+        }
+        catch (System.ArgumentException exception)
+        {
+            Debug.LogError($"[StageInjection] 스테이지 JSON 파싱 실패: {stageAddress} / {exception.Message}");
             return false;
         }
-
-        GameRuleContainer ruleContainer = JsonUtility.FromJson<GameRuleContainer>(ruleAsset.text);
-        if (ruleContainer == null)
+        if (stageData == null || !stageData.HasValidCoordinates() || stageData.cells.Count == 0)
         {
-            Debug.LogError($"[StageInjection] 규칙 JSON 파싱 실패: {ruleAddress}");
+            Debug.LogError($"[StageInjection] 스테이지 데이터 또는 셀 좌표 범위 오류: {stageAddress}");
+            stageData = null;
             return false;
         }
-
-        gameSpec.rule = ruleContainer.rule;
-        gameSpec.blocks = ruleContainer.blocks;
-        return true;
-    }
-
-    /// <summary>
-    /// 기존 Addressable 스테이지 에셋을 로드하여 게임 사양서에 적용합니다.
-    /// </summary>
-    /// <param name="stageAddress">Addressable 내 스테이지 JSON 에셋 주소</param>
-    /// <param name="gameSpec">스테이지 데이터를 적용할 게임 사양서</param>
-    /// <returns>스테이지 로드 및 파싱 성공 여부</returns>
-    private bool TryLoadLegacyStage(string stageAddress, GameSpec gameSpec)
-    {
-        TextAsset stageAsset = AssetManager.Instance.LoadAsset<TextAsset>(stageAddress);
-        if (stageAsset != null)
-        {
-            return TryApplyStageJson(stageAddress, stageAsset.text, gameSpec);
-        }
-
-        Debug.LogError($"[StageInjection] 스테이지 에셋 로드 실패: {stageAddress}");
-        return false;
-    }
-
-    /// <summary>
-    /// 스테이지 JSON 문자열을 파싱하여 게임 사양서에 적용합니다.
-    /// </summary>
-    /// <param name="stageKey">로그에 표시할 스테이지 식별자</param>
-    /// <param name="stageJson">파싱할 스테이지 JSON 문자열</param>
-    /// <param name="gameSpec">스테이지 데이터를 적용할 게임 사양서</param>
-    /// <returns>스테이지 파싱 및 검증 성공 여부</returns>
-    private bool TryApplyStageJson(string stageKey, string stageJson, GameSpec gameSpec)
-    {
-        gameSpec.stageData = JsonUtility.FromJson<StageData>(stageJson);
-        if (gameSpec.stageData == null)
-        {
-            Debug.LogError($"[StageInjection] 스테이지 JSON 파싱 실패: {stageKey}");
-            return false;
-        }
-
-        if (gameSpec.stageData.cells == null || gameSpec.stageData.cells.Count == 0)
-        {
-            Debug.LogError($"[StageInjection] 스테이지 셀 데이터가 비어 있습니다: {stageKey}");
-            return false;
-        }
-
         return true;
     }
 }

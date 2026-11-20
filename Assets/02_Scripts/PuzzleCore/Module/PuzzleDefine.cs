@@ -1,5 +1,6 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
+using Battle.Pivot;
 
 namespace Puzzle.Core
 {
@@ -14,6 +15,9 @@ namespace Puzzle.Core
         /// <summary> 세로 좌표 (Y축) </summary>
         public int Y;
 
+        /// <summary> 지정한 가로와 세로 좌표로 격자 위치를 생성합니다. </summary>
+        /// <param name="x">가로 좌표</param>
+        /// <param name="y">세로 좌표</param>
         public GridPos(int x, int y)
         {
             X = x;
@@ -34,10 +38,12 @@ namespace Puzzle.Core
         /// <summary>
         /// 일반 사각형 그리드에서 두 좌표가 상하좌우로 인접해 있는지 확인합니다.
         /// </summary>
+        /// <param name="a">첫 번째 격자 좌표</param>
+        /// <param name="b">두 번째 격자 좌표</param>
         public static bool IsAdjacentSquare(GridPos a, GridPos b)
         {
-            int dx = Math.Abs(a.X - b.X);
-            int dy = Math.Abs(a.Y - b.Y);
+            long dx = Math.Abs((long)a.X - b.X);
+            long dy = Math.Abs((long)a.Y - b.Y);
             return (dx == 1 && dy == 0) || (dx == 0 && dy == 1);
         }
 
@@ -45,10 +51,12 @@ namespace Puzzle.Core
         /// Flat-Top(Even-Q) 육각형 그리드에서 두 좌표가 6방향으로 인접해 있는지 확인합니다.
         /// 짝수 열(Column)이 반 칸 아래로 내려가 있는 형태를 기준으로 합니다.
         /// </summary>
+        /// <param name="a">첫 번째 격자 좌표</param>
+        /// <param name="b">두 번째 격자 좌표</param>
         public static bool IsAdjacentHexagon(GridPos a, GridPos b)
         {
-            int dx = b.X - a.X;
-            int dy = b.Y - a.Y;
+            long dx = (long)b.X - a.X;
+            long dy = (long)b.Y - a.Y;
 
             if (dx == 0) // 같은 열(위, 아래)
             {
@@ -71,36 +79,35 @@ namespace Puzzle.Core
         }
 
         // --- 연산자 오버로딩 ---
-        public static GridPos operator +(GridPos a, GridPos b)
-        {
-            return new GridPos(a.X + b.X, a.Y + b.Y);
-        }
+        /// <summary> 두 격자 좌표의 각 성분을 더합니다. </summary>
+        /// <param name="a">첫 번째 격자 좌표</param>
+        /// <param name="b">두 번째 격자 좌표</param>
+        public static GridPos operator +(GridPos a, GridPos b) => new GridPos(a.X + b.X, a.Y + b.Y);
 
-        public static GridPos operator -(GridPos a, GridPos b)
-        {
-            return new GridPos(a.X - b.X, a.Y - b.Y);
-        }
+        /// <summary> 두 격자 좌표의 각 성분을 뺍니다. </summary>
+        /// <param name="a">첫 번째 격자 좌표</param>
+        /// <param name="b">두 번째 격자 좌표</param>
+        public static GridPos operator -(GridPos a, GridPos b) => new GridPos(a.X - b.X, a.Y - b.Y);
 
-        public static bool operator ==(GridPos a, GridPos b)
-        {
-            return a.X == b.X && a.Y == b.Y;
-        }
+        /// <summary> 두 격자 좌표가 같은지 확인합니다. </summary>
+        /// <param name="a">첫 번째 격자 좌표</param>
+        /// <param name="b">두 번째 격자 좌표</param>
+        public static bool operator ==(GridPos a, GridPos b) => a.X == b.X && a.Y == b.Y;
 
-        public static bool operator !=(GridPos a, GridPos b)
-        {
-            return !(a == b);
-        }
+        /// <summary> 두 격자 좌표가 다른지 확인합니다. </summary>
+        /// <param name="a">첫 번째 격자 좌표</param>
+        /// <param name="b">두 번째 격자 좌표</param>
+        public static bool operator !=(GridPos a, GridPos b) => !(a == b);
 
-        public bool Equals(GridPos other)
-        {
-            return X == other.X && Y == other.Y;
-        }
+        /// <summary> 대상과 현재 격자 좌표가 같은지 확인합니다. </summary>
+        /// <param name="other">비교할 격자 좌표</param>
+        public bool Equals(GridPos other) => X == other.X && Y == other.Y;
 
-        public override bool Equals(object obj)
-        {
-            return obj is GridPos other && Equals(other);
-        }
+        /// <summary> 대상과 현재 격자 좌표가 같은지 확인합니다. </summary>
+        /// <param name="obj">비교할 객체</param>
+        public override bool Equals(object obj) => obj is GridPos other && Equals(other);
 
+        /// <summary> 격자 좌표의 해시 코드를 반환합니다. </summary>
         public override int GetHashCode()
         {
             // 구버전 닷넷 호환성을 고려한 해시 생성
@@ -110,10 +117,8 @@ namespace Puzzle.Core
             }
         }
 
-        public override string ToString()
-        {
-            return $"({X}, {Y})";
-        }
+        /// <summary> 격자 좌표를 문자열로 반환합니다. </summary>
+        public override string ToString() => $"({X}, {Y})";
     }
 
     /// <summary>
@@ -126,6 +131,9 @@ namespace Puzzle.Core
         public RuleData rule;
         /// <summary> 블럭 정보 리스트 </summary>
         public List<BlockData> blocks;
+
+        /// <summary> Rule JSON에서 지정하는 대전 전용 피벗 충전과 유지 규칙입니다. </summary>
+        public PivotSettings pivotSettings;
     }
 
     /// <summary>
@@ -160,6 +168,15 @@ namespace Puzzle.Core
         public int count;
     }
 
+    /// <summary> 스테이지 공략과 제한 시간 점수 대전의 종료 규칙을 구분합니다. </summary>
+    public enum GameMode
+    {
+        /// <summary> 목표 달성 또는 제한 시간 종료 </summary>
+        Stage = 0,
+        /// <summary> 목표 달성과 무관하게 공통 제한 시간까지 진행 </summary>
+        Battle = 1
+    }
+
     /// <summary>
     /// 게임 클리어 목표의 종류를 정의합니다.
     /// </summary>
@@ -168,9 +185,7 @@ namespace Puzzle.Core
         /// <summary> 특정 점수 도달 </summary>
         Score = 0,
         /// <summary> 특정 ID의 블럭 수집(파괴) </summary>
-        CollectBlock = 1,
-        /// <summary> 특정 셀 모두 제거 </summary>
-        ClearCell = 2
+        CollectBlock = 1
     }
 
     /// <summary>
@@ -364,6 +379,8 @@ namespace Puzzle.Core
     {
         /// <summary> 조작이 발생한 게임 로직 프레임 </summary>
         public ulong frame;
+        /// <summary> 같은 프레임의 좌표 입력과 종료 입력 사이의 처리 순서 </summary>
+        public ulong sequence;
         /// <summary> 클릭/터치된 그리드 좌표 </summary>
         public GridPos position;
 
@@ -372,9 +389,11 @@ namespace Puzzle.Core
         /// </summary>
         /// <param name="frame">조작이 발생한 프레임</param>
         /// <param name="pos">클릭/터치된 그리드 좌표</param>
-        public InputRecord(ulong frame, GridPos pos)
+        /// <param name="sequence">입력 이벤트의 기록 순서</param>
+        public InputRecord(ulong frame, GridPos pos, ulong sequence = 0)
         {
             this.frame = frame;
+            this.sequence = sequence;
             this.position = pos;
         }
     }
@@ -387,14 +406,18 @@ namespace Puzzle.Core
     {
         /// <summary> 입력 종료가 발생한 게임 로직 프레임 </summary>
         public ulong frame;
+        /// <summary> 같은 프레임의 좌표 입력과 종료 입력 사이의 처리 순서 </summary>
+        public ulong sequence;
 
         /// <summary>
         /// 입력 종료 기록을 생성합니다.
         /// </summary>
         /// <param name="frame">입력 종료가 발생한 프레임</param>
-        public InputEndRecord(ulong frame)
+        /// <param name="sequence">입력 이벤트의 기록 순서</param>
+        public InputEndRecord(ulong frame, ulong sequence = 0)
         {
             this.frame = frame;
+            this.sequence = sequence;
         }
     }
 }

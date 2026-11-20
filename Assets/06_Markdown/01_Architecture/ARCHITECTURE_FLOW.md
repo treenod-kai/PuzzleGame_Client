@@ -4,28 +4,25 @@
 
 ---
 
-## 메인 대전 퍼즐
+## 현재 로비 진입과 게임 종료
 
 ```
 [앱 시작]
-  Main (RuntimeInitializeOnLoadMethod) → SharedScene 자동 로드
-    → TitleScene (CI 연출)
+  TitleScene 시작 → Main.AutoCreate()가 SharedScene 추가 로드
+    → TitleMain.Start()에서 CI 연출
       → LoadingScene 경유
-        → LobbyScene
-          → PopupReady 팝업 열기
-            → [플레이] 상대 유저 리플레이 데이터 다운로드/로드
-              → 리플레이의 Rule/Stage/Seed로 플레이어 GameSpec 준비
-              → SetReplayData()
+        → LobbyScene (스테이지 선택)
+          → [Stage] PopupReady → 슬롯 정지 → GameSpec 준비 → 라이프 1개 사용
+          → [Battle 90s] PopupReady → 슬롯 정지 → 같은 Rule의 대전 기록 확인 → 90초 대전 준비 → 라이프 1개 사용
+          → [리플레이] LobbyMain에서 기록 확인 → GameSpec 준비 → SetReplayData()
               → LoadingScene 경유
                 → GameScene
                   → Board 생성 + Initialize + View 그리기 → 게임 루프
-                  → ReplayController 초기화 → 상대 리플레이 자동 재생
-                    → 게임 종료(Finish) → 점수 환산/랭킹 반영 → LobbyScene 이동
+                  → (리플레이 있으면) ReplayController 초기화 → 우측 상단 자동 재생
+                    → 게임 종료(Finish) → 리플레이 JSON 저장 → 결과 확인 → 같은 조건으로 재도전 또는 LobbyScene 이동
 ```
 
----
-
-## 사이드 스테이지형 콘텐츠
+## 사이드 스테이지형 콘텐츠 (기획)
 
 ```
 [사이드 콘텐츠 진입]

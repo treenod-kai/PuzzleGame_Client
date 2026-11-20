@@ -111,6 +111,25 @@ public static class StageStorage
         return true;
     }
 
+    /// <summary> 주소가 모드별 스테이지 저장소에서 발급하는 정규 키인지 확인합니다. </summary>
+    /// <param name="resourceKey">스테이지 에셋 주소입니다.</param>
+    internal static bool IsModeStageKey(string resourceKey)
+    {
+        if (string.IsNullOrEmpty(resourceKey) || !resourceKey.StartsWith(StageRoot + "/", System.StringComparison.Ordinal))
+        {
+            return false;
+        }
+        string[] parts = resourceKey.Split('/');
+        if (parts.Length != 3 || !System.Enum.TryParse(parts[1], out PuzzleType puzzleType) ||
+            !TryGetModeFolder(puzzleType, out string modeFolder) || parts[1] != modeFolder ||
+            parts[2].Length != "Stage_000".Length)
+        {
+            return false;
+        }
+        return int.TryParse(parts[2].Substring("Stage_".Length), out int stageId) && IsValidStageId(stageId) &&
+               parts[2] == GetStageFileName(stageId);
+    }
+
     /// <summary>
     /// 스테이지 번호가 허용 범위 안에 있는지 확인합니다.
     /// </summary>
